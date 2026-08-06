@@ -64,6 +64,7 @@ cqntrack/
 
 - **Conventional Commits**: `feat:`, `fix:`, `chore:`, `refactor:`, `test:`, `docs:`
 - Mensagens claras e objetivas
+- **Sempre avisar** proativamente quando identificar um bom momento para commit (ex.: mudança coesa, testada e completa) — o aviso não substitui a confirmação explícita exigida antes de efetivamente commitar
 
 ## Deploy
 
