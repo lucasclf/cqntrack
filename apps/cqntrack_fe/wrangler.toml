@@ -1,0 +1,6 @@
+name = "cqntrack-frontend"
+compatibility_date = "2026-08-06"
+
+[assets]
+directory = "./dist"
+not_found_handling = "single-page-application"

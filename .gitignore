@@ -1,0 +1,48 @@
+# Dependências e build
+node_modules
+dist
+build
+*.tsbuildinfo
+.vite
+.eslintcache
+coverage
+
+# Cloudflare / Wrangler (estado local de dev, nunca commitar)
+.wrangler
+.dev.vars
+.dev.vars.*
+
+# Variáveis de ambiente e segredos (bloqueio total; config pública fica em código versionado, não em .env)
+.env
+.env.*
+!.env.example
+
+# Chaves, certificados e credenciais
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+credentials.json
+service-account*.json
+
+# Bancos de dados locais (ex.: D1 local, sqlite de dev)
+*.sqlite
+*.sqlite3
+*.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+
+# Sistema operacional / editor
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
+*.local
