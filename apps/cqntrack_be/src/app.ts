@@ -4,6 +4,7 @@ import { cors } from "hono/cors";
 import { createAuth } from "./auth/auth";
 import { requireSession } from "./auth/require-session";
 import { gamesRouter } from "./games/games.routes";
+import { listsRouter } from "./games/lists.routes";
 
 export const app = new Hono<{ Bindings: Env }>();
 
@@ -35,3 +36,4 @@ app.get("/api/me", requireSession, (c) => {
 });
 
 app.route("/api/games", gamesRouter);
+app.route("/api/lists", listsRouter);

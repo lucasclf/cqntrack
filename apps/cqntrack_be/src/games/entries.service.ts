@@ -2,6 +2,7 @@ import type { GameEntry, GameEntryWithGame, ListGameEntriesQuery, UpsertGameEntr
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import type { createDb } from "../db/client";
 import { gameActivity, gameEntry } from "../db/schema";
+import { withoutUndefined } from "../lib/without-undefined";
 import { getOrCacheGame, mapCachedGameToSummary } from "./games.service";
 
 type Db = ReturnType<typeof createDb>;
@@ -25,13 +26,6 @@ function toGameEntry(row: GameEntryRow): GameEntry {
     review: row.review,
     updatedAt: row.updatedAt.toISOString(),
   };
-}
-
-// Só as chaves realmente presentes no payload (undefined = "não mexer nesse
-// campo"; null = "limpar esse campo" — distinção que UpsertGameEntryRequest
-// preserva de propósito).
-function withoutUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
-  return Object.fromEntries(Object.entries(obj).filter(([, value]) => value !== undefined)) as Partial<T>;
 }
 
 async function logGameEntryActivities(

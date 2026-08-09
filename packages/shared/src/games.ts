@@ -124,3 +124,37 @@ export const PaginatedGameEntriesResponseSchema = z.object({
 });
 
 export type PaginatedGameEntriesResponse = z.infer<typeof PaginatedGameEntriesResponseSchema>;
+
+export const GameListSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().nullable(),
+  itemCount: z.number().int(),
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
+});
+
+export type GameList = z.infer<typeof GameListSchema>;
+
+export const GameListsResponseSchema = z.object({
+  lists: z.array(GameListSchema),
+});
+
+export type GameListsResponse = z.infer<typeof GameListsResponseSchema>;
+
+export const GameListDetailSchema = GameListSchema.extend({
+  items: z.array(GameSummarySchema),
+});
+
+export type GameListDetail = z.infer<typeof GameListDetailSchema>;
+
+export const CreateGameListRequestSchema = z.object({
+  name: z.string().min(1).max(80),
+  description: z.string().max(300).nullable().optional(),
+});
+
+export type CreateGameListRequest = z.infer<typeof CreateGameListRequestSchema>;
+
+export const UpdateGameListRequestSchema = CreateGameListRequestSchema.partial();
+
+export type UpdateGameListRequest = z.infer<typeof UpdateGameListRequestSchema>;
