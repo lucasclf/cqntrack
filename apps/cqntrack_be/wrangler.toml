@@ -11,7 +11,7 @@ migrations_dir = "drizzle"
 
 [vars]
 BETTER_AUTH_URL = "https://api.track.cqn.xyz.br"
-FRONTEND_ORIGIN = "https://track.cqn.xyz.br"
+FRONTEND_ORIGIN = "https://tracker.cqn.xyz.br"
 COOKIE_DOMAIN = ".cqn.xyz.br"
 
 [observability]
