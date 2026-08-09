@@ -51,3 +51,76 @@ export const SearchGamesResponseSchema = z.object({
 });
 
 export type SearchGamesResponse = z.infer<typeof SearchGamesResponseSchema>;
+
+export const GameDetailSchema = GameSummarySchema.extend({
+  summary: z.string().nullable(),
+});
+
+export type GameDetail = z.infer<typeof GameDetailSchema>;
+
+// Marcação do usuário para um jogo específico — sem o `game` embutido (quem
+// consome isso normalmente já sabe de qual jogo se trata pelo contexto da
+// chamada). Ver GameEntryWithGameSchema para o caso de listas/feeds.
+export const GameEntrySchema = z.object({
+  id: z.string(),
+  status: GameStatusSchema,
+  rating: z.number().nullable(),
+  favorite: z.boolean(),
+  platform: z.string().nullable(),
+  review: z.string().nullable(),
+  updatedAt: z.iso.datetime(),
+});
+
+export type GameEntry = z.infer<typeof GameEntrySchema>;
+
+export const GameEntryWithGameSchema = GameEntrySchema.extend({
+  game: GameSummarySchema,
+});
+
+export type GameEntryWithGame = z.infer<typeof GameEntryWithGameSchema>;
+
+export const GameDetailResponseSchema = z.object({
+  game: GameDetailSchema,
+  entry: GameEntrySchema.nullable(),
+});
+
+export type GameDetailResponse = z.infer<typeof GameDetailResponseSchema>;
+
+export const UpsertGameEntryRequestSchema = z.object({
+  status: GameStatusSchema.optional(),
+  rating: z.number().min(0).max(5).multipleOf(0.5).nullable().optional(),
+  review: z.string().max(2000).nullable().optional(),
+  platform: z.string().min(1).max(60).nullable().optional(),
+  favorite: z.boolean().optional(),
+});
+
+export type UpsertGameEntryRequest = z.infer<typeof UpsertGameEntryRequestSchema>;
+
+export const SetFavoriteRequestSchema = z.object({
+  favorite: z.boolean(),
+});
+
+export type SetFavoriteRequest = z.infer<typeof SetFavoriteRequestSchema>;
+
+export const GAME_ENTRY_SORT_FIELDS = ["status", "rating", "favorite", "platform", "updatedAt"] as const;
+
+export const ListGameEntriesQuerySchema = z.object({
+  status: GameStatusSchema.optional(),
+  favorite: z.coerce.boolean().optional(),
+  platform: z.string().optional(),
+  sortBy: z.enum(GAME_ENTRY_SORT_FIELDS).default("updatedAt"),
+  order: z.enum(["asc", "desc"]).default("desc"),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(24),
+});
+
+export type ListGameEntriesQuery = z.infer<typeof ListGameEntriesQuerySchema>;
+
+export const PaginatedGameEntriesResponseSchema = z.object({
+  items: z.array(GameEntryWithGameSchema),
+  page: z.number().int(),
+  pageSize: z.number().int(),
+  total: z.number().int(),
+});
+
+export type PaginatedGameEntriesResponse = z.infer<typeof PaginatedGameEntriesResponseSchema>;

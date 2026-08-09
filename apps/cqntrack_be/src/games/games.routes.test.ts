@@ -1,3 +1,4 @@
+import type { PaginatedGameEntriesResponse } from "@cqntrack/shared";
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createAuthenticatedUser } from "../../test/auth-helpers";
@@ -75,5 +76,248 @@ describe("GET /api/games/search", () => {
     });
 
     vi.unstubAllGlobals();
+  });
+});
+
+function igdbGame(id: number, name: string) {
+  return {
+    id,
+    name,
+    slug: name.toLowerCase().replace(/\s+/g, "-"),
+    cover: { image_id: `cover-${id}` },
+    first_release_date: 1431993600,
+    summary: `Resumo do jogo ${id}`,
+    platforms: [{ name: "PC (Microsoft Windows)" }],
+    genres: [{ name: "Adventure" }],
+    total_rating: 88,
+  };
+}
+
+function stubIgdbFetchOnce(...gameResponses: unknown[][]): void {
+  const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(TOKEN_RESPONSE));
+  for (const games of gameResponses) {
+    fetchMock.mockResolvedValueOnce(jsonResponse(games));
+  }
+  vi.stubGlobal("fetch", fetchMock);
+}
+
+describe("GET /api/games/:igdbId", () => {
+  beforeEach(async () => {
+    resetIgdbTokenMemoryCache();
+    resetRateLimiter();
+    await createDb(env).delete(igdbToken);
+  });
+
+  it("id inválido retorna 400", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+
+    const res = await app.request("/api/games/nao-e-um-id", { headers: { cookie } }, env);
+
+    expect(res.status).toBe(400);
+  });
+
+  it("jogo inexistente na IGDB retorna 404", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubIgdbFetchOnce([]);
+
+    const res = await app.request("/api/games/999999", { headers: { cookie } }, env);
+
+    expect(res.status).toBe(404);
+    vi.unstubAllGlobals();
+  });
+
+  it("cacheia o jogo na primeira consulta; entry vem null quando ainda não marcado", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubIgdbFetchOnce([igdbGame(501, "Hollow Knight")]);
+
+    const res = await app.request("/api/games/501", { headers: { cookie } }, env);
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({
+      game: {
+        igdbId: 501,
+        name: "Hollow Knight",
+        coverUrl: "https://images.igdb.com/igdb/image/upload/t_cover_big/cover-501.jpg",
+        firstReleaseDate: "2015-05-19",
+        platforms: ["PC (Microsoft Windows)"],
+        genres: ["Adventure"],
+        rating: 88,
+        summary: "Resumo do jogo 501",
+      },
+      entry: null,
+    });
+    vi.unstubAllGlobals();
+  });
+
+  it("não consulta a IGDB de novo quando o jogo já está cacheado", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubIgdbFetchOnce([igdbGame(502, "Celeste")]);
+    await app.request("/api/games/502", { headers: { cookie } }, env);
+    vi.unstubAllGlobals();
+
+    const throwingFetch = vi.fn().mockRejectedValue(new Error("não deveria chamar a IGDB de novo"));
+    vi.stubGlobal("fetch", throwingFetch);
+
+    const res = await app.request("/api/games/502", { headers: { cookie } }, env);
+
+    expect(res.status).toBe(200);
+    expect(throwingFetch).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+});
+
+describe("CRUD de marcação (/api/games/:igdbId/entry, /favorite)", () => {
+  beforeEach(async () => {
+    resetIgdbTokenMemoryCache();
+    resetRateLimiter();
+    await createDb(env).delete(igdbToken);
+  });
+
+  it("PUT cria uma marcação nova", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubIgdbFetchOnce([igdbGame(601, "Hades")]);
+
+    const res = await app.request(
+      "/api/games/601/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "playing", platform: "PC" }),
+      },
+      env,
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toMatchObject({ status: "playing", platform: "PC", favorite: false, rating: null });
+    vi.unstubAllGlobals();
+  });
+
+  it("PUT com payload parcial não apaga campos já preenchidos", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubIgdbFetchOnce([igdbGame(602, "Outer Wilds")]);
+    await app.request(
+      "/api/games/602/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "playing", platform: "PC" }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const res = await app.request(
+      "/api/games/602/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ rating: 4.5 }),
+      },
+      env,
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toMatchObject({ status: "playing", platform: "PC", rating: 4.5 });
+  });
+
+  it("DELETE remove a marcação", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubIgdbFetchOnce([igdbGame(603, "Return of the Obra Dinn")]);
+    await app.request(
+      "/api/games/603/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "completed" }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const deleteRes = await app.request(
+      "/api/games/603/entry",
+      { method: "DELETE", headers: { cookie } },
+      env,
+    );
+    expect(deleteRes.status).toBe(204);
+
+    const detailRes = await app.request("/api/games/603", { headers: { cookie } }, env);
+    await expect(detailRes.json()).resolves.toMatchObject({ entry: null });
+  });
+
+  it("PATCH /favorite marca como favorito e cria a marcação se ainda não existir", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubIgdbFetchOnce([igdbGame(604, "Disco Elysium")]);
+
+    const res = await app.request(
+      "/api/games/604/favorite",
+      {
+        method: "PATCH",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ favorite: true }),
+      },
+      env,
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toMatchObject({ favorite: true, status: "not_started" });
+    vi.unstubAllGlobals();
+  });
+});
+
+describe("GET /api/games/entries", () => {
+  beforeEach(async () => {
+    resetIgdbTokenMemoryCache();
+    resetRateLimiter();
+    await createDb(env).delete(igdbToken);
+  });
+
+  it("lista só as marcações do usuário logado, filtrando por status", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+
+    stubIgdbFetchOnce([igdbGame(701, "Stardew Valley")]);
+    await app.request(
+      "/api/games/701/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "completed" }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    stubIgdbFetchOnce([igdbGame(702, "Terraria")]);
+    await app.request(
+      "/api/games/702/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "playing" }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const res = await app.request(
+      "/api/games/entries?status=completed",
+      { headers: { cookie } },
+      env,
+    );
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as PaginatedGameEntriesResponse;
+    expect(body.total).toBe(1);
+    expect(body.items).toHaveLength(1);
+    expect(body.items[0]).toMatchObject({ status: "completed", game: { igdbId: 701 } });
+  });
+
+  it("sem sessão retorna 401", async () => {
+    const res = await app.request("/api/games/entries", undefined, env);
+
+    expect(res.status).toBe(401);
   });
 });

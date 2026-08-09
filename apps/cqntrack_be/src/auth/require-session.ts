@@ -1,7 +1,12 @@
 import { createMiddleware } from "hono/factory";
 import { createAuth } from "./auth";
 
-export const requireSession = createMiddleware<{
+// Shape de Bindings/Variables de qualquer router que use requireSession —
+// `new Hono<AuthedEnv>()` em vez de repetir esse tipo em cada arquivo de rotas.
+// (`.use()` não propaga o tipo de Variables do middleware pro router; só
+// passar o middleware como argumento por rota faz isso, o que não escala bem
+// quando toda rota do domínio precisa de sessão.)
+export type AuthedEnv = {
   Bindings: Env;
   Variables: {
     userId: string;
@@ -10,7 +15,9 @@ export const requireSession = createMiddleware<{
     username: string;
     displayUsername: string;
   };
-}>(async (c, next) => {
+};
+
+export const requireSession = createMiddleware<AuthedEnv>(async (c, next) => {
   const session = await createAuth(c.env).api.getSession({
     headers: c.req.raw.headers,
   });
