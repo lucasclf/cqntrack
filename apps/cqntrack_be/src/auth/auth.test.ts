@@ -4,11 +4,17 @@ import { app } from "../app";
 
 const PASSWORD = "senha12345";
 
-// E-mail único por chamada: o D1 de teste não isola dados entre `it()` do mesmo
-// arquivo, então reaproveitar um e-mail fixo causaria colisão entre os testes.
+// E-mail/username únicos por chamada: o D1 de teste não isola dados entre `it()`
+// do mesmo arquivo, então reaproveitar valores fixos causaria colisão entre testes.
 function uniqueUser() {
-  const email = `teste-${crypto.randomUUID()}@cqntrack.dev`;
-  return { name: "Teste", email, password: PASSWORD };
+  const suffix = crypto.randomUUID();
+  return {
+    name: "Teste",
+    // maxUsernameLength é 30 — usa só um pedaço do UUID, não o valor inteiro.
+    username: `teste_${suffix.slice(0, 8)}`,
+    email: `teste-${suffix}@cqntrack.dev`,
+    password: PASSWORD,
+  };
 }
 
 function extractSessionCookie(res: Response): string {
@@ -20,7 +26,7 @@ function extractSessionCookie(res: Response): string {
   return sessionCookie;
 }
 
-async function signUp(user: { name: string; email: string; password: string }) {
+async function signUp(user: { name: string; username: string; email: string; password: string }) {
   return app.request(
     "/api/auth/sign-up/email",
     {
@@ -55,7 +61,15 @@ describe("autenticação", () => {
   it("cadastro com e-mail duplicado falha", async () => {
     const user = uniqueUser();
     await signUp(user);
-    const res = await signUp(user);
+    const res = await signUp({ ...user, username: `${user.username}_2` });
+
+    expect(res.status).toBeGreaterThanOrEqual(400);
+  });
+
+  it("cadastro com username duplicado falha", async () => {
+    const user = uniqueUser();
+    await signUp(user);
+    const res = await signUp({ ...user, email: `outro-${crypto.randomUUID()}@cqntrack.dev` });
 
     expect(res.status).toBeGreaterThanOrEqual(400);
   });
@@ -94,6 +108,9 @@ describe("autenticação", () => {
     await expect(res.json()).resolves.toEqual({
       id: expect.any(String),
       email: user.email,
+      name: user.name,
+      username: user.username,
+      displayUsername: user.username,
     });
   });
 });

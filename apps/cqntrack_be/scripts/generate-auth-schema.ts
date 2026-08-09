@@ -1,11 +1,13 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { username } from "better-auth/plugins";
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 
 // Instância só para a CLI do better-auth introspectar e gerar o schema Drizzle
 // (`pnpm run auth:generate-schema`). Nunca roda em runtime — o client real
 // (src/auth/auth.ts) usa drizzle(env.DB, ...) com o binding D1 de verdade.
+// As opções aqui precisam espelhar as de src/auth/auth.ts (menos a parte de banco).
 const db = drizzle(new Database(":memory:"));
 
 export const auth = betterAuth({
@@ -14,4 +16,5 @@ export const auth = betterAuth({
     enabled: true,
     requireEmailVerification: false,
   },
+  plugins: [username({ minUsernameLength: 3, maxUsernameLength: 30 })],
 });

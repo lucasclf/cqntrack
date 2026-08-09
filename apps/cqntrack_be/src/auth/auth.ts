@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { username } from "better-auth/plugins";
 import { createDb } from "../db/client";
 
 // Montado por request: o binding env.DB só existe dentro do handler do Worker,
@@ -17,6 +18,7 @@ export function createAuth(env: Env) {
       // Sem provedor de e-mail configurado ainda; débito técnico consciente.
       requireEmailVerification: false,
     },
+    plugins: [username({ minUsernameLength: 3, maxUsernameLength: 30 })],
     advanced: env.COOKIE_DOMAIN
       ? {
           crossSubDomainCookies: {

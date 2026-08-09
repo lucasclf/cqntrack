@@ -1,4 +1,4 @@
-import { HealthResponseSchema } from "@cqntrack/shared";
+import { AuthUserSchema, HealthResponseSchema } from "@cqntrack/shared";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { createAuth } from "./auth/auth";
@@ -23,5 +23,12 @@ app.get("/api/health", (c) => {
 
 // Primeira rota protegida do projeto — valida o middleware de sessão ponta a ponta.
 app.get("/api/me", requireSession, (c) => {
-  return c.json({ id: c.get("userId"), email: c.get("userEmail") });
+  const body = AuthUserSchema.parse({
+    id: c.get("userId"),
+    email: c.get("userEmail"),
+    name: c.get("userName"),
+    username: c.get("username"),
+    displayUsername: c.get("displayUsername"),
+  });
+  return c.json(body);
 });

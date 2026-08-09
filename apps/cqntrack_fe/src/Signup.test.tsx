@@ -27,6 +27,13 @@ function renderSignup() {
   );
 }
 
+function fillValidForm() {
+  fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "Teste" } });
+  fireEvent.change(screen.getByLabelText("Nome de usuário"), { target: { value: "teste_user" } });
+  fireEvent.change(screen.getByLabelText("E-mail"), { target: { value: "teste@cqntrack.dev" } });
+  fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "segredo123" } });
+}
+
 describe("Signup", () => {
   beforeEach(() => {
     signUpEmailMock.mockReset();
@@ -38,6 +45,7 @@ describe("Signup", () => {
 
     expect(screen.getByRole("heading", { name: "Criar conta" })).toBeInTheDocument();
     expect(screen.getByLabelText("Nome")).toBeInTheDocument();
+    expect(screen.getByLabelText("Nome de usuário")).toBeInTheDocument();
     expect(screen.getByLabelText("E-mail")).toBeInTheDocument();
     expect(screen.getByLabelText("Senha")).toBeInTheDocument();
   });
@@ -46,16 +54,13 @@ describe("Signup", () => {
     signUpEmailMock.mockResolvedValue({ error: null });
     renderSignup();
 
-    fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "Teste" } });
-    fireEvent.change(screen.getByLabelText("E-mail"), {
-      target: { value: "teste@cqntrack.dev" },
-    });
-    fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "segredo123" } });
+    fillValidForm();
     fireEvent.click(screen.getByRole("button", { name: "Criar conta" }));
 
     await waitFor(() => {
       expect(signUpEmailMock).toHaveBeenCalledWith({
         name: "Teste",
+        username: "teste_user",
         email: "teste@cqntrack.dev",
         password: "segredo123",
       });
@@ -67,16 +72,25 @@ describe("Signup", () => {
     signUpEmailMock.mockResolvedValue({ error: { message: "email já existe" } });
     renderSignup();
 
-    fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "Teste" } });
-    fireEvent.change(screen.getByLabelText("E-mail"), {
-      target: { value: "teste@cqntrack.dev" },
-    });
-    fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "segredo123" } });
+    fillValidForm();
     fireEvent.click(screen.getByRole("button", { name: "Criar conta" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Não foi possível criar a conta. Tente outro e-mail.",
+      "Não foi possível criar a conta. O e-mail ou nome de usuário já estão em uso.",
     );
     expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it("mostra erro de validação quando o username tem caracteres inválidos", () => {
+    renderSignup();
+
+    fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "Teste" } });
+    fireEvent.change(screen.getByLabelText("Nome de usuário"), { target: { value: "ab" } }); // curto demais
+    fireEvent.change(screen.getByLabelText("E-mail"), { target: { value: "teste@cqntrack.dev" } });
+    fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "segredo123" } });
+    fireEvent.click(screen.getByRole("button", { name: "Criar conta" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/nome de usuário/);
+    expect(signUpEmailMock).not.toHaveBeenCalled();
   });
 });

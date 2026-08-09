@@ -12,6 +12,11 @@ export type LoginForm = z.infer<typeof LoginFormSchema>;
 
 export const SignupFormSchema = z.object({
   name: z.string().min(1),
+  username: z
+    .string()
+    .min(3)
+    .max(30)
+    .regex(/^[a-z0-9_]+$/, "use letras minúsculas, números e _"),
   email: z.email(),
   password: z.string().min(8),
 });
@@ -24,6 +29,8 @@ export const AuthUserSchema = z.object({
   id: z.string(),
   name: z.string(),
   email: z.email(),
+  username: z.string(),
+  displayUsername: z.string(),
 });
 
 export type AuthUser = z.infer<typeof AuthUserSchema>;

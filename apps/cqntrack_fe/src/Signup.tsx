@@ -9,6 +9,7 @@ import styles from "./Signup.module.css";
 export function Signup() {
   const navigate = useNavigate();
   const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -18,22 +19,25 @@ export function Signup() {
     event.preventDefault();
     setError(null);
 
-    const parsed = SignupFormSchema.safeParse({ name, email, password });
+    const parsed = SignupFormSchema.safeParse({ name, username, email, password });
     if (!parsed.success) {
-      setError("Preencha nome, e-mail válido e uma senha com pelo menos 8 caracteres.");
+      setError(
+        "Preencha nome, um nome de usuário (letras minúsculas, números e _), e-mail válido e uma senha com pelo menos 8 caracteres.",
+      );
       return;
     }
 
     setSubmitting(true);
     const { error: signUpError } = await authClient.signUp.email({
       name: parsed.data.name,
+      username: parsed.data.username,
       email: parsed.data.email,
       password: parsed.data.password,
     });
     setSubmitting(false);
 
     if (signUpError) {
-      setError("Não foi possível criar a conta. Tente outro e-mail.");
+      setError("Não foi possível criar a conta. O e-mail ou nome de usuário já estão em uso.");
       return;
     }
 
@@ -54,6 +58,18 @@ export function Signup() {
             required
             value={name}
             onChange={(event) => setName(event.target.value)}
+          />
+        </label>
+        <label className={styles.field}>
+          <span>Nome de usuário</span>
+          <input
+            type="text"
+            placeholder="seu_usuario"
+            autoComplete="username"
+            pattern="[a-z0-9_]+"
+            required
+            value={username}
+            onChange={(event) => setUsername(event.target.value.toLowerCase())}
           />
         </label>
         <label className={styles.field}>
