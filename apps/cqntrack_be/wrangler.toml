@@ -3,5 +3,16 @@ main = "src/index.ts"
 compatibility_date = "2026-08-06"
 compatibility_flags = ["nodejs_compat"]
 
+[[d1_databases]]
+binding = "DB"
+database_name = "cqntrack-db"
+database_id = "b73c1d13-fd3d-4ad4-898e-c02ae5d5aca0"
+migrations_dir = "drizzle"
+
+[vars]
+BETTER_AUTH_URL = "https://api.track.cqn.xyz.br"
+FRONTEND_ORIGIN = "https://track.cqn.xyz.br"
+COOKIE_DOMAIN = ".cqn.xyz.br"
+
 [observability]
 enabled = true

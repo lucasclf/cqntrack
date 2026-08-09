@@ -1,17 +1,45 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
-import { App } from "./App";
+import { createMemoryRouter } from "react-router";
+import { RouterProvider } from "react-router/dom";
+import { describe, expect, it, vi } from "vitest";
+import { routes } from "./router";
 
-describe("App", () => {
-  it("navega do login para a página de indisponível e volta", () => {
-    render(<App />);
+const { useSessionMock } = vi.hoisted(() => ({ useSessionMock: vi.fn() }));
 
-    expect(screen.getByRole("heading", { name: "Entrar" })).toBeInTheDocument();
+vi.mock("./lib/auth-client", () => ({
+  authClient: {
+    useSession: useSessionMock,
+    signIn: { email: vi.fn() },
+    signUp: { email: vi.fn() },
+  },
+}));
+
+function renderApp(initialEntry: string) {
+  const router = createMemoryRouter(routes, { initialEntries: [initialEntry] });
+  render(<RouterProvider router={router} />);
+}
+
+describe("Roteamento do App", () => {
+  it("redireciona para o login quando não há sessão", async () => {
+    useSessionMock.mockReturnValue({ data: null, isPending: false });
+    renderApp("/");
+
+    expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument();
+  });
+
+  it("navega para /cadastro ao clicar em 'Criar conta'", async () => {
+    useSessionMock.mockReturnValue({ data: null, isPending: false });
+    renderApp("/login");
 
     fireEvent.click(screen.getByRole("link", { name: "Criar conta" }));
-    expect(screen.getByRole("heading", { name: "Ainda não disponível" })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Voltar para o login" }));
-    expect(screen.getByRole("heading", { name: "Entrar" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Criar conta" })).toBeInTheDocument();
+  });
+
+  it("renderiza a área logada quando há sessão", async () => {
+    useSessionMock.mockReturnValue({ data: { user: { id: "1" } }, isPending: false });
+    renderApp("/");
+
+    expect(await screen.findByRole("heading", { name: "cqntrack" })).toBeInTheDocument();
   });
 });

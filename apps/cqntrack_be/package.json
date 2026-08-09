@@ -7,14 +7,23 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "auth:generate-schema": "npx --yes @better-auth/cli@latest generate --config ./scripts/generate-auth-schema.ts --output ./src/db/schema/auth.schema.ts -y",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate:local": "wrangler d1 migrations apply cqntrack-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply cqntrack-db --remote"
   },
   "dependencies": {
     "@cqntrack/shared": "workspace:*",
+    "better-auth": "1.6.26",
+    "drizzle-orm": "0.45.2",
     "hono": "4.13.0"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "5.20260804.1",
+    "@cloudflare/vitest-pool-workers": "0.20.3",
+    "@types/better-sqlite3": "9.6.0",
+    "better-sqlite3": "12.11.1",
+    "drizzle-kit": "0.31.10",
     "typescript": "5.9.3",
     "vitest": "4.1.10",
     "wrangler": "4.119.0"

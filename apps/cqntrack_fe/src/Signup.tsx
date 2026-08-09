@@ -1,16 +1,16 @@
-import { LoginFormSchema } from "@cqntrack/shared";
+import { SignupFormSchema } from "@cqntrack/shared";
 import { type FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import layoutStyles from "./AuthLayout.module.css";
 import { AuthLayout } from "./AuthLayout";
 import { authClient } from "./lib/auth-client";
-import styles from "./Login.module.css";
+import styles from "./Signup.module.css";
 
-export function Login() {
+export function Signup() {
   const navigate = useNavigate();
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -18,22 +18,22 @@ export function Login() {
     event.preventDefault();
     setError(null);
 
-    const parsed = LoginFormSchema.safeParse({ email, password });
+    const parsed = SignupFormSchema.safeParse({ name, email, password });
     if (!parsed.success) {
-      setError("Preencha um e-mail válido e uma senha com pelo menos 8 caracteres.");
+      setError("Preencha nome, e-mail válido e uma senha com pelo menos 8 caracteres.");
       return;
     }
 
     setSubmitting(true);
-    const { error: signInError } = await authClient.signIn.email({
+    const { error: signUpError } = await authClient.signUp.email({
+      name: parsed.data.name,
       email: parsed.data.email,
       password: parsed.data.password,
-      rememberMe,
     });
     setSubmitting(false);
 
-    if (signInError) {
-      setError("E-mail ou senha inválidos.");
+    if (signUpError) {
+      setError("Não foi possível criar a conta. Tente outro e-mail.");
       return;
     }
 
@@ -42,9 +42,20 @@ export function Login() {
 
   return (
     <AuthLayout>
-      <h1>Entrar</h1>
-      <p className={layoutStyles.subtitle}>Bem-vindo de volta. Acesse sua conta para continuar.</p>
+      <h1>Criar conta</h1>
+      <p className={layoutStyles.subtitle}>Comece a registrar tudo que você consome.</p>
       <form onSubmit={handleSubmit}>
+        <label className={styles.field}>
+          <span>Nome</span>
+          <input
+            type="text"
+            placeholder="Seu nome"
+            autoComplete="name"
+            required
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+          />
+        </label>
         <label className={styles.field}>
           <span>E-mail</span>
           <input
@@ -61,38 +72,25 @@ export function Login() {
           <input
             type="password"
             placeholder="••••••••"
-            autoComplete="current-password"
+            autoComplete="new-password"
             required
             value={password}
             onChange={(event) => setPassword(event.target.value)}
           />
         </label>
-        <div className={styles.formRow}>
-          <label className={styles.checkbox}>
-            <input
-              type="checkbox"
-              checked={rememberMe}
-              onChange={(event) => setRememberMe(event.target.checked)}
-            />
-            Manter conectado
-          </label>
-          <Link to="/esqueci-senha" className={layoutStyles.link}>
-            Esqueci minha senha
-          </Link>
-        </div>
         {error && (
           <p className={layoutStyles.error} role="alert">
             {error}
           </p>
         )}
         <button className={layoutStyles.btnPrimary} type="submit" disabled={submitting}>
-          {submitting ? "Entrando..." : "Entrar"}
+          {submitting ? "Criando conta..." : "Criar conta"}
         </button>
       </form>
-      <p className={styles.signupHint}>
-        Ainda não tem conta?{" "}
-        <Link to="/cadastro" className={layoutStyles.link}>
-          Criar conta
+      <p className={styles.loginHint}>
+        Já tem uma conta?{" "}
+        <Link to="/login" className={layoutStyles.link}>
+          Entrar
         </Link>
       </p>
     </AuthLayout>

@@ -1,21 +1,21 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router";
+import { describe, expect, it } from "vitest";
 import { Unavailable } from "./Unavailable";
 
 describe("Unavailable", () => {
-  it("renderiza a imagem e o botão de voltar", () => {
-    render(<Unavailable onBack={vi.fn()} />);
+  it("renderiza a imagem e o link de volta para o login", () => {
+    render(
+      <MemoryRouter>
+        <Unavailable />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByRole("heading", { name: "Ainda não disponível" })).toBeInTheDocument();
     expect(screen.getByRole("img")).toBeInTheDocument();
-  });
-
-  it("chama onBack ao clicar em voltar", () => {
-    const onBack = vi.fn();
-    render(<Unavailable onBack={onBack} />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Voltar para o login" }));
-
-    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("link", { name: "Voltar para o login" })).toHaveAttribute(
+      "href",
+      "/login",
+    );
   });
 });

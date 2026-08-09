@@ -11,6 +11,7 @@ coverage
 .wrangler
 .dev.vars
 .dev.vars.*
+!.dev.vars.example
 
 # Variáveis de ambiente e segredos (bloqueio total; config pública fica em código versionado, não em .env)
 .env

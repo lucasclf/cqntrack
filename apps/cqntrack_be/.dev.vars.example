@@ -1,0 +1,4 @@
+BETTER_AUTH_SECRET=gere-um-valor-aleatorio-ex-openssl-rand-base64-32
+BETTER_AUTH_URL=http://localhost:8787
+FRONTEND_ORIGIN=http://localhost:5173
+COOKIE_DOMAIN=

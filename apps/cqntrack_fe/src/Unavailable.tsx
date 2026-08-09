@@ -1,13 +1,10 @@
+import { Link } from "react-router";
 import layoutStyles from "./AuthLayout.module.css";
 import { AuthLayout } from "./AuthLayout";
 import unavailableCat from "./assets/unavailable-cat.webp";
 import styles from "./Unavailable.module.css";
 
-interface UnavailableProps {
-  onBack: () => void;
-}
-
-export function Unavailable({ onBack }: UnavailableProps) {
+export function Unavailable() {
   return (
     <AuthLayout>
       <img
@@ -20,9 +17,9 @@ export function Unavailable({ onBack }: UnavailableProps) {
         Essa parte do cqntrack ainda está em construção. Volte para o login e tente novamente mais
         tarde.
       </p>
-      <button type="button" className={layoutStyles.btnPrimary} onClick={onBack}>
+      <Link to="/login" className={`${layoutStyles.btnPrimary} ${styles.backLink}`}>
         Voltar para o login
-      </button>
+      </Link>
     </AuthLayout>
   );
 }

@@ -1,13 +1,27 @@
 import { HealthResponseSchema } from "@cqntrack/shared";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { createAuth } from "./auth/auth";
+import { requireSession } from "./auth/require-session";
 
-export const app = new Hono();
+export const app = new Hono<{ Bindings: Env }>();
 
-// Sem credentials/cookies ainda (better-auth vem depois), então liberar qualquer origin é seguro por ora.
-app.use("/api/*", cors());
+app.use(
+  "/api/*",
+  cors({
+    origin: (_origin, c) => c.env.FRONTEND_ORIGIN,
+    credentials: true,
+  }),
+);
+
+app.on(["POST", "GET"], "/api/auth/*", (c) => createAuth(c.env).handler(c.req.raw));
 
 app.get("/api/health", (c) => {
   const body = HealthResponseSchema.parse({ status: "ok" });
   return c.json(body);
+});
+
+// Primeira rota protegida do projeto — valida o middleware de sessão ponta a ponta.
+app.get("/api/me", requireSession, (c) => {
+  return c.json({ id: c.get("userId"), email: c.get("userEmail") });
 });

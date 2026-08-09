@@ -1,0 +1,99 @@
+import { env } from "cloudflare:workers";
+import { describe, expect, it } from "vitest";
+import { app } from "../app";
+
+const PASSWORD = "senha12345";
+
+// E-mail único por chamada: o D1 de teste não isola dados entre `it()` do mesmo
+// arquivo, então reaproveitar um e-mail fixo causaria colisão entre os testes.
+function uniqueUser() {
+  const email = `teste-${crypto.randomUUID()}@cqntrack.dev`;
+  return { name: "Teste", email, password: PASSWORD };
+}
+
+function extractSessionCookie(res: Response): string {
+  const setCookie = res.headers.get("set-cookie");
+  const [sessionCookie] = setCookie?.split(";") ?? [];
+  if (!sessionCookie) {
+    throw new Error("Resposta não trouxe Set-Cookie");
+  }
+  return sessionCookie;
+}
+
+async function signUp(user: { name: string; email: string; password: string }) {
+  return app.request(
+    "/api/auth/sign-up/email",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(user),
+    },
+    env,
+  );
+}
+
+async function signIn(email: string, password: string) {
+  return app.request(
+    "/api/auth/sign-in/email",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    },
+    env,
+  );
+}
+
+describe("autenticação", () => {
+  it("cadastro com dados válidos cria sessão", async () => {
+    const res = await signUp(uniqueUser());
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("set-cookie")).toContain("better-auth.session_token=");
+  });
+
+  it("cadastro com e-mail duplicado falha", async () => {
+    const user = uniqueUser();
+    await signUp(user);
+    const res = await signUp(user);
+
+    expect(res.status).toBeGreaterThanOrEqual(400);
+  });
+
+  it("login com credenciais corretas retorna sessão válida", async () => {
+    const user = uniqueUser();
+    await signUp(user);
+    const res = await signIn(user.email, user.password);
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("set-cookie")).toContain("better-auth.session_token=");
+  });
+
+  it("login com senha errada falha", async () => {
+    const user = uniqueUser();
+    await signUp(user);
+    const res = await signIn(user.email, "senhaerrada");
+
+    expect(res.status).toBeGreaterThanOrEqual(400);
+  });
+
+  it("GET /api/me sem cookie retorna 401", async () => {
+    const res = await app.request("/api/me", undefined, env);
+
+    expect(res.status).toBe(401);
+  });
+
+  it("GET /api/me com cookie de sessão válido retorna o usuário", async () => {
+    const user = uniqueUser();
+    const signUpRes = await signUp(user);
+    const cookie = extractSessionCookie(signUpRes);
+
+    const res = await app.request("/api/me", { headers: { cookie } }, env);
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({
+      id: expect.any(String),
+      email: user.email,
+    });
+  });
+});

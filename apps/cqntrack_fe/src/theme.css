@@ -31,6 +31,7 @@
   --tile-4: #7c3aed;
   --tile-5: #3c2a63;
   --tile-6: #5a3c99;
+  --error: #f87171;
 }
 
 [data-theme="light"] {
@@ -56,6 +57,7 @@
   --tile-4: #b9a5f5;
   --tile-5: #e0d6fa;
   --tile-6: #d0c2f7;
+  --error: #dc2626;
 }
 
 * {

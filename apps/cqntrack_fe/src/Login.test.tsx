@@ -1,10 +1,40 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Login } from "./Login";
 
+const { signInEmailMock, navigateMock } = vi.hoisted(() => ({
+  signInEmailMock: vi.fn(),
+  navigateMock: vi.fn(),
+}));
+
+vi.mock("./lib/auth-client", () => ({
+  authClient: {
+    signIn: { email: signInEmailMock },
+  },
+}));
+
+vi.mock("react-router", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react-router")>();
+  return { ...actual, useNavigate: () => navigateMock };
+});
+
+function renderLogin() {
+  render(
+    <MemoryRouter>
+      <Login />
+    </MemoryRouter>,
+  );
+}
+
 describe("Login", () => {
+  beforeEach(() => {
+    signInEmailMock.mockReset();
+    navigateMock.mockReset();
+  });
+
   it("renderiza os campos do formulário", () => {
-    render(<Login onNavigateToUnavailable={vi.fn()} />);
+    renderLogin();
 
     expect(screen.getByRole("heading", { name: "Entrar" })).toBeInTheDocument();
     expect(screen.getByLabelText("E-mail")).toBeInTheDocument();
@@ -12,7 +42,7 @@ describe("Login", () => {
   });
 
   it("permite digitar e-mail e senha", () => {
-    render(<Login onNavigateToUnavailable={vi.fn()} />);
+    renderLogin();
 
     const emailInput = screen.getByLabelText("E-mail") as HTMLInputElement;
     const passwordInput = screen.getByLabelText("Senha") as HTMLInputElement;
@@ -24,24 +54,53 @@ describe("Login", () => {
     expect(passwordInput.value).toBe("segredo123");
   });
 
-  it("não segue o comportamento padrão de submit (sem backend ainda)", () => {
-    render(<Login onNavigateToUnavailable={vi.fn()} />);
+  it("chama signIn.email com os dados do formulário e navega para / em caso de sucesso", async () => {
+    signInEmailMock.mockResolvedValue({ error: null });
+    renderLogin();
 
-    const form = screen.getByRole("button", { name: "Entrar" }).closest("form");
-    expect(form).not.toBeNull();
+    fireEvent.change(screen.getByLabelText("E-mail"), {
+      target: { value: "teste@cqntrack.dev" },
+    });
+    fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "segredo123" } });
+    fireEvent.click(screen.getByRole("checkbox", { name: "Manter conectado" }));
+    fireEvent.click(screen.getByRole("button", { name: "Entrar" }));
 
-    // dispatchEvent retorna false quando algum handler chamou preventDefault().
-    const defaultNotPrevented = fireEvent.submit(form as HTMLFormElement);
-    expect(defaultNotPrevented).toBe(false);
+    await waitFor(() => {
+      expect(signInEmailMock).toHaveBeenCalledWith({
+        email: "teste@cqntrack.dev",
+        password: "segredo123",
+        rememberMe: true,
+      });
+    });
+    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith("/"));
   });
 
-  it("aciona a navegação para a página de indisponível ao clicar nos links", () => {
-    const onNavigateToUnavailable = vi.fn();
-    render(<Login onNavigateToUnavailable={onNavigateToUnavailable} />);
+  it("mostra erro quando signIn.email falha", async () => {
+    signInEmailMock.mockResolvedValue({ error: { message: "invalid" } });
+    renderLogin();
 
-    fireEvent.click(screen.getByRole("link", { name: "Esqueci minha senha" }));
-    fireEvent.click(screen.getByRole("link", { name: "Criar conta" }));
+    fireEvent.change(screen.getByLabelText("E-mail"), {
+      target: { value: "teste@cqntrack.dev" },
+    });
+    fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "senhaerrada" } });
+    fireEvent.click(screen.getByRole("button", { name: "Entrar" }));
 
-    expect(onNavigateToUnavailable).toHaveBeenCalledTimes(2);
+    expect(await screen.findByRole("alert")).toHaveTextContent("E-mail ou senha inválidos.");
+    expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it("mostra erro de validação sem chamar signIn.email quando a senha é curta demais", () => {
+    renderLogin();
+
+    // E-mail com formato válido (passa na validação nativa do <input type="email">);
+    // só o Zod barra pela senha curta, que é o que queremos exercitar aqui.
+    fireEvent.change(screen.getByLabelText("E-mail"), {
+      target: { value: "teste@cqntrack.dev" },
+    });
+    fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "123" } });
+    fireEvent.click(screen.getByRole("button", { name: "Entrar" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/e-mail válido/);
+    expect(signInEmailMock).not.toHaveBeenCalled();
   });
 });
