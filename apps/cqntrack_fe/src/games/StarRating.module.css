@@ -1,0 +1,66 @@
+.stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.starSlot {
+  position: relative;
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+}
+
+.starBase {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 28px;
+  height: 28px;
+  color: var(--input-border);
+}
+
+.starFillClip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 28px;
+  overflow: hidden;
+  color: var(--accent);
+}
+
+.starFill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 28px;
+  height: 28px;
+}
+
+.starHalfLeft,
+.starHalfRight {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.starHalfLeft {
+  left: 0;
+}
+
+.starHalfRight {
+  right: 0;
+}
+
+.valueLabel {
+  margin-left: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
