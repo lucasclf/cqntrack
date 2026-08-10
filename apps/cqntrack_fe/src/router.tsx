@@ -8,6 +8,7 @@ import { AppShell } from "./layouts/AppShell";
 import { Account } from "./Account";
 import { Home } from "./Home";
 import { Login } from "./Login";
+import { PublicListDetail } from "./profile/PublicListDetail";
 import { PublicProfile } from "./profile/PublicProfile";
 import { RequireAuth } from "./routes/RequireAuth";
 import { Signup } from "./Signup";
@@ -18,6 +19,7 @@ export const routes: RouteObject[] = [
   { path: "/cadastro", element: <Signup /> },
   { path: "/esqueci-senha", element: <Unavailable /> },
   { path: "/u/:username", element: <PublicProfile /> },
+  { path: "/u/:username/listas/:listId", element: <PublicListDetail /> },
   {
     path: "/",
     element: <RequireAuth />,

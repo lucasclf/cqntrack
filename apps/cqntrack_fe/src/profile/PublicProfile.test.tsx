@@ -62,6 +62,10 @@ describe("PublicProfile", () => {
     expect(screen.getByText("@gamer_1")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Listas" })).toBeInTheDocument();
     expect(screen.getByText("(3)")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Favoritos/ })).toHaveAttribute(
+      "href",
+      "/u/gamer_1/listas/l1",
+    );
     expect(screen.getByText("The Witcher 3: Wild Hunt")).toBeInTheDocument();
   });
 

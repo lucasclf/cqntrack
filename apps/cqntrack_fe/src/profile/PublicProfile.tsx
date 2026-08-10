@@ -4,7 +4,7 @@ import type {
   PublicProfile as PublicProfileDto,
 } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
-import { useParams } from "react-router";
+import { Link, useParams } from "react-router";
 import { GameCard } from "../games/GameCard";
 import { PublicLayout } from "../layouts/PublicLayout";
 import { GamesApiError, gamesClient } from "../lib/games-client";
@@ -112,7 +112,9 @@ export function PublicProfile() {
             <ul className={styles.listNames}>
               {lists.lists.map((list) => (
                 <li key={list.id}>
-                  {list.name} <span className={styles.listCount}>({list.itemCount})</span>
+                  <Link to={`/u/${username}/listas/${list.id}`}>
+                    {list.name} <span className={styles.listCount}>({list.itemCount})</span>
+                  </Link>
                 </li>
               ))}
             </ul>
