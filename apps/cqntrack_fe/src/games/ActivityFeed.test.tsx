@@ -10,14 +10,12 @@ vi.mock("../lib/games-client", () => ({
   gamesClient: { get: getMock },
 }));
 
-const GAME = {
-  igdbId: 1942,
-  name: "The Witcher 3: Wild Hunt",
-  coverUrl: null,
-  firstReleaseDate: "2015-05-19",
-  platforms: [],
-  genres: [],
-  rating: null,
+const GAME_SNAPSHOT = {
+  mediaType: "games" as const,
+  itemId: "1942",
+  itemTitle: "The Witcher 3: Wild Hunt",
+  itemHref: "/jogos/1942",
+  itemCoverUrl: null,
 };
 
 function renderFeed() {
@@ -49,17 +47,28 @@ describe("ActivityFeed", () => {
 
   it("descreve cada tipo de atividade e linka pro jogo", async () => {
     const items: ActivityItem[] = [
-      { id: "1", type: "status_changed", status: "playing", createdAt: "2026-01-01T10:00:00.000Z", game: GAME },
-      { id: "2", type: "rated", rating: 4.5, createdAt: "2026-01-01T09:00:00.000Z", game: GAME },
-      { id: "3", type: "favorited", createdAt: "2026-01-01T08:00:00.000Z", game: GAME },
-      { id: "4", type: "reviewed", createdAt: "2026-01-01T07:00:00.000Z", game: GAME },
+      {
+        id: "1",
+        type: "status_changed",
+        metadata: { status: "playing" },
+        createdAt: "2026-01-01T10:00:00.000Z",
+        ...GAME_SNAPSHOT,
+      },
+      {
+        id: "2",
+        type: "rated",
+        metadata: { rating: 4.5 },
+        createdAt: "2026-01-01T09:00:00.000Z",
+        ...GAME_SNAPSHOT,
+      },
+      { id: "3", type: "favorited", metadata: null, createdAt: "2026-01-01T08:00:00.000Z", ...GAME_SNAPSHOT },
+      { id: "4", type: "reviewed", metadata: null, createdAt: "2026-01-01T07:00:00.000Z", ...GAME_SNAPSHOT },
       {
         id: "5",
         type: "added_to_list",
-        listId: "l1",
-        listName: "Favoritos",
+        metadata: { listId: "l1", listName: "Favoritos" },
         createdAt: "2026-01-01T06:00:00.000Z",
-        game: GAME,
+        ...GAME_SNAPSHOT,
       },
     ];
     getMock.mockResolvedValue({ items, nextCursor: null });
@@ -78,14 +87,18 @@ describe("ActivityFeed", () => {
 
   it("carrega mais itens ao clicar em 'Carregar mais'", async () => {
     getMock.mockResolvedValueOnce({
-      items: [{ id: "1", type: "favorited", createdAt: "2026-01-01T10:00:00.000Z", game: GAME }],
+      items: [
+        { id: "1", type: "favorited", metadata: null, createdAt: "2026-01-01T10:00:00.000Z", ...GAME_SNAPSHOT },
+      ],
       nextCursor: "2026-01-01T10:00:00.000Z",
     });
     renderFeed();
 
     await screen.findByText("Favoritou");
     getMock.mockResolvedValueOnce({
-      items: [{ id: "2", type: "reviewed", createdAt: "2026-01-01T09:00:00.000Z", game: GAME }],
+      items: [
+        { id: "2", type: "reviewed", metadata: null, createdAt: "2026-01-01T09:00:00.000Z", ...GAME_SNAPSHOT },
+      ],
       nextCursor: null,
     });
 

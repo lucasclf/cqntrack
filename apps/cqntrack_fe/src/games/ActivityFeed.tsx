@@ -1,4 +1,9 @@
-import { GAME_STATUS_LABELS, type ActivityFeedResponse, type ActivityItem } from "@cqntrack/shared";
+import {
+  GAME_STATUS_LABELS,
+  type ActivityFeedResponse,
+  type ActivityItem,
+  type GameStatus,
+} from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { gamesClient } from "../lib/games-client";
@@ -6,18 +11,32 @@ import styles from "./ActivityFeed.module.css";
 
 type LoadStatus = "loading" | "ready" | "error";
 
+// `type`/`metadata` são genéricos entre seções (ver activity.schema.ts no
+// backend) — só jogos escreve esses tipos por enquanto, então a descrição
+// abaixo ainda é toda games-specific. Quando uma segunda seção existir, cada
+// uma passa a ter seu próprio vocabulário de `type` e essa função precisa
+// levar `item.mediaType` em conta.
 function describeActivity(item: ActivityItem): string {
+  const metadata = item.metadata ?? {};
   switch (item.type) {
-    case "status_changed":
-      return `Marcou como "${GAME_STATUS_LABELS[item.status]}"`;
+    case "status_changed": {
+      const status = metadata.status as GameStatus | undefined;
+      return status ? `Marcou como "${GAME_STATUS_LABELS[status]}"` : "Mudou o status";
+    }
     case "favorited":
       return "Favoritou";
-    case "rated":
-      return `Avaliou com ${item.rating.toFixed(1)} estrelas`;
+    case "rated": {
+      const rating = metadata.rating as number | undefined;
+      return rating !== undefined ? `Avaliou com ${rating.toFixed(1)} estrelas` : "Avaliou";
+    }
     case "reviewed":
       return "Escreveu uma review";
-    case "added_to_list":
-      return `Adicionou à lista "${item.listName}"`;
+    case "added_to_list": {
+      const listName = metadata.listName as string | undefined;
+      return listName ? `Adicionou à lista "${listName}"` : "Adicionou a uma lista";
+    }
+    default:
+      return "Atividade";
   }
 }
 
@@ -91,11 +110,11 @@ export function ActivityFeed() {
       <ul className={styles.list}>
         {items.map((item) => (
           <li key={item.id} className={styles.item}>
-            <Link to={`/jogos/${item.game.igdbId}`} className={styles.gameLink}>
-              {item.game.coverUrl && <img className={styles.cover} src={item.game.coverUrl} alt="" />}
+            <Link to={item.itemHref} className={styles.gameLink}>
+              {item.itemCoverUrl && <img className={styles.cover} src={item.itemCoverUrl} alt="" />}
               <div>
                 <p className={styles.description}>{describeActivity(item)}</p>
-                <p className={styles.gameName}>{item.game.name}</p>
+                <p className={styles.gameName}>{item.itemTitle}</p>
                 <p className={styles.date}>{formatActivityDate(item.createdAt)}</p>
               </div>
             </Link>
