@@ -2,6 +2,7 @@ import type { GameDetailResponse, GameEntry, UpsertGameEntryRequest } from "@cqn
 import { useEffect, useState } from "react";
 import { useParams } from "react-router";
 import { GamesApiError, gamesClient } from "../lib/games-client";
+import { AddToListMenu } from "./AddToListMenu";
 import styles from "./GameDetail.module.css";
 import { StarRating } from "./StarRating";
 import { StatusBadge } from "./StatusBadge";
@@ -103,6 +104,8 @@ export function GameDetail() {
         {saveError && <p role="alert">{saveError}</p>}
 
         <StatusBadge status={entry?.status ?? null} onChange={(status) => savePatch({ status })} />
+
+        <AddToListMenu igdbId={game.igdbId} />
 
         <div className={styles.row}>
           <StarRating value={entry?.rating ?? null} onChange={(rating) => savePatch({ rating })} />
