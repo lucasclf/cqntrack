@@ -51,7 +51,7 @@ describe("MyLists", () => {
 
     expect(await screen.findByText("Quero jogar")).toBeInTheDocument();
     expect(screen.getByText("3 jogo(s)")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Quero jogar/ })).toHaveAttribute("href", "/listas/1");
+    expect(screen.getByRole("link", { name: /Quero jogar/ })).toHaveAttribute("href", "/jogos/listas/1");
   });
 
   it("mostra mensagem quando não há listas", async () => {

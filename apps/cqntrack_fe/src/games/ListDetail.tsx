@@ -74,7 +74,7 @@ export function ListDetail() {
       return;
     }
     await gamesClient.delete(`/api/lists/${listId}`);
-    void navigate("/listas");
+    void navigate("/jogos/listas");
   }
 
   if (loadStatus === "loading") {

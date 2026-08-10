@@ -39,12 +39,12 @@ const DETAIL = {
   ],
 };
 
-function renderPage(initialEntry = "/listas/1") {
+function renderPage(initialEntry = "/jogos/listas/1") {
   render(
     <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
-        <Route path="/listas" element={<p>tela de listas</p>} />
-        <Route path="/listas/:listId" element={<ListDetail />} />
+        <Route path="/jogos/listas" element={<p>tela de listas</p>} />
+        <Route path="/jogos/listas/:listId" element={<ListDetail />} />
       </Routes>
     </MemoryRouter>,
   );

@@ -58,7 +58,7 @@ export function MyLists() {
       <ul className={styles.list}>
         {lists.map((list) => (
           <li key={list.id} className={styles.card}>
-            <Link to={`/listas/${list.id}`} className={styles.cardLink}>
+            <Link to={`/jogos/listas/${list.id}`} className={styles.cardLink}>
               <span className={styles.name}>{list.name}</span>
               <span className={styles.count}>{list.itemCount} jogo(s)</span>
               {list.description && <p className={styles.description}>{list.description}</p>}

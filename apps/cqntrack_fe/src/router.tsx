@@ -10,6 +10,7 @@ import { Home } from "./Home";
 import { Login } from "./Login";
 import { PublicListDetail } from "./profile/PublicListDetail";
 import { PublicProfile } from "./profile/PublicProfile";
+import { RedirectToJogosListDetail } from "./routes/RedirectToJogosListDetail";
 import { RequireAuth } from "./routes/RequireAuth";
 import { Signup } from "./Signup";
 import { Unavailable } from "./Unavailable";
@@ -20,6 +21,10 @@ export const routes: RouteObject[] = [
   { path: "/esqueci-senha", element: <Unavailable /> },
   { path: "/u/:username", element: <PublicProfile /> },
   { path: "/u/:username/listas/:listId", element: <PublicListDetail /> },
+  { path: "/buscar", element: <Navigate to="/jogos/buscar" replace /> },
+  { path: "/marcacoes", element: <Navigate to="/jogos/marcacoes" replace /> },
+  { path: "/listas", element: <Navigate to="/jogos/listas" replace /> },
+  { path: "/listas/:listId", element: <RedirectToJogosListDetail /> },
   {
     path: "/",
     element: <RequireAuth />,
@@ -28,12 +33,17 @@ export const routes: RouteObject[] = [
         element: <AppShell />,
         children: [
           { index: true, element: <Home /> },
-          { path: "buscar", element: <GameSearch /> },
-          { path: "jogos/:igdbId", element: <GameDetail /> },
-          { path: "marcacoes", element: <MyEntries /> },
-          { path: "listas", element: <MyLists /> },
-          { path: "listas/:listId", element: <ListDetail /> },
           { path: "conta", element: <Account /> },
+          {
+            path: "jogos",
+            children: [
+              { path: "buscar", element: <GameSearch /> },
+              { path: ":igdbId", element: <GameDetail /> },
+              { path: "marcacoes", element: <MyEntries /> },
+              { path: "listas", element: <MyLists /> },
+              { path: "listas/:listId", element: <ListDetail /> },
+            ],
+          },
         ],
       },
     ],
