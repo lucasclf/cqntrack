@@ -49,14 +49,21 @@ function FolderIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-// Rotas ainda não implementadas (Commits 8, 10, 11) apontam pra Unavailable,
-// mesmo padrão já usado em "/esqueci-senha" — evita links mortos até a
-// página real chegar, sem inventar um placeholder novo.
+function UserIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...iconProps(props)}>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21c0-4 3.5-7 8-7s8 3 8 7" />
+    </svg>
+  );
+}
+
 const NAV_ITEMS = [
   { to: "/", label: "Início", Icon: HomeIcon, end: true },
   { to: "/buscar", label: "Buscar", Icon: SearchIcon, end: false },
   { to: "/marcacoes", label: "Marcações", Icon: BookmarkIcon, end: false },
   { to: "/listas", label: "Listas", Icon: FolderIcon, end: false },
+  { to: "/conta", label: "Conta", Icon: UserIcon, end: false },
 ] as const;
 
 // Casca da área autenticada: barra de abas no rodapé (mobile) ou sidebar

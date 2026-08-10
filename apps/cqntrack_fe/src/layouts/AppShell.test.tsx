@@ -25,6 +25,7 @@ describe("AppShell", () => {
     expect(screen.getByRole("link", { name: /Buscar/ })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Marcações/ })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Listas/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Conta/ })).toBeInTheDocument();
     expect(screen.getByText("conteúdo da home")).toBeInTheDocument();
   });
 

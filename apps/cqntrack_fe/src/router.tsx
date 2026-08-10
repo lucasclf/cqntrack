@@ -5,6 +5,7 @@ import { ListDetail } from "./games/ListDetail";
 import { MyEntries } from "./games/MyEntries";
 import { MyLists } from "./games/MyLists";
 import { AppShell } from "./layouts/AppShell";
+import { Account } from "./Account";
 import { Home } from "./Home";
 import { Login } from "./Login";
 import { PublicProfile } from "./profile/PublicProfile";
@@ -30,6 +31,7 @@ export const routes: RouteObject[] = [
           { path: "marcacoes", element: <MyEntries /> },
           { path: "listas", element: <MyLists /> },
           { path: "listas/:listId", element: <ListDetail /> },
+          { path: "conta", element: <Account /> },
         ],
       },
     ],

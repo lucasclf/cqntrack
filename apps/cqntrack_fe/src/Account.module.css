@@ -1,0 +1,99 @@
+.page {
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.section {
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.section:last-child {
+  border-bottom: none;
+}
+
+.info {
+  margin: 12px 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.info div {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+}
+
+.info dt {
+  color: var(--text-secondary);
+}
+
+.info dd {
+  margin: 0;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.field input {
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.field input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.form button[type="submit"] {
+  align-self: flex-start;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: none;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.form button[type="submit"]:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.success {
+  color: var(--accent);
+  font-size: 13px;
+  margin: 0;
+}
+
+.logoutBtn {
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--error);
+  background: transparent;
+  color: var(--error);
+  font-size: 14px;
+  cursor: pointer;
+}
