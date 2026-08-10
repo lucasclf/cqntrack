@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import styles from "./AuthLayout.module.css";
+import { CatMark } from "./CatMark";
 import { ThemeToggle } from "./ThemeToggle";
 
 const COLLAGE_TILE_COUNT = 18;
@@ -23,7 +24,9 @@ export function AuthLayout({ children }: AuthLayoutProps) {
         <div className={styles.scrim} />
         <div className={styles.visualContent}>
           <div className={styles.brand}>
-            <span className={styles.brandMark}>c</span>
+            <span className={styles.brandMark}>
+              <CatMark className={styles.brandMarkIcon} />
+            </span>
             <span className={styles.brandWord}>cqntrack</span>
           </div>
           <div className={styles.visualBottom}>
@@ -43,7 +46,9 @@ export function AuthLayout({ children }: AuthLayoutProps) {
       <main className={styles.formPanel}>
         <div className={styles.formWrap}>
           <div className={`${styles.brand} ${styles.brandCompact}`}>
-            <span className={styles.brandMark}>c</span>
+            <span className={styles.brandMark}>
+              <CatMark className={styles.brandMarkIcon} />
+            </span>
             <span className={styles.brandWord}>cqntrack</span>
           </div>
           {children}

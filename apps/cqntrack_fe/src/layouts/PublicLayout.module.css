@@ -24,8 +24,13 @@
   border-radius: var(--radius);
   background: var(--accent);
   color: var(--on-accent);
-  font-family: "Space Grotesk", sans-serif;
-  font-weight: 700;
+  --mark-bg: var(--accent);
+  flex-shrink: 0;
+}
+
+.brandMarkIcon {
+  width: 21px;
+  height: 21px;
 }
 
 .brandWord {

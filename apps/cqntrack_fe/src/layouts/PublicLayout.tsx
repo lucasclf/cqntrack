@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
+import { CatMark } from "../CatMark";
 import { ThemeToggle } from "../ThemeToggle";
 import styles from "./PublicLayout.module.css";
 
@@ -15,7 +16,9 @@ export function PublicLayout({ children }: PublicLayoutProps) {
       <ThemeToggle />
       <header className={styles.header}>
         <Link to="/login" className={styles.brand}>
-          <span className={styles.brandMark}>c</span>
+          <span className={styles.brandMark}>
+            <CatMark className={styles.brandMarkIcon} />
+          </span>
           <span className={styles.brandWord}>cqntrack</span>
         </Link>
       </header>

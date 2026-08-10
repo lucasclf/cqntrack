@@ -1,6 +1,7 @@
 import { MEDIA_TYPE_PATH, MEDIA_TYPES } from "@cqntrack/shared";
 import type { SVGProps } from "react";
 import { NavLink, Outlet, useLocation } from "react-router";
+import { CatMark } from "../CatMark";
 import { ThemeToggle } from "../ThemeToggle";
 import styles from "./AppShell.module.css";
 import { SectionSwitcher } from "./SectionSwitcher";
@@ -87,7 +88,9 @@ export function AppShell() {
     <div className={styles.shell}>
       <nav className={styles.nav} aria-label="Navegação principal">
         <div className={styles.brand}>
-          <span className={styles.brandMark}>c</span>
+          <span className={styles.brandMark}>
+            <CatMark className={styles.brandMarkIcon} />
+          </span>
           <span className={styles.brandWord}>cqntrack</span>
         </div>
         <ul className={styles.navList}>
