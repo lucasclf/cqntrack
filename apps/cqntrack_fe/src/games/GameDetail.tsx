@@ -14,7 +14,7 @@ export function GameDetail() {
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
   const [detail, setDetail] = useState<GameDetailResponse | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [platformDraft, setPlatformDraft] = useState("");
+  const [platformsDraft, setPlatformsDraft] = useState<string[]>([]);
   const [reviewDraft, setReviewDraft] = useState("");
 
   // Reseta o status assim que o :igdbId da rota muda — feito durante o
@@ -34,7 +34,7 @@ export function GameDetail() {
       .then((data) => {
         if (cancelled) return;
         setDetail(data);
-        setPlatformDraft(data.entry?.platform ?? "");
+        setPlatformsDraft(data.entry?.platforms ?? []);
         setReviewDraft(data.entry?.review ?? "");
         setLoadStatus("ready");
       })
@@ -58,12 +58,20 @@ export function GameDetail() {
     }
   }
 
+  function togglePlatform(platform: string) {
+    const next = platformsDraft.includes(platform)
+      ? platformsDraft.filter((current) => current !== platform)
+      : [...platformsDraft, platform];
+    setPlatformsDraft(next);
+    savePatch({ platforms: next.length > 0 ? next : null });
+  }
+
   async function removeEntry() {
     setSaveError(null);
     try {
       await gamesClient.delete(`/api/games/${igdbId}/entry`);
       setDetail((current) => (current ? { ...current, entry: null } : current));
-      setPlatformDraft("");
+      setPlatformsDraft([]);
       setReviewDraft("");
     } catch {
       setSaveError("Falha ao remover a marcação. Tente novamente.");
@@ -143,27 +151,24 @@ export function GameDetail() {
           </button>
         </div>
 
-        <label className={styles.field}>
-          <span>Plataforma jogada</span>
-          <select
-            value={platformDraft}
-            disabled={game.platforms.length === 0}
-            onChange={(event) => {
-              const value = event.target.value;
-              setPlatformDraft(value);
-              savePatch({ platform: value || null });
-            }}
-          >
-            <option value="">
-              {game.platforms.length === 0 ? "Plataforma não informada pela IGDB" : "Nenhuma selecionada"}
-            </option>
+        <fieldset className={styles.field}>
+          <legend>Plataformas jogadas</legend>
+          {game.platforms.length === 0 && (
+            <p className={styles.hint}>Plataforma não informada pela IGDB.</p>
+          )}
+          <div className={styles.platformOptions}>
             {game.platforms.map((platform) => (
-              <option key={platform} value={platform}>
-                {platform}
-              </option>
+              <label key={platform} className={styles.platformOption}>
+                <input
+                  type="checkbox"
+                  checked={platformsDraft.includes(platform)}
+                  onChange={() => togglePlatform(platform)}
+                />
+                <span>{platform}</span>
+              </label>
             ))}
-          </select>
-        </label>
+          </div>
+        </fieldset>
 
         <label className={styles.field}>
           <span>Review</span>

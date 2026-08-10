@@ -66,7 +66,9 @@ export const GameEntrySchema = z.object({
   status: GameStatusSchema.nullable(),
   rating: z.number().nullable(),
   favorite: z.boolean(),
-  platform: z.string().nullable(),
+  // Um jogo pode ter sido jogado em mais de uma plataforma — lista, não texto
+  // único. null = nenhuma selecionada.
+  platforms: z.array(z.string()).nullable(),
   review: z.string().nullable(),
   updatedAt: z.iso.datetime(),
 });
@@ -90,7 +92,7 @@ export const UpsertGameEntryRequestSchema = z.object({
   status: GameStatusSchema.nullable().optional(),
   rating: z.number().min(0).max(5).multipleOf(0.5).nullable().optional(),
   review: z.string().max(2000).nullable().optional(),
-  platform: z.string().min(1).max(60).nullable().optional(),
+  platforms: z.array(z.string().min(1).max(60)).max(10).nullable().optional(),
   favorite: z.boolean().optional(),
 });
 
@@ -102,6 +104,8 @@ export const SetFavoriteRequestSchema = z.object({
 
 export type SetFavoriteRequest = z.infer<typeof SetFavoriteRequestSchema>;
 
+// "platform" (singular) continua sendo o nome do campo de ordenação/filtro —
+// filtra/ordena por conter essa plataforma na lista `platforms` da entry.
 export const GAME_ENTRY_SORT_FIELDS = ["status", "rating", "favorite", "platform", "updatedAt"] as const;
 
 export const ListGameEntriesQuerySchema = z.object({

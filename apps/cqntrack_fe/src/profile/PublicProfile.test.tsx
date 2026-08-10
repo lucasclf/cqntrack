@@ -44,7 +44,7 @@ describe("PublicProfile", () => {
       if (path === "/api/users/gamer_1") return Promise.resolve(PROFILE);
       if (path === "/api/users/gamer_1/entries") {
         return Promise.resolve({
-          items: [{ id: "1", status: "playing", rating: null, favorite: false, platform: null, review: null, updatedAt: "2026-01-01T00:00:00.000Z", game: GAME }],
+          items: [{ id: "1", status: "playing", rating: null, favorite: false, platforms: null, review: null, updatedAt: "2026-01-01T00:00:00.000Z", game: GAME }],
           page: 1,
           pageSize: 24,
           total: 1,

@@ -1,0 +1,1 @@
+ALTER TABLE `game_entry` DROP COLUMN `platform`;

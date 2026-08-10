@@ -36,6 +36,20 @@
       "when": 1786367399957,
       "tag": "0004_make_status_nullable",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1786369643432,
+      "tag": "0005_add_game_entry_platforms",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1786369655173,
+      "tag": "0006_drop_game_entry_platform",
+      "breakpoints": true
     }
   ]
 }

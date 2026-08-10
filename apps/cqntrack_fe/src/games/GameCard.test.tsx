@@ -53,7 +53,7 @@ describe("GameCard", () => {
       status: "completed",
       rating: 4.5,
       favorite: true,
-      platform: "PC",
+      platforms: ["PC"],
       review: null,
       updatedAt: "2026-01-01T00:00:00.000Z",
     });

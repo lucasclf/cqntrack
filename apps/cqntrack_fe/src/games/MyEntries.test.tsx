@@ -14,7 +14,7 @@ const ENTRY = {
   status: "playing" as const,
   rating: 4,
   favorite: false,
-  platform: "PC",
+  platforms: ["PC"],
   review: null,
   updatedAt: "2026-01-01T00:00:00.000Z",
   game: {

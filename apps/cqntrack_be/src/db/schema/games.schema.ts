@@ -44,7 +44,8 @@ export const gameEntry = sqliteTable(
     status: text("status", { enum: GAME_STATUSES }),
     rating: real("rating"),
     favorite: integer("favorite", { mode: "boolean" }).notNull().default(false),
-    platform: text("platform"),
+    // Lista — um jogo pode ter sido jogado em mais de uma plataforma.
+    platforms: text("platforms", { mode: "json" }).$type<string[]>(),
     review: text("review"),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)

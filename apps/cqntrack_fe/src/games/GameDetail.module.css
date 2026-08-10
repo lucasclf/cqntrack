@@ -105,9 +105,18 @@
   gap: 6px;
   font-size: 13px;
   color: var(--text-secondary);
+  border: none;
+  padding: 0;
+  margin: 0;
 }
 
-.field input,
+.field legend {
+  padding: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.field input:not([type="checkbox"]),
 .field select,
 .field textarea {
   padding: 10px 12px;
@@ -124,12 +133,37 @@
   max-width: 280px;
 }
 
-.field input:focus,
+.field input:not([type="checkbox"]):focus,
 .field select:focus,
 .field textarea:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.platformOptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.platformOption {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
 }
 
 .removeBtn {

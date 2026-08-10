@@ -48,7 +48,7 @@ describe("GameDetail", () => {
         status: "playing",
         rating: 4.5,
         favorite: true,
-        platform: "PS5",
+        platforms: ["PS5"],
         review: "Muito bom",
         updatedAt: "2026-01-01T00:00:00.000Z",
       },
@@ -58,12 +58,13 @@ describe("GameDetail", () => {
     expect(await screen.findByRole("heading", { name: "The Witcher 3: Wild Hunt" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Jogando" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "★ Favoritado" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Plataforma jogada")).toHaveValue("PS5");
+    expect(screen.getByRole("checkbox", { name: "PS5" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "PC (Microsoft Windows)" })).not.toBeChecked();
     expect(screen.getByDisplayValue("Muito bom")).toBeInTheDocument();
     expect(getMock).toHaveBeenCalledWith("/api/games/1942");
   });
 
-  it("salva a plataforma imediatamente ao selecionar", async () => {
+  it("marca uma plataforma e salva imediatamente", async () => {
     getMock.mockResolvedValue({
       game: GAME,
       entry: {
@@ -71,7 +72,7 @@ describe("GameDetail", () => {
         status: null,
         rating: null,
         favorite: false,
-        platform: null,
+        platforms: null,
         review: null,
         updatedAt: "2026-01-01T00:00:00.000Z",
       },
@@ -81,16 +82,46 @@ describe("GameDetail", () => {
       status: null,
       rating: null,
       favorite: false,
-      platform: "PS5",
+      platforms: ["PS5"],
       review: null,
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
     renderDetail();
 
     await screen.findByRole("heading", { name: "The Witcher 3: Wild Hunt" });
-    fireEvent.change(screen.getByLabelText("Plataforma jogada"), { target: { value: "PS5" } });
+    fireEvent.click(screen.getByRole("checkbox", { name: "PS5" }));
 
-    expect(putMock).toHaveBeenCalledWith("/api/games/1942/entry", { platform: "PS5" });
+    expect(putMock).toHaveBeenCalledWith("/api/games/1942/entry", { platforms: ["PS5"] });
+  });
+
+  it("desmarcar a última plataforma envia platforms: null", async () => {
+    getMock.mockResolvedValue({
+      game: GAME,
+      entry: {
+        id: "1",
+        status: null,
+        rating: null,
+        favorite: false,
+        platforms: ["PS5"],
+        review: null,
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    });
+    putMock.mockResolvedValue({
+      id: "1",
+      status: null,
+      rating: null,
+      favorite: false,
+      platforms: null,
+      review: null,
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    renderDetail();
+
+    await screen.findByRole("heading", { name: "The Witcher 3: Wild Hunt" });
+    fireEvent.click(screen.getByRole("checkbox", { name: "PS5" }));
+
+    expect(putMock).toHaveBeenCalledWith("/api/games/1942/entry", { platforms: null });
   });
 
   it("cria a marcação ao escolher um status quando ainda não existe entry", async () => {
@@ -100,7 +131,7 @@ describe("GameDetail", () => {
       status: "playing",
       rating: null,
       favorite: false,
-      platform: null,
+      platforms: null,
       review: null,
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
@@ -124,7 +155,7 @@ describe("GameDetail", () => {
         status: "playing",
         rating: null,
         favorite: false,
-        platform: null,
+        platforms: null,
         review: null,
         updatedAt: "2026-01-01T00:00:00.000Z",
       },

@@ -12,7 +12,10 @@ const SORT_COLUMNS = {
   status: gameEntry.status,
   rating: gameEntry.rating,
   favorite: gameEntry.favorite,
-  platform: gameEntry.platform,
+  // Ordena pelo texto JSON bruto da lista — não é uma ordem alfabética
+  // "correta" por nome de plataforma, mas é determinística e não vale a
+  // complexidade extra de um ORDER BY custom pra isso.
+  platform: gameEntry.platforms,
   updatedAt: gameEntry.updatedAt,
 } as const;
 
@@ -22,7 +25,7 @@ function toGameEntry(row: GameEntryRow): GameEntry {
     status: row.status,
     rating: row.rating,
     favorite: row.favorite,
-    platform: row.platform,
+    platforms: row.platforms,
     review: row.review,
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -84,7 +87,7 @@ export async function upsertGameEntry(
     status: input.status,
     rating: input.rating,
     favorite: input.favorite,
-    platform: input.platform,
+    platforms: input.platforms,
     review: input.review,
   });
 
@@ -128,7 +131,10 @@ export async function listGameEntries(
     conditions.push(eq(gameEntry.favorite, query.favorite));
   }
   if (query.platform) {
-    conditions.push(eq(gameEntry.platform, query.platform));
+    // platforms é uma lista JSON — filtra entries que contêm essa plataforma.
+    conditions.push(
+      sql`EXISTS (SELECT 1 FROM json_each(${gameEntry.platforms}) WHERE json_each.value = ${query.platform})`,
+    );
   }
   const where = and(...conditions);
 

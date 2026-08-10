@@ -182,14 +182,14 @@ describe("CRUD de marcação (/api/games/:igdbId/entry, /favorite)", () => {
       {
         method: "PUT",
         headers: { cookie, "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "playing", platform: "PC" }),
+        body: JSON.stringify({ status: "playing", platforms: ["PC"] }),
       },
       env,
     );
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toMatchObject({ status: "playing", platform: "PC", favorite: false, rating: null });
+    expect(body).toMatchObject({ status: "playing", platforms: ["PC"], favorite: false, rating: null });
     vi.unstubAllGlobals();
   });
 
@@ -201,7 +201,7 @@ describe("CRUD de marcação (/api/games/:igdbId/entry, /favorite)", () => {
       {
         method: "PUT",
         headers: { cookie, "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "playing", platform: "PC" }),
+        body: JSON.stringify({ status: "playing", platforms: ["PC"] }),
       },
       env,
     );
@@ -219,7 +219,7 @@ describe("CRUD de marcação (/api/games/:igdbId/entry, /favorite)", () => {
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toMatchObject({ status: "playing", platform: "PC", rating: 4.5 });
+    expect(body).toMatchObject({ status: "playing", platforms: ["PC"], rating: 4.5 });
   });
 
   it("PUT com status: null desmarca o status sem apagar os outros campos, e não gera atividade", async () => {
@@ -344,6 +344,45 @@ describe("GET /api/games/entries", () => {
     expect(body.total).toBe(1);
     expect(body.items).toHaveLength(1);
     expect(body.items[0]).toMatchObject({ status: "completed", game: { igdbId: 701 } });
+  });
+
+  it("filtra por plataforma dentro da lista de plataformas da entry", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+
+    stubIgdbFetchOnce([igdbGame(703, "Hollow Knight")]);
+    await app.request(
+      "/api/games/703/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ platforms: ["PC", "Switch"] }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    stubIgdbFetchOnce([igdbGame(704, "Celeste")]);
+    await app.request(
+      "/api/games/704/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ platforms: ["PS5"] }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const res = await app.request(
+      "/api/games/entries?platform=Switch",
+      { headers: { cookie } },
+      env,
+    );
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as PaginatedGameEntriesResponse;
+    expect(body.total).toBe(1);
+    expect(body.items[0]).toMatchObject({ platforms: ["PC", "Switch"], game: { igdbId: 703 } });
   });
 
   it("sem sessão retorna 401", async () => {
