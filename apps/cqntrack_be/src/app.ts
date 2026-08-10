@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { createAuth } from "./auth/auth";
 import { requireSession } from "./auth/require-session";
+import { activityRouter } from "./games/activity.routes";
 import { gamesRouter } from "./games/games.routes";
 import { listsRouter } from "./games/lists.routes";
 
@@ -37,3 +38,4 @@ app.get("/api/me", requireSession, (c) => {
 
 app.route("/api/games", gamesRouter);
 app.route("/api/lists", listsRouter);
+app.route("/api/activity", activityRouter);

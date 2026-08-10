@@ -1,25 +1,29 @@
 import { render, screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { MemoryRouter } from "react-router";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Home } from "./Home";
+
+const { getMock } = vi.hoisted(() => ({ getMock: vi.fn() }));
+
+vi.mock("./lib/games-client", () => ({
+  gamesClient: { get: getMock },
+}));
 
 describe("Home", () => {
   beforeEach(() => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        json: () => Promise.resolve({ status: "ok" }),
-      }),
+    getMock.mockReset();
+  });
+
+  it("mostra o título e a atividade recente do usuário", async () => {
+    getMock.mockResolvedValue({ items: [], nextCursor: null });
+    render(
+      <MemoryRouter>
+        <Home />
+      </MemoryRouter>,
     );
-  });
 
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it("exibe o status retornado pelo backend", async () => {
-    render(<Home />);
-
-    expect(await screen.findByText("Status do backend: ok")).toBeInTheDocument();
-    expect(fetch).toHaveBeenCalledWith("/api/health");
+    expect(screen.getByRole("heading", { name: "cqntrack" })).toBeInTheDocument();
+    expect(await screen.findByText(/Nenhuma atividade ainda/)).toBeInTheDocument();
+    expect(getMock).toHaveBeenCalledWith("/api/activity");
   });
 });

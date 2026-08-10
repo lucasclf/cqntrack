@@ -1,0 +1,10 @@
+.page {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.page h2 {
+  font-size: 16px;
+  color: var(--text-secondary);
+  margin: 24px 0 16px;
+}

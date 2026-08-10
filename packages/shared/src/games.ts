@@ -158,3 +158,42 @@ export type CreateGameListRequest = z.infer<typeof CreateGameListRequestSchema>;
 export const UpdateGameListRequestSchema = CreateGameListRequestSchema.partial();
 
 export type UpdateGameListRequest = z.infer<typeof UpdateGameListRequestSchema>;
+
+// Feed de atividade da home — log append-only (ver game_activity), uma
+// variante por tipo pra cada um trazer só o campo que faz sentido pra ele.
+const activityBaseFields = {
+  id: z.string(),
+  createdAt: z.iso.datetime(),
+  game: GameSummarySchema,
+};
+
+export const ActivityItemSchema = z.discriminatedUnion("type", [
+  z.object({ ...activityBaseFields, type: z.literal("status_changed"), status: GameStatusSchema }),
+  z.object({ ...activityBaseFields, type: z.literal("favorited") }),
+  z.object({ ...activityBaseFields, type: z.literal("rated"), rating: z.number() }),
+  z.object({ ...activityBaseFields, type: z.literal("reviewed") }),
+  z.object({
+    ...activityBaseFields,
+    type: z.literal("added_to_list"),
+    listId: z.string(),
+    listName: z.string(),
+  }),
+]);
+
+export type ActivityItem = z.infer<typeof ActivityItemSchema>;
+
+// Paginação por cursor (createdAt do último item da página anterior) — um
+// log append-only sofreria drift com paginação por offset.
+export const ListActivityQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+  before: z.iso.datetime().optional(),
+});
+
+export type ListActivityQuery = z.infer<typeof ListActivityQuerySchema>;
+
+export const ActivityFeedResponseSchema = z.object({
+  items: z.array(ActivityItemSchema),
+  nextCursor: z.iso.datetime().nullable(),
+});
+
+export type ActivityFeedResponse = z.infer<typeof ActivityFeedResponseSchema>;
