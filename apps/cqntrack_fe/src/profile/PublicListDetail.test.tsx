@@ -50,7 +50,7 @@ describe("PublicListDetail", () => {
     expect(await screen.findByRole("heading", { name: "Backlog" })).toBeInTheDocument();
     expect(screen.getByText("Jogos pra jogar")).toBeInTheDocument();
     expect(screen.getByText("The Witcher 3: Wild Hunt")).toBeInTheDocument();
-    expect(getMock).toHaveBeenCalledWith("/api/users/gamer_1/lists/l1");
+    expect(getMock).toHaveBeenCalledWith("/api/users/gamer_1/games/lists/l1");
   });
 
   it("mostra 'lista não encontrada' em 404", async () => {

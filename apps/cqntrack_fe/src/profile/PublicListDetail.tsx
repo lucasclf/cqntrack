@@ -17,7 +17,7 @@ export function PublicListDetail() {
     let cancelled = false;
 
     apiClient
-      .get<GameListDetail>(`/api/users/${username}/lists/${listId}`)
+      .get<GameListDetail>(`/api/users/${username}/games/lists/${listId}`)
       .then((data) => {
         if (!cancelled) {
           setDetail(data);

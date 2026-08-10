@@ -45,15 +45,21 @@ describe("/api/users", () => {
     await createDb(env).delete(igdbToken);
   });
 
-  it("username inexistente retorna 404 em todas as sub-rotas", async () => {
+  it("username inexistente retorna 404 em todas as sub-rotas, de jogos e de séries", async () => {
     const profileRes = await app.request("/api/users/nao-existe", undefined, env);
     expect(profileRes.status).toBe(404);
 
-    const entriesRes = await app.request("/api/users/nao-existe/entries", undefined, env);
-    expect(entriesRes.status).toBe(404);
+    const gameEntriesRes = await app.request("/api/users/nao-existe/games/entries", undefined, env);
+    expect(gameEntriesRes.status).toBe(404);
 
-    const listsRes = await app.request("/api/users/nao-existe/lists", undefined, env);
-    expect(listsRes.status).toBe(404);
+    const gameListsRes = await app.request("/api/users/nao-existe/games/lists", undefined, env);
+    expect(gameListsRes.status).toBe(404);
+
+    const seriesEntriesRes = await app.request("/api/users/nao-existe/series/entries", undefined, env);
+    expect(seriesEntriesRes.status).toBe(404);
+
+    const seriesListsRes = await app.request("/api/users/nao-existe/series/lists", undefined, env);
+    expect(seriesListsRes.status).toBe(404);
   });
 
   it("devolve o perfil e as estatísticas zeradas sem exigir sessão", async () => {
@@ -66,7 +72,7 @@ describe("/api/users", () => {
     expect(body.stats).toEqual({ total: 0, completed: 0, playing: 0, platinum: 0, favorites: 0 });
   });
 
-  it("lista as marcações e as listas públicas do usuário", async () => {
+  it("lista as marcações e as listas públicas de jogos do usuário", async () => {
     const { cookie, username } = await createAuthenticatedUser(app, env);
 
     stubIgdbFetchOnce([igdbGame(701, "Hollow Knight")]);
@@ -105,28 +111,28 @@ describe("/api/users", () => {
     const profile = (await profileRes.json()) as { stats: Record<string, number> };
     expect(profile.stats).toEqual({ total: 1, completed: 1, playing: 0, platinum: 0, favorites: 1 });
 
-    const entriesRes = await app.request(`/api/users/${username}/entries`, undefined, env);
+    const entriesRes = await app.request(`/api/users/${username}/games/entries`, undefined, env);
     expect(entriesRes.status).toBe(200);
     const entriesBody = (await entriesRes.json()) as { items: Array<{ game: { igdbId: number } }> };
     expect(entriesBody.items).toEqual([expect.objectContaining({ game: expect.objectContaining({ igdbId: 701 }) })]);
 
-    const listsRes = await app.request(`/api/users/${username}/lists`, undefined, env);
+    const listsRes = await app.request(`/api/users/${username}/games/lists`, undefined, env);
     expect(listsRes.status).toBe(200);
     const listsBody = (await listsRes.json()) as { lists: Array<{ id: string; name: string }> };
     expect(listsBody.lists).toEqual([expect.objectContaining({ id: listId, name: "Platinados" })]);
 
-    const listDetailRes = await app.request(`/api/users/${username}/lists/${listId}`, undefined, env);
+    const listDetailRes = await app.request(`/api/users/${username}/games/lists/${listId}`, undefined, env);
     expect(listDetailRes.status).toBe(200);
 
     const otherUserListDetailRes = await app.request(
-      `/api/users/${username}/lists/id-que-nao-existe`,
+      `/api/users/${username}/games/lists/id-que-nao-existe`,
       undefined,
       env,
     );
     expect(otherUserListDetailRes.status).toBe(404);
   });
 
-  it("devolve os 4 slots de favoritos, sem exigir sessão", async () => {
+  it("devolve os 4 slots de favoritos de jogos, sem exigir sessão", async () => {
     const { cookie, username } = await createAuthenticatedUser(app, env);
     stubIgdbFetchOnce([igdbGame(702, "Celeste")]);
     await app.request(
@@ -140,11 +146,82 @@ describe("/api/users", () => {
     );
     vi.unstubAllGlobals();
 
-    const res = await app.request(`/api/users/${username}/favorites`, undefined, env);
+    const res = await app.request(`/api/users/${username}/games/favorites`, undefined, env);
     expect(res.status).toBe(200);
     const body = (await res.json()) as { slots: Array<{ slot: number; entry: unknown }> };
     expect(body.slots).toHaveLength(4);
     expect(body.slots[0]).toMatchObject({ slot: 1, entry: { game: { igdbId: 702 } } });
     expect(body.slots[1]).toEqual({ slot: 2, entry: null });
+  });
+
+  it("lista as marcações, favoritos e listas públicas de séries do usuário", async () => {
+    const { cookie, username } = await createAuthenticatedUser(app, env);
+
+    const tmdbDetail = (id: number, name: string) => ({
+      id,
+      name,
+      poster_path: `/poster-${id}.jpg`,
+      first_air_date: "2008-01-20",
+      overview: `Resumo da série ${id}`,
+      genres: [{ id: 18, name: "Drama" }],
+      number_of_seasons: 5,
+      number_of_episodes: 62,
+      vote_average: 8.9,
+    });
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(jsonResponse(tmdbDetail(1396, "Breaking Bad"))));
+    await app.request(
+      "/api/series/1396/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "completed" }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(jsonResponse(tmdbDetail(1396, "Breaking Bad"))));
+    await app.request(
+      "/api/series/favorites/1",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ tmdbId: 1396 }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const createListRes = await app.request(
+      "/api/series-lists",
+      {
+        method: "POST",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Maratonadas" }),
+      },
+      env,
+    );
+    const { id: listId } = (await createListRes.json()) as { id: string };
+
+    const entriesRes = await app.request(`/api/users/${username}/series/entries`, undefined, env);
+    expect(entriesRes.status).toBe(200);
+    const entriesBody = (await entriesRes.json()) as { items: Array<{ series: { tmdbId: number } }> };
+    expect(entriesBody.items).toEqual([
+      expect.objectContaining({ series: expect.objectContaining({ tmdbId: 1396 }) }),
+    ]);
+
+    const favoritesRes = await app.request(`/api/users/${username}/series/favorites`, undefined, env);
+    expect(favoritesRes.status).toBe(200);
+    const favoritesBody = (await favoritesRes.json()) as { slots: Array<{ slot: number; entry: unknown }> };
+    expect(favoritesBody.slots[0]).toMatchObject({ slot: 1, entry: { series: { tmdbId: 1396 } } });
+
+    const listsRes = await app.request(`/api/users/${username}/series/lists`, undefined, env);
+    expect(listsRes.status).toBe(200);
+    const listsBody = (await listsRes.json()) as { lists: Array<{ id: string; name: string }> };
+    expect(listsBody.lists).toEqual([expect.objectContaining({ id: listId, name: "Maratonadas" })]);
+
+    const listDetailRes = await app.request(`/api/users/${username}/series/lists/${listId}`, undefined, env);
+    expect(listDetailRes.status).toBe(200);
   });
 });

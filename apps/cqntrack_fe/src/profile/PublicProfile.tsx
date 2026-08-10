@@ -28,8 +28,8 @@ export function PublicProfile() {
 
     Promise.all([
       apiClient.get<PublicProfileDto>(`/api/users/${username}`),
-      apiClient.get<PaginatedGameEntriesResponse>(`/api/users/${username}/entries`),
-      apiClient.get<GameListsResponse>(`/api/users/${username}/lists`),
+      apiClient.get<PaginatedGameEntriesResponse>(`/api/users/${username}/games/entries`),
+      apiClient.get<GameListsResponse>(`/api/users/${username}/games/lists`),
     ])
       .then(([profileData, entriesData, listsData]) => {
         if (cancelled) return;
@@ -107,7 +107,7 @@ export function PublicProfile() {
           </div>
         </dl>
 
-        <FavoritesSection favoritesEndpoint={`/api/users/${username}/favorites`} />
+        <FavoritesSection favoritesEndpoint={`/api/users/${username}/games/favorites`} />
 
         {lists.lists.length > 0 && (
           <section>

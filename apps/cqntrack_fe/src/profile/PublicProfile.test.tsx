@@ -42,7 +42,7 @@ describe("PublicProfile", () => {
   it("mostra perfil, estatísticas, listas e marcações sem exigir sessão", async () => {
     getMock.mockImplementation((path: string) => {
       if (path === "/api/users/gamer_1") return Promise.resolve(PROFILE);
-      if (path === "/api/users/gamer_1/entries") {
+      if (path === "/api/users/gamer_1/games/entries") {
         return Promise.resolve({
           items: [{ id: "1", status: "playing", rating: null, favoriteSlot: null, platforms: null, review: null, updatedAt: "2026-01-01T00:00:00.000Z", game: GAME }],
           page: 1,
@@ -50,10 +50,10 @@ describe("PublicProfile", () => {
           total: 1,
         });
       }
-      if (path === "/api/users/gamer_1/lists") {
+      if (path === "/api/users/gamer_1/games/lists") {
         return Promise.resolve({ lists: [{ id: "l1", name: "Favoritos", description: null, itemCount: 3, createdAt: "", updatedAt: "" }] });
       }
-      if (path === "/api/users/gamer_1/favorites") {
+      if (path === "/api/users/gamer_1/games/favorites") {
         return Promise.resolve({
           slots: [
             { slot: 1, entry: null },
