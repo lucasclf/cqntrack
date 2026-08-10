@@ -183,4 +183,26 @@ describe("GameDetail", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Falha ao carregar o jogo");
   });
+
+  it("mostra mensagem específica quando o limite de 4 favoritos é atingido", async () => {
+    getMock.mockResolvedValue({
+      game: GAME,
+      entry: {
+        id: "1",
+        status: null,
+        rating: null,
+        favorite: false,
+        platforms: null,
+        review: null,
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    });
+    putMock.mockRejectedValue(new GamesApiError(409, "too_many_favorites"));
+    renderDetail();
+
+    await screen.findByRole("heading", { name: "The Witcher 3: Wild Hunt" });
+    fireEvent.click(screen.getByRole("button", { name: "☆ Favoritar" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Você já tem 4 jogos favoritos");
+  });
 });

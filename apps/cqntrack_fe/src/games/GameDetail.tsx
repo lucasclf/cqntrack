@@ -53,8 +53,12 @@ export function GameDetail() {
     try {
       const entry = await gamesClient.put<GameEntry>(`/api/games/${igdbId}/entry`, patch);
       setDetail((current) => (current ? { ...current, entry } : current));
-    } catch {
-      setSaveError("Falha ao salvar sua marcação. Tente novamente.");
+    } catch (error) {
+      setSaveError(
+        error instanceof GamesApiError && error.status === 409
+          ? "Você já tem 4 jogos favoritos — desfavorite um antes de favoritar outro."
+          : "Falha ao salvar sua marcação. Tente novamente.",
+      );
     }
   }
 

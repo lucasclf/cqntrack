@@ -5,6 +5,7 @@ import type {
 } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
+import { FavoritesSection } from "../games/FavoritesSection";
 import { GameCard } from "../games/GameCard";
 import { PublicLayout } from "../layouts/PublicLayout";
 import { GamesApiError, gamesClient } from "../lib/games-client";
@@ -105,6 +106,8 @@ export function PublicProfile() {
             <dd>{profile.stats.favorites}</dd>
           </div>
         </dl>
+
+        <FavoritesSection entriesEndpoint={`/api/users/${username}/entries`} />
 
         {lists.lists.length > 0 && (
           <section>

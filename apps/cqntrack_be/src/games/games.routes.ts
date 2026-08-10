@@ -16,6 +16,7 @@ import {
   getGameEntryForUser,
   listGameEntries,
   setGameFavorite,
+  TooManyFavoritesError,
   upsertGameEntry,
 } from "./entries.service";
 import { GameNotFoundError, getOrCacheGame, mapCachedGameToSummary, searchGamesForUser } from "./games.service";
@@ -109,6 +110,9 @@ gamesRouter.put("/:igdbId/entry", async (c) => {
     if (error instanceof GameNotFoundError) {
       return c.json({ error: "game_not_found" }, 404);
     }
+    if (error instanceof TooManyFavoritesError) {
+      return c.json({ error: "too_many_favorites" }, 409);
+    }
     throw error;
   }
 });
@@ -143,6 +147,9 @@ gamesRouter.patch("/:igdbId/favorite", async (c) => {
   } catch (error) {
     if (error instanceof GameNotFoundError) {
       return c.json({ error: "game_not_found" }, 404);
+    }
+    if (error instanceof TooManyFavoritesError) {
+      return c.json({ error: "too_many_favorites" }, 409);
     }
     throw error;
   }

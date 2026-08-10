@@ -8,6 +8,17 @@ import { getOrCacheGame, mapCachedGameToSummary } from "./games.service";
 type Db = ReturnType<typeof createDb>;
 type GameEntryRow = typeof gameEntry.$inferSelect;
 
+// Limite de produto: favoritos são uma vitrine curada, não uma segunda lista
+// genérica — no máximo 4 por usuário.
+export const MAX_FAVORITE_GAMES = 4;
+
+export class TooManyFavoritesError extends Error {
+  constructor() {
+    super(`Limite de ${MAX_FAVORITE_GAMES} jogos favoritos atingido`);
+    this.name = "TooManyFavoritesError";
+  }
+}
+
 const SORT_COLUMNS = {
   status: gameEntry.status,
   rating: gameEntry.rating,
@@ -82,6 +93,18 @@ export async function upsertGameEntry(
   const existing = await db.query.gameEntry.findFirst({
     where: and(eq(gameEntry.userId, userId), eq(gameEntry.gameId, igdbId)),
   });
+
+  // Só checa o limite quando o favorito está de fato virando true agora —
+  // reenviar favorite: true pra um jogo já favoritado não deve contar.
+  if (input.favorite === true && existing?.favorite !== true) {
+    const [favoriteCount] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(gameEntry)
+      .where(and(eq(gameEntry.userId, userId), eq(gameEntry.favorite, true)));
+    if ((favoriteCount?.count ?? 0) >= MAX_FAVORITE_GAMES) {
+      throw new TooManyFavoritesError();
+    }
+  }
 
   const patch = withoutUndefined({
     status: input.status,

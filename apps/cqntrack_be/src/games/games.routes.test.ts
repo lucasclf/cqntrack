@@ -297,6 +297,55 @@ describe("CRUD de marcação (/api/games/:igdbId/entry, /favorite)", () => {
     expect(body).toMatchObject({ favorite: true, status: null });
     vi.unstubAllGlobals();
   });
+
+  it("bloqueia o 5º favorito com 409, mas permite reenviar favorite:true pro que já é", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+
+    stubIgdbFetchOnce(
+      [igdbGame(610, "Jogo A")],
+      [igdbGame(611, "Jogo B")],
+      [igdbGame(612, "Jogo C")],
+      [igdbGame(613, "Jogo D")],
+      [igdbGame(614, "Jogo E")],
+    );
+
+    for (const igdbId of [610, 611, 612, 613]) {
+      const res = await app.request(
+        `/api/games/${igdbId}/entry`,
+        {
+          method: "PUT",
+          headers: { cookie, "Content-Type": "application/json" },
+          body: JSON.stringify({ favorite: true }),
+        },
+        env,
+      );
+      expect(res.status).toBe(200);
+    }
+
+    // Reenviar favorite: true pro primeiro (já favoritado) não conta contra o limite.
+    const repeatRes = await app.request(
+      "/api/games/610/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ favorite: true }),
+      },
+      env,
+    );
+    expect(repeatRes.status).toBe(200);
+
+    const fifthRes = await app.request(
+      "/api/games/614/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ favorite: true }),
+      },
+      env,
+    );
+    expect(fifthRes.status).toBe(409);
+    vi.unstubAllGlobals();
+  });
 });
 
 describe("GET /api/games/entries", () => {
