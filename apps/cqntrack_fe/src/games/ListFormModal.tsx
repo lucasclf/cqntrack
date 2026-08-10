@@ -1,5 +1,5 @@
 import { type FormEvent, useState } from "react";
-import { GamesApiError } from "../lib/games-client";
+import { ApiError } from "../lib/api-client";
 import styles from "./ListFormModal.module.css";
 
 export interface ListFormValues {
@@ -31,7 +31,7 @@ export function ListFormModal({ mode, initialValues, onSubmit, onClose }: ListFo
       onClose();
     } catch (err) {
       setError(
-        err instanceof GamesApiError && err.status === 409
+        err instanceof ApiError && err.status === 409
           ? "Já existe uma lista com esse nome."
           : "Falha ao salvar a lista. Tente novamente.",
       );

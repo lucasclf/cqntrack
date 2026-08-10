@@ -6,7 +6,7 @@ import {
 } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { gamesClient } from "../lib/games-client";
+import { apiClient } from "../lib/api-client";
 import styles from "./ActivityFeed.module.css";
 
 type LoadStatus = "loading" | "ready" | "error";
@@ -60,7 +60,7 @@ export function ActivityFeed() {
   useEffect(() => {
     let cancelled = false;
 
-    gamesClient
+    apiClient
       .get<ActivityFeedResponse>("/api/activity")
       .then((data) => {
         if (cancelled) return;
@@ -83,7 +83,7 @@ export function ActivityFeed() {
     if (!cursor) return;
     setLoadingMore(true);
     try {
-      const data = await gamesClient.get<ActivityFeedResponse>(
+      const data = await apiClient.get<ActivityFeedResponse>(
         `/api/activity?before=${encodeURIComponent(cursor)}`,
       );
       setItems((current) => [...current, ...data.items]);

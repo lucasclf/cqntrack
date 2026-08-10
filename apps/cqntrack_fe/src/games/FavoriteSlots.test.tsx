@@ -5,8 +5,8 @@ import { FavoriteSlots } from "./FavoriteSlots";
 
 const { getMock, putMock } = vi.hoisted(() => ({ getMock: vi.fn(), putMock: vi.fn() }));
 
-vi.mock("../lib/games-client", () => ({
-  gamesClient: { get: getMock, put: putMock },
+vi.mock("../lib/api-client", () => ({
+  apiClient: { get: getMock, put: putMock },
 }));
 
 const GAME = {

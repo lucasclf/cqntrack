@@ -1,10 +1,10 @@
 import type { GameDetailResponse, GameEntry, UpsertGameEntryRequest } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router";
-import { GamesApiError, gamesClient } from "../lib/games-client";
+import { ApiError, apiClient } from "../lib/api-client";
 import { AddToListMenu } from "./AddToListMenu";
 import styles from "./GameDetail.module.css";
-import { StarRating } from "./StarRating";
+import { StarRating } from "../components/StarRating";
 import { StatusBadge } from "./StatusBadge";
 
 type LoadStatus = "loading" | "ready" | "not-found" | "error";
@@ -29,7 +29,7 @@ export function GameDetail() {
   useEffect(() => {
     let cancelled = false;
 
-    gamesClient
+    apiClient
       .get<GameDetailResponse>(`/api/games/${igdbId}`)
       .then((data) => {
         if (cancelled) return;
@@ -40,7 +40,7 @@ export function GameDetail() {
       })
       .catch((error: unknown) => {
         if (cancelled) return;
-        setLoadStatus(error instanceof GamesApiError && error.status === 404 ? "not-found" : "error");
+        setLoadStatus(error instanceof ApiError && error.status === 404 ? "not-found" : "error");
       });
 
     return () => {
@@ -51,7 +51,7 @@ export function GameDetail() {
   async function savePatch(patch: UpsertGameEntryRequest) {
     setSaveError(null);
     try {
-      const entry = await gamesClient.put<GameEntry>(`/api/games/${igdbId}/entry`, patch);
+      const entry = await apiClient.put<GameEntry>(`/api/games/${igdbId}/entry`, patch);
       setDetail((current) => (current ? { ...current, entry } : current));
     } catch {
       setSaveError("Falha ao salvar sua marcação. Tente novamente.");
@@ -69,7 +69,7 @@ export function GameDetail() {
   async function removeEntry() {
     setSaveError(null);
     try {
-      await gamesClient.delete(`/api/games/${igdbId}/entry`);
+      await apiClient.delete(`/api/games/${igdbId}/entry`);
       setDetail((current) => (current ? { ...current, entry: null } : current));
       setPlatformsDraft([]);
       setReviewDraft("");

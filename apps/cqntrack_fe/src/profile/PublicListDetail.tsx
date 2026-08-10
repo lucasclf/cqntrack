@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 import { GameCard } from "../games/GameCard";
 import { PublicLayout } from "../layouts/PublicLayout";
-import { GamesApiError, gamesClient } from "../lib/games-client";
+import { ApiError, apiClient } from "../lib/api-client";
 import styles from "./PublicListDetail.module.css";
 
 type LoadStatus = "loading" | "ready" | "not-found" | "error";
@@ -16,7 +16,7 @@ export function PublicListDetail() {
   useEffect(() => {
     let cancelled = false;
 
-    gamesClient
+    apiClient
       .get<GameListDetail>(`/api/users/${username}/lists/${listId}`)
       .then((data) => {
         if (!cancelled) {
@@ -26,7 +26,7 @@ export function PublicListDetail() {
       })
       .catch((error: unknown) => {
         if (!cancelled) {
-          setLoadStatus(error instanceof GamesApiError && error.status === 404 ? "not-found" : "error");
+          setLoadStatus(error instanceof ApiError && error.status === 404 ? "not-found" : "error");
         }
       });
 

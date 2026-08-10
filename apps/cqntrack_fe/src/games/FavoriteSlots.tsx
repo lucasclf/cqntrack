@@ -1,7 +1,7 @@
 import type { FavoriteSlotNumber, FavoritesResponse, GameEntry, GameSummary } from "@cqntrack/shared";
 import type { SVGProps } from "react";
 import { useEffect, useState } from "react";
-import { gamesClient } from "../lib/games-client";
+import { apiClient } from "../lib/api-client";
 import { FavoritePickerModal } from "./FavoritePickerModal";
 import styles from "./FavoriteSlots.module.css";
 import { GameCard } from "./GameCard";
@@ -37,7 +37,7 @@ export function FavoriteSlots() {
   useEffect(() => {
     let cancelled = false;
 
-    gamesClient
+    apiClient
       .get<FavoritesResponse>("/api/games/favorites")
       .then((res) => {
         if (!cancelled) {
@@ -61,7 +61,7 @@ export function FavoriteSlots() {
     const slot = editingSlot;
     setSaveError(null);
     try {
-      const entry = await gamesClient.put<GameEntry>(`/api/games/favorites/${slot}`, {
+      const entry = await apiClient.put<GameEntry>(`/api/games/favorites/${slot}`, {
         igdbId: game.igdbId,
       });
       setData((current) =>

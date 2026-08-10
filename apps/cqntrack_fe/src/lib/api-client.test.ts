@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { GamesApiError, gamesClient } from "./games-client";
+import { ApiError, apiClient } from "./api-client";
 
-describe("gamesClient", () => {
+describe("apiClient", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
@@ -16,7 +16,7 @@ describe("gamesClient", () => {
       }),
     );
 
-    const result = await gamesClient.get<{ lists: unknown[] }>("/api/lists");
+    const result = await apiClient.get<{ lists: unknown[] }>("/api/lists");
 
     expect(result).toEqual({ lists: [] });
     expect(fetch).toHaveBeenCalledWith(
@@ -31,7 +31,7 @@ describe("gamesClient", () => {
       vi.fn().mockResolvedValue({ ok: true, status: 201, json: () => Promise.resolve({ id: "1" }) }),
     );
 
-    await gamesClient.post("/api/lists", { name: "Quero jogar" });
+    await apiClient.post("/api/lists", { name: "Quero jogar" });
 
     expect(fetch).toHaveBeenCalledWith(
       "/api/lists",
@@ -42,14 +42,14 @@ describe("gamesClient", () => {
   it("devolve undefined em respostas 204", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, status: 204 }));
 
-    const result = await gamesClient.delete("/api/lists/1");
+    const result = await apiClient.delete("/api/lists/1");
 
     expect(result).toBeUndefined();
   });
 
-  it("lança GamesApiError em respostas não-2xx", async () => {
+  it("lança ApiError em respostas não-2xx", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 404 }));
 
-    await expect(gamesClient.get("/api/lists/inexistente")).rejects.toBeInstanceOf(GamesApiError);
+    await expect(apiClient.get("/api/lists/inexistente")).rejects.toBeInstanceOf(ApiError);
   });
 });

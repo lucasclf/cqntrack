@@ -9,11 +9,11 @@ const { getMock, postMock, deleteMock } = vi.hoisted(() => ({
   deleteMock: vi.fn(),
 }));
 
-vi.mock("../lib/games-client", async () => {
-  const actual = await vi.importActual<typeof import("../lib/games-client")>("../lib/games-client");
+vi.mock("../lib/api-client", async () => {
+  const actual = await vi.importActual<typeof import("../lib/api-client")>("../lib/api-client");
   return {
     ...actual,
-    gamesClient: { get: getMock, post: postMock, delete: deleteMock, put: vi.fn(), patch: vi.fn() },
+    apiClient: { get: getMock, post: postMock, delete: deleteMock, put: vi.fn(), patch: vi.fn() },
   };
 });
 

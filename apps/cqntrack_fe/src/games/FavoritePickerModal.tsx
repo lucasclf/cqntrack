@@ -1,8 +1,8 @@
 import type { GameSummary, SearchGamesResponse } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
-import { gamesClient } from "../lib/games-client";
+import { apiClient } from "../lib/api-client";
 import styles from "./FavoritePickerModal.module.css";
-import { useDebouncedValue } from "./useDebouncedValue";
+import { useDebouncedValue } from "../lib/useDebouncedValue";
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -35,7 +35,7 @@ export function FavoritePickerModal({ onSelect, onClose }: FavoritePickerModalPr
 
     let cancelled = false;
 
-    gamesClient
+    apiClient
       .get<SearchGamesResponse>(`/api/games/search?q=${encodeURIComponent(debouncedQuery)}`)
       .then((data) => {
         if (!cancelled) {

@@ -1,6 +1,6 @@
 import type { FavoritesResponse } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
-import { gamesClient } from "../lib/games-client";
+import { apiClient } from "../lib/api-client";
 import { GameCard } from "./GameCard";
 import styles from "./FavoritesSection.module.css";
 
@@ -21,7 +21,7 @@ export function FavoritesSection({ favoritesEndpoint }: FavoritesSectionProps) {
   useEffect(() => {
     let cancelled = false;
 
-    gamesClient
+    apiClient
       .get<FavoritesResponse>(favoritesEndpoint)
       .then((res) => {
         if (!cancelled) {

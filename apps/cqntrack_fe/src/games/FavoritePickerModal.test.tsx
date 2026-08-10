@@ -4,8 +4,8 @@ import { FavoritePickerModal } from "./FavoritePickerModal";
 
 const { getMock } = vi.hoisted(() => ({ getMock: vi.fn() }));
 
-vi.mock("../lib/games-client", () => ({
-  gamesClient: { get: getMock },
+vi.mock("../lib/api-client", () => ({
+  apiClient: { get: getMock },
 }));
 
 const GAME = {

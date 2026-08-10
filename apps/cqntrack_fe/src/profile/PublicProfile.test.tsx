@@ -1,14 +1,14 @@
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { describe, expect, it, vi } from "vitest";
-import { GamesApiError } from "../lib/games-client";
+import { ApiError } from "../lib/api-client";
 import { PublicProfile } from "./PublicProfile";
 
 const { getMock } = vi.hoisted(() => ({ getMock: vi.fn() }));
 
-vi.mock("../lib/games-client", async () => {
-  const actual = await vi.importActual<typeof import("../lib/games-client")>("../lib/games-client");
-  return { ...actual, gamesClient: { get: getMock, post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() } };
+vi.mock("../lib/api-client", async () => {
+  const actual = await vi.importActual<typeof import("../lib/api-client")>("../lib/api-client");
+  return { ...actual, apiClient: { get: getMock, post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() } };
 });
 
 const PROFILE = {
@@ -80,7 +80,7 @@ describe("PublicProfile", () => {
   });
 
   it("mostra 'usuário não encontrado' em 404", async () => {
-    getMock.mockRejectedValue(new GamesApiError(404, "not found"));
+    getMock.mockRejectedValue(new ApiError(404, "not found"));
     renderProfile("nao-existe");
 
     expect(await screen.findByText("Usuário não encontrado.")).toBeInTheDocument();

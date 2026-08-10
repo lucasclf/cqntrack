@@ -8,7 +8,7 @@ import { Link, useParams } from "react-router";
 import { FavoritesSection } from "../games/FavoritesSection";
 import { GameCard } from "../games/GameCard";
 import { PublicLayout } from "../layouts/PublicLayout";
-import { GamesApiError, gamesClient } from "../lib/games-client";
+import { ApiError, apiClient } from "../lib/api-client";
 import styles from "./PublicProfile.module.css";
 
 type LoadStatus = "loading" | "ready" | "not-found" | "error";
@@ -27,9 +27,9 @@ export function PublicProfile() {
     let cancelled = false;
 
     Promise.all([
-      gamesClient.get<PublicProfileDto>(`/api/users/${username}`),
-      gamesClient.get<PaginatedGameEntriesResponse>(`/api/users/${username}/entries`),
-      gamesClient.get<GameListsResponse>(`/api/users/${username}/lists`),
+      apiClient.get<PublicProfileDto>(`/api/users/${username}`),
+      apiClient.get<PaginatedGameEntriesResponse>(`/api/users/${username}/entries`),
+      apiClient.get<GameListsResponse>(`/api/users/${username}/lists`),
     ])
       .then(([profileData, entriesData, listsData]) => {
         if (cancelled) return;
@@ -40,7 +40,7 @@ export function PublicProfile() {
       })
       .catch((error: unknown) => {
         if (cancelled) return;
-        setLoadStatus(error instanceof GamesApiError && error.status === 404 ? "not-found" : "error");
+        setLoadStatus(error instanceof ApiError && error.status === 404 ? "not-found" : "error");
       });
 
     return () => {

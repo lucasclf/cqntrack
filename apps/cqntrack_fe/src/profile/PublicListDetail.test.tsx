@@ -1,14 +1,14 @@
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { describe, expect, it, vi } from "vitest";
-import { GamesApiError } from "../lib/games-client";
+import { ApiError } from "../lib/api-client";
 import { PublicListDetail } from "./PublicListDetail";
 
 const { getMock } = vi.hoisted(() => ({ getMock: vi.fn() }));
 
-vi.mock("../lib/games-client", async () => {
-  const actual = await vi.importActual<typeof import("../lib/games-client")>("../lib/games-client");
-  return { ...actual, gamesClient: { get: getMock, post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() } };
+vi.mock("../lib/api-client", async () => {
+  const actual = await vi.importActual<typeof import("../lib/api-client")>("../lib/api-client");
+  return { ...actual, apiClient: { get: getMock, post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() } };
 });
 
 const DETAIL = {
@@ -54,7 +54,7 @@ describe("PublicListDetail", () => {
   });
 
   it("mostra 'lista não encontrada' em 404", async () => {
-    getMock.mockRejectedValue(new GamesApiError(404, "not found"));
+    getMock.mockRejectedValue(new ApiError(404, "not found"));
     renderPage();
 
     expect(await screen.findByText("Lista não encontrada.")).toBeInTheDocument();

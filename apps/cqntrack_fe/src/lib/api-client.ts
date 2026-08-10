@@ -1,19 +1,19 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 
-export class GamesApiError extends Error {
+export class ApiError extends Error {
   constructor(
     public readonly status: number,
     message: string,
   ) {
     super(message);
-    this.name = "GamesApiError";
+    this.name = "ApiError";
   }
 }
 
-// Wrapper fino sobre fetch pras rotas de /api/games, /api/lists etc. — sempre
-// manda a cookie de sessão (credentials: include, necessário porque FE e BE
-// vivem em subdomínios diferentes em produção) e converte respostas não-2xx
-// em GamesApiError em vez de deixar o .json() falhar silenciosamente depois.
+// Wrapper fino sobre fetch pra qualquer rota /api/* — sempre manda a cookie
+// de sessão (credentials: include, necessário porque FE e BE vivem em
+// subdomínios diferentes em produção) e converte respostas não-2xx em
+// ApiError em vez de deixar o .json() falhar silenciosamente depois.
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
@@ -22,7 +22,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (!res.ok) {
-    throw new GamesApiError(res.status, `Falha na requisição para ${path} (status ${res.status})`);
+    throw new ApiError(res.status, `Falha na requisição para ${path} (status ${res.status})`);
   }
   if (res.status === 204) {
     return undefined as T;
@@ -30,7 +30,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T;
 }
 
-export const gamesClient = {
+export const apiClient = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: "POST", body: body !== undefined ? JSON.stringify(body) : undefined }),

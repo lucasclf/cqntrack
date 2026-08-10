@@ -4,11 +4,11 @@ import { AddToListMenu } from "./AddToListMenu";
 
 const { getMock, putMock } = vi.hoisted(() => ({ getMock: vi.fn(), putMock: vi.fn() }));
 
-vi.mock("../lib/games-client", async () => {
-  const actual = await vi.importActual<typeof import("../lib/games-client")>("../lib/games-client");
+vi.mock("../lib/api-client", async () => {
+  const actual = await vi.importActual<typeof import("../lib/api-client")>("../lib/api-client");
   return {
     ...actual,
-    gamesClient: { get: getMock, put: putMock, post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
+    apiClient: { get: getMock, put: putMock, post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
   };
 });
 

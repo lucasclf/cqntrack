@@ -1,10 +1,10 @@
 import type { GameStatus, PaginatedGameEntriesResponse } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
-import { gamesClient } from "../lib/games-client";
+import { apiClient } from "../lib/api-client";
 import { EntryFilters, type EntrySortField } from "./EntryFilters";
 import { GameCard } from "./GameCard";
 import styles from "./MyEntries.module.css";
-import { useDebouncedValue } from "./useDebouncedValue";
+import { useDebouncedValue } from "../lib/useDebouncedValue";
 
 type LoadStatus = "loading" | "ready" | "error";
 
@@ -39,7 +39,7 @@ export function MyEntries() {
     params.set("order", order);
     params.set("page", String(page));
 
-    gamesClient
+    apiClient
       .get<PaginatedGameEntriesResponse>(`/api/games/entries?${params.toString()}`)
       .then((response) => {
         if (!cancelled) {

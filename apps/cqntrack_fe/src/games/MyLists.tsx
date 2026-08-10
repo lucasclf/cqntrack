@@ -1,7 +1,7 @@
 import type { GameList, GameListsResponse } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { gamesClient } from "../lib/games-client";
+import { apiClient } from "../lib/api-client";
 import { ListFormModal } from "./ListFormModal";
 import styles from "./MyLists.module.css";
 
@@ -14,7 +14,7 @@ export function MyLists() {
 
   useEffect(() => {
     let cancelled = false;
-    gamesClient
+    apiClient
       .get<GameListsResponse>("/api/lists")
       .then((data) => {
         if (!cancelled) {
@@ -36,7 +36,7 @@ export function MyLists() {
     if (!window.confirm("Remover esta lista? Essa ação não pode ser desfeita.")) {
       return;
     }
-    await gamesClient.delete(`/api/lists/${listId}`);
+    await apiClient.delete(`/api/lists/${listId}`);
     setLists((current) => current.filter((list) => list.id !== listId));
   }
 
@@ -74,7 +74,7 @@ export function MyLists() {
         <ListFormModal
           mode="create"
           onSubmit={async (values) => {
-            const created = await gamesClient.post<GameList>("/api/lists", values);
+            const created = await apiClient.post<GameList>("/api/lists", values);
             setLists((current) => [created, ...current]);
           }}
           onClose={() => setModalOpen(false)}

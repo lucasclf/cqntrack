@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { GamesApiError } from "../lib/games-client";
+import { ApiError } from "../lib/api-client";
 import { ListFormModal } from "./ListFormModal";
 
 describe("ListFormModal", () => {
@@ -34,7 +34,7 @@ describe("ListFormModal", () => {
   });
 
   it("mostra mensagem específica quando o nome já existe (409)", async () => {
-    const onSubmit = vi.fn().mockRejectedValue(new GamesApiError(409, "duplicate"));
+    const onSubmit = vi.fn().mockRejectedValue(new ApiError(409, "duplicate"));
     render(<ListFormModal mode="create" onSubmit={onSubmit} onClose={vi.fn()} />);
 
     fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "Odiei" } });

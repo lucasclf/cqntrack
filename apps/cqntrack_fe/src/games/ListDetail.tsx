@@ -1,7 +1,7 @@
 import type { GameList, GameListDetail as GameListDetailDto, GameSummary } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { GamesApiError, gamesClient } from "../lib/games-client";
+import { ApiError, apiClient } from "../lib/api-client";
 import { AddGameSearch } from "./AddGameSearch";
 import { GameCard } from "./GameCard";
 import styles from "./ListDetail.module.css";
@@ -19,7 +19,7 @@ export function ListDetail() {
 
   useEffect(() => {
     let cancelled = false;
-    gamesClient
+    apiClient
       .get<GameListDetailDto>(`/api/lists/${listId}`)
       .then((data) => {
         if (!cancelled) {
@@ -29,7 +29,7 @@ export function ListDetail() {
       })
       .catch((error: unknown) => {
         if (!cancelled) {
-          setLoadStatus(error instanceof GamesApiError && error.status === 404 ? "not-found" : "error");
+          setLoadStatus(error instanceof ApiError && error.status === 404 ? "not-found" : "error");
         }
       });
     return () => {
@@ -40,7 +40,7 @@ export function ListDetail() {
   async function handleRemoveItem(igdbId: number) {
     setActionError(null);
     try {
-      await gamesClient.delete(`/api/lists/${listId}/items/${igdbId}`);
+      await apiClient.delete(`/api/lists/${listId}/items/${igdbId}`);
       setDetail((current) =>
         current
           ? {
@@ -58,7 +58,7 @@ export function ListDetail() {
   async function handleAddGame(game: GameSummary) {
     setActionError(null);
     try {
-      await gamesClient.put(`/api/lists/${listId}/items/${game.igdbId}`);
+      await apiClient.put(`/api/lists/${listId}/items/${game.igdbId}`);
       setDetail((current) =>
         current && !current.items.some((item) => item.igdbId === game.igdbId)
           ? { ...current, items: [game, ...current.items], itemCount: current.itemCount + 1 }
@@ -73,7 +73,7 @@ export function ListDetail() {
     if (!window.confirm("Remover esta lista? Essa ação não pode ser desfeita.")) {
       return;
     }
-    await gamesClient.delete(`/api/lists/${listId}`);
+    await apiClient.delete(`/api/lists/${listId}`);
     void navigate("/jogos/listas");
   }
 
@@ -135,7 +135,7 @@ export function ListDetail() {
           mode="edit"
           initialValues={{ name: detail.name, description: detail.description }}
           onSubmit={async (values) => {
-            const updated = await gamesClient.patch<GameList>(`/api/lists/${listId}`, values);
+            const updated = await apiClient.patch<GameList>(`/api/lists/${listId}`, values);
             setDetail((current) => (current ? { ...current, ...updated } : current));
           }}
           onClose={() => setEditModalOpen(false)}

@@ -1,6 +1,6 @@
 import type { GameList, GameListsResponse } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
-import { gamesClient } from "../lib/games-client";
+import { apiClient } from "../lib/api-client";
 import styles from "./AddToListMenu.module.css";
 
 interface AddToListMenuProps {
@@ -21,7 +21,7 @@ export function AddToListMenu({ igdbId }: AddToListMenuProps) {
     if (!open || lists !== null) {
       return;
     }
-    gamesClient
+    apiClient
       .get<GameListsResponse>("/api/lists")
       .then((data) => setLists(data.lists))
       .catch(() => setError("Falha ao carregar suas listas."));
@@ -30,7 +30,7 @@ export function AddToListMenu({ igdbId }: AddToListMenuProps) {
   async function handleAdd(listId: string) {
     setError(null);
     try {
-      await gamesClient.put(`/api/lists/${listId}/items/${igdbId}`);
+      await apiClient.put(`/api/lists/${listId}/items/${igdbId}`);
       setAddedIds((current) => new Set(current).add(listId));
       setOpen(false);
     } catch {

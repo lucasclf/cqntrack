@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { GameDetail } from "./GameDetail";
-import { GamesApiError } from "../lib/games-client";
+import { ApiError } from "../lib/api-client";
 
 const { getMock, putMock, deleteMock } = vi.hoisted(() => ({
   getMock: vi.fn(),
@@ -10,11 +10,11 @@ const { getMock, putMock, deleteMock } = vi.hoisted(() => ({
   deleteMock: vi.fn(),
 }));
 
-vi.mock("../lib/games-client", async () => {
-  const actual = await vi.importActual<typeof import("../lib/games-client")>("../lib/games-client");
+vi.mock("../lib/api-client", async () => {
+  const actual = await vi.importActual<typeof import("../lib/api-client")>("../lib/api-client");
   return {
     ...actual,
-    gamesClient: { get: getMock, put: putMock, delete: deleteMock, post: vi.fn(), patch: vi.fn() },
+    apiClient: { get: getMock, put: putMock, delete: deleteMock, post: vi.fn(), patch: vi.fn() },
   };
 });
 
@@ -176,7 +176,7 @@ describe("GameDetail", () => {
   });
 
   it("mostra 'jogo não encontrado' quando a API retorna 404", async () => {
-    getMock.mockRejectedValue(new GamesApiError(404, "not found"));
+    getMock.mockRejectedValue(new ApiError(404, "not found"));
     renderDetail();
 
     expect(await screen.findByText("Jogo não encontrado.")).toBeInTheDocument();
