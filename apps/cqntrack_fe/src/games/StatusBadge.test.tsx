@@ -26,4 +26,13 @@ describe("StatusBadge", () => {
     fireEvent.click(screen.getByRole("button", { name: "Platinado" }));
     expect(onChange).toHaveBeenCalledWith("platinum");
   });
+
+  it("clicar no status já selecionado desmarca (chama onChange com null)", () => {
+    const onChange = vi.fn();
+    render(<StatusBadge status="completed" onChange={onChange} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Finalizado" }));
+
+    expect(onChange).toHaveBeenCalledWith(null);
+  });
 });

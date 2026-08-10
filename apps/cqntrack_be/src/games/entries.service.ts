@@ -36,7 +36,9 @@ async function logGameEntryActivities(
 ): Promise<void> {
   const activities: (typeof gameActivity.$inferInsert)[] = [];
 
-  if (input.status !== undefined) {
+  // Só loga quando um status real é definido — desmarcar (status: null),
+  // como desfavoritar, não vira atividade no feed.
+  if (input.status !== undefined && input.status !== null) {
     activities.push({ userId, gameId, type: "status_changed", metadata: { status: input.status } });
   }
   if (input.favorite === true) {

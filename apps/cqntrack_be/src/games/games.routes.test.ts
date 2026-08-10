@@ -222,6 +222,37 @@ describe("CRUD de marcação (/api/games/:igdbId/entry, /favorite)", () => {
     expect(body).toMatchObject({ status: "playing", platform: "PC", rating: 4.5 });
   });
 
+  it("PUT com status: null desmarca o status sem apagar os outros campos, e não gera atividade", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubIgdbFetchOnce([igdbGame(605, "Return of the Obra Dinn")]);
+    await app.request(
+      "/api/games/605/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "playing", rating: 5 }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const res = await app.request(
+      "/api/games/605/entry",
+      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ status: null }) },
+      env,
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toMatchObject({ status: null, rating: 5 });
+
+    const activities = await createDb(env).query.gameActivity.findMany();
+    const statusChanged = activities.filter(
+      (activity) => activity.gameId === 605 && activity.type === "status_changed",
+    );
+    expect(statusChanged).toHaveLength(1); // só o "playing" inicial, não o clear
+  });
+
   it("DELETE remove a marcação", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
     stubIgdbFetchOnce([igdbGame(603, "Return of the Obra Dinn")]);
@@ -263,7 +294,7 @@ describe("CRUD de marcação (/api/games/:igdbId/entry, /favorite)", () => {
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toMatchObject({ favorite: true, status: "not_started" });
+    expect(body).toMatchObject({ favorite: true, status: null });
     vi.unstubAllGlobals();
   });
 });

@@ -9,7 +9,7 @@ export const GameStatusSchema = z.enum(GAME_STATUSES);
 export type GameStatus = z.infer<typeof GameStatusSchema>;
 
 export const GAME_STATUS_LABELS: Record<GameStatus, string> = {
-  not_started: "Não Iniciado",
+  not_started: "Quero jogar",
   playing: "Jogando",
   dropped: "Abandonado",
   completed: "Finalizado",
@@ -63,7 +63,7 @@ export type GameDetail = z.infer<typeof GameDetailSchema>;
 // chamada). Ver GameEntryWithGameSchema para o caso de listas/feeds.
 export const GameEntrySchema = z.object({
   id: z.string(),
-  status: GameStatusSchema,
+  status: GameStatusSchema.nullable(),
   rating: z.number().nullable(),
   favorite: z.boolean(),
   platform: z.string().nullable(),
@@ -87,7 +87,7 @@ export const GameDetailResponseSchema = z.object({
 export type GameDetailResponse = z.infer<typeof GameDetailResponseSchema>;
 
 export const UpsertGameEntryRequestSchema = z.object({
-  status: GameStatusSchema.optional(),
+  status: GameStatusSchema.nullable().optional(),
   rating: z.number().min(0).max(5).multipleOf(0.5).nullable().optional(),
   review: z.string().max(2000).nullable().optional(),
   platform: z.string().min(1).max(60).nullable().optional(),

@@ -37,9 +37,9 @@ export function GameCard({ game, entry }: GameCardProps) {
           {game.platforms.length > 0 &&
             ` · ${game.platforms[0]}${extraPlatforms > 0 ? ` +${extraPlatforms}` : ""}`}
         </p>
-        {entry && (
+        {entry && (entry.status || entry.rating !== null) && (
           <p className={styles.entryMeta}>
-            <span className={styles.statusPill}>{GAME_STATUS_LABELS[entry.status]}</span>
+            {entry.status && <span className={styles.statusPill}>{GAME_STATUS_LABELS[entry.status]}</span>}
             {entry.rating !== null && (
               <span className={styles.personalRating}>★ {entry.rating.toFixed(1)}</span>
             )}

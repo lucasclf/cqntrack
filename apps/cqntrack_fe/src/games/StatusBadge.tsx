@@ -3,11 +3,12 @@ import styles from "./StatusBadge.module.css";
 
 interface StatusBadgeProps {
   status: GameStatus | null;
-  onChange?: (status: GameStatus) => void;
+  onChange?: (status: GameStatus | null) => void;
 }
 
 // Sem onChange: badge estático (uso futuro em GameCard/perfil). Com onChange:
-// seletor dos 5 status fixos (campo único, sem histórico completo).
+// seletor dos 5 status fixos (campo único, sem histórico completo) — clicar
+// no status já selecionado desmarca (deixa o jogo sem status nenhum).
 export function StatusBadge({ status, onChange }: StatusBadgeProps) {
   if (!onChange) {
     if (!status) {
@@ -28,7 +29,7 @@ export function StatusBadge({ status, onChange }: StatusBadgeProps) {
           type="button"
           className={status === option ? `${styles.option} ${styles.optionActive}` : styles.option}
           aria-pressed={status === option}
-          onClick={() => onChange(option)}
+          onClick={() => onChange(status === option ? null : option)}
         >
           {GAME_STATUS_LABELS[option]}
         </button>

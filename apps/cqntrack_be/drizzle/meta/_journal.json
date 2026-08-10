@@ -29,6 +29,13 @@
       "when": 1786288306281,
       "tag": "0003_add_games_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1786367399957,
+      "tag": "0004_make_status_nullable",
+      "breakpoints": true
     }
   ]
 }

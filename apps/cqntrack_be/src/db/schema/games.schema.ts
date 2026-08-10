@@ -40,7 +40,8 @@ export const gameEntry = sqliteTable(
     gameId: integer("game_id")
       .notNull()
       .references(() => game.igdbId, { onDelete: "cascade" }),
-    status: text("status", { enum: GAME_STATUSES }).notNull().default("not_started"),
+    // Opcional: null = jogo sem status marcado (usuário pode desmarcar).
+    status: text("status", { enum: GAME_STATUSES }),
     rating: real("rating"),
     favorite: integer("favorite", { mode: "boolean" }).notNull().default(false),
     platform: text("platform"),
