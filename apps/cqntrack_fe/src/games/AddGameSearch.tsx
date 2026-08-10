@@ -59,6 +59,11 @@ export function AddGameSearch({ onAdd, addedIds }: AddGameSearchProps) {
     setAddingId(game.igdbId);
     try {
       await onAdd(game);
+      // Zera a busca assim que adiciona — não espera o debounce pra sumir
+      // com o input/resultados.
+      setQuery("");
+      setResults([]);
+      setStatus("idle");
     } finally {
       setAddingId(null);
     }
