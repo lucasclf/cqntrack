@@ -327,3 +327,140 @@ describe("GET /api/series/entries", () => {
     expect(res.status).toBe(401);
   });
 });
+
+describe("GET/PUT /api/series/favorites", () => {
+  it("sem sessão retorna 401 tanto pra GET quanto pra PUT", async () => {
+    const getRes = await app.request("/api/series/favorites", undefined, env);
+    expect(getRes.status).toBe(401);
+
+    const putRes = await app.request(
+      "/api/series/favorites/1",
+      { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tmdbId: 1 }) },
+      env,
+    );
+    expect(putRes.status).toBe(401);
+  });
+
+  it("GET começa com os 4 slots vazios", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+
+    const res = await app.request("/api/series/favorites", { headers: { cookie } }, env);
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { slots: Array<{ slot: number; entry: unknown }> };
+    expect(body.slots).toEqual([
+      { slot: 1, entry: null },
+      { slot: 2, entry: null },
+      { slot: 3, entry: null },
+      { slot: 4, entry: null },
+    ]);
+  });
+
+  it("PUT /favorites/:slot preenche um slot e reflete no GET", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubTmdbFetchOnce(tmdbSeriesDetail(620, "Fargo"));
+
+    const putRes = await app.request(
+      "/api/series/favorites/2",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ tmdbId: 620 }),
+      },
+      env,
+    );
+    expect(putRes.status).toBe(200);
+    const putBody = await putRes.json();
+    expect(putBody).toMatchObject({ favoriteSlot: 2 });
+    vi.unstubAllGlobals();
+
+    const getRes = await app.request("/api/series/favorites", { headers: { cookie } }, env);
+    const getBody = (await getRes.json()) as {
+      slots: Array<{ slot: number; entry: { series: { tmdbId: number } } | null }>;
+    };
+    expect(getBody.slots[1]).toMatchObject({ slot: 2, entry: { series: { tmdbId: 620 } } });
+    expect(getBody.slots[0]).toEqual({ slot: 1, entry: null });
+  });
+
+  it("trocar um slot já ocupado libera a série que estava nele", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubTmdbFetchOnce(tmdbSeriesDetail(621, "The Wire"));
+    await app.request(
+      "/api/series/favorites/1",
+      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ tmdbId: 621 }) },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    stubTmdbFetchOnce(tmdbSeriesDetail(622, "Chernobyl"));
+    await app.request(
+      "/api/series/favorites/1",
+      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ tmdbId: 622 }) },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const getRes = await app.request("/api/series/favorites", { headers: { cookie } }, env);
+    const getBody = (await getRes.json()) as {
+      slots: Array<{ slot: number; entry: { series: { tmdbId: number } } | null }>;
+    };
+    expect(getBody.slots[0]).toMatchObject({ slot: 1, entry: { series: { tmdbId: 622 } } });
+
+    const entryRes = await app.request("/api/series/621", { headers: { cookie } }, env);
+    const entryBody = (await entryRes.json()) as { entry: { favoriteSlot: number | null } | null };
+    expect(entryBody.entry?.favoriteSlot ?? null).toBeNull();
+  });
+
+  it("escolher a mesma série pra outro slot move-a (não duplica em dois slots)", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubTmdbFetchOnce(tmdbSeriesDetail(623, "Better Call Saul"));
+    await app.request(
+      "/api/series/favorites/1",
+      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ tmdbId: 623 }) },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const throwingFetch = vi.fn().mockRejectedValue(new Error("já cacheada, não deveria chamar a TMDB de novo"));
+    vi.stubGlobal("fetch", throwingFetch);
+    await app.request(
+      "/api/series/favorites/3",
+      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ tmdbId: 623 }) },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const getRes = await app.request("/api/series/favorites", { headers: { cookie } }, env);
+    const getBody = (await getRes.json()) as { slots: Array<{ slot: number; entry: unknown }> };
+    expect(getBody.slots[0]).toEqual({ slot: 1, entry: null });
+    expect(getBody.slots[2]?.entry).not.toBeNull();
+  });
+
+  it("slot inválido (fora de 1-4) retorna 400", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+
+    const res = await app.request(
+      "/api/series/favorites/5",
+      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ tmdbId: 1 }) },
+      env,
+    );
+
+    expect(res.status).toBe(400);
+  });
+
+  it("favoritar gera atividade do tipo favorited", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubTmdbFetchOnce(tmdbSeriesDetail(624, "The Sopranos"));
+
+    await app.request(
+      "/api/series/favorites/1",
+      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ tmdbId: 624 }) },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const activities = await createDb(env).query.activity.findMany();
+    const favorited = activities.filter((item) => item.itemId === "624" && item.type === "favorited");
+    expect(favorited).toHaveLength(1);
+  });
+});

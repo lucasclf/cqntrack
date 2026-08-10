@@ -1,16 +1,27 @@
 import {
+  FAVORITE_SLOTS,
   ListSeriesEntriesQuerySchema,
   PaginatedSeriesEntriesResponseSchema,
   SearchSeriesQuerySchema,
   SearchSeriesResponseSchema,
   SeriesDetailResponseSchema,
   SeriesEntrySchema,
+  SeriesFavoritesResponseSchema,
+  SetSeriesFavoriteSlotRequestSchema,
   UpsertSeriesEntryRequestSchema,
+  type FavoriteSlotNumber,
 } from "@cqntrack/shared";
 import { Hono } from "hono";
 import { type AuthedEnv, requireSession } from "../auth/require-session";
 import { createDb } from "../db/client";
-import { deleteSeriesEntry, getSeriesEntryForUser, listSeriesEntries, upsertSeriesEntry } from "./entries.service";
+import {
+  deleteSeriesEntry,
+  getFavoriteSlots,
+  getSeriesEntryForUser,
+  listSeriesEntries,
+  setFavoriteSlot,
+  upsertSeriesEntry,
+} from "./entries.service";
 import { getOrCacheSeries, mapCachedSeriesToSummary, SeriesNotFoundError, searchSeriesForUser } from "./series.service";
 
 export const seriesRouter = new Hono<AuthedEnv>();
@@ -22,9 +33,14 @@ function parseTmdbId(c: { req: { param: (name: string) => string } }): number | 
   return Number.isInteger(tmdbId) ? tmdbId : null;
 }
 
-// Rotas estáticas (/search, /entries) precisam vir ANTES de /:tmdbId —
-// senão o parâmetro dinâmico captura o segmento literal (mesma pegadinha já
-// documentada pra /api/games).
+function parseFavoriteSlot(c: { req: { param: (name: string) => string } }): FavoriteSlotNumber | null {
+  const slot = Number(c.req.param("slot"));
+  return FAVORITE_SLOTS.includes(slot as FavoriteSlotNumber) ? (slot as FavoriteSlotNumber) : null;
+}
+
+// Rotas estáticas (/search, /entries, /favorites) precisam vir ANTES de
+// /:tmdbId — senão o parâmetro dinâmico captura o segmento literal (mesma
+// pegadinha já documentada pra /api/games).
 seriesRouter.get("/search", async (c) => {
   const parsed = SearchSeriesQuerySchema.safeParse({
     q: c.req.query("q"),
@@ -56,6 +72,36 @@ seriesRouter.get("/entries", async (c) => {
     total,
   });
   return c.json(body);
+});
+
+seriesRouter.get("/favorites", async (c) => {
+  const db = createDb(c.env);
+  const slots = await getFavoriteSlots(db, c.get("userId"));
+  return c.json(SeriesFavoritesResponseSchema.parse({ slots }));
+});
+
+seriesRouter.put("/favorites/:slot", async (c) => {
+  const slot = parseFavoriteSlot(c);
+  if (slot === null) {
+    return c.json({ error: "invalid_slot" }, 400);
+  }
+
+  const json = await c.req.json().catch(() => null);
+  const parsed = SetSeriesFavoriteSlotRequestSchema.safeParse(json);
+  if (!parsed.success) {
+    return c.json({ error: "invalid_body" }, 400);
+  }
+
+  const db = createDb(c.env);
+  try {
+    const entry = await setFavoriteSlot(c.env, db, c.get("userId"), slot, parsed.data.tmdbId);
+    return c.json(SeriesEntrySchema.parse(entry));
+  } catch (error) {
+    if (error instanceof SeriesNotFoundError) {
+      return c.json({ error: "series_not_found" }, 404);
+    }
+    throw error;
+  }
 });
 
 seriesRouter.get("/:tmdbId", async (c) => {
