@@ -1,4 +1,4 @@
-import { MEDIA_TYPE_PATH, MEDIA_TYPES } from "@cqntrack/shared";
+import { MEDIA_TYPE_PATH, MEDIA_TYPES, type MediaType } from "@cqntrack/shared";
 import type { SVGProps } from "react";
 import { NavLink, Outlet, useLocation } from "react-router";
 import { CatMark } from "../CatMark";
@@ -61,17 +61,6 @@ function UserIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-// Buscar/Marcações/Listas hoje sempre apontam pra seção de jogos — única
-// implementada. Quando uma segunda seção existir, é aqui que esses hrefs
-// passam a depender da seção ativa (ver SectionSwitcher).
-const NAV_ITEMS = [
-  { to: "/", label: "Início", Icon: HomeIcon, end: true },
-  { to: "/jogos/buscar", label: "Buscar", Icon: SearchIcon, end: false },
-  { to: "/jogos/marcacoes", label: "Marcações", Icon: BookmarkIcon, end: false },
-  { to: "/jogos/listas", label: "Listas", Icon: FolderIcon, end: false },
-  { to: "/conta", label: "Conta", Icon: UserIcon, end: false },
-] as const;
-
 function isInsideSection(pathname: string): boolean {
   return MEDIA_TYPES.some((mediaType) => {
     const prefix = `/${MEDIA_TYPE_PATH[mediaType]}`;
@@ -79,10 +68,29 @@ function isInsideSection(pathname: string): boolean {
   });
 }
 
+// Fora de uma seção (Início/Conta), assume jogos como padrão — é a única
+// escolha razoável sem introduzir "última seção acessada" pra um caso que só
+// importa quando o usuário está literalmente dentro de uma seção.
+function activeMediaType(pathname: string): MediaType {
+  const match = MEDIA_TYPES.find((mediaType) => {
+    const prefix = `/${MEDIA_TYPE_PATH[mediaType]}`;
+    return pathname === prefix || pathname.startsWith(`${prefix}/`);
+  });
+  return match ?? "games";
+}
+
 // Casca da área autenticada: barra de abas no rodapé (mobile) ou sidebar
 // (desktop), conforme o mesmo breakpoint de 860px já usado em AuthLayout.
 export function AppShell() {
   const { pathname } = useLocation();
+  const sectionPrefix = `/${MEDIA_TYPE_PATH[activeMediaType(pathname)]}`;
+  const navItems = [
+    { to: "/", label: "Início", Icon: HomeIcon, end: true },
+    { to: `${sectionPrefix}/buscar`, label: "Buscar", Icon: SearchIcon, end: false },
+    { to: `${sectionPrefix}/marcacoes`, label: "Marcações", Icon: BookmarkIcon, end: false },
+    { to: `${sectionPrefix}/listas`, label: "Listas", Icon: FolderIcon, end: false },
+    { to: "/conta", label: "Conta", Icon: UserIcon, end: false },
+  ] as const;
 
   return (
     <div className={styles.shell}>
@@ -94,7 +102,7 @@ export function AppShell() {
           <span className={styles.brandWord}>cqntrack</span>
         </div>
         <ul className={styles.navList}>
-          {NAV_ITEMS.map(({ to, label, Icon, end }) => (
+          {navItems.map(({ to, label, Icon, end }) => (
             <li key={to}>
               <NavLink
                 to={to}

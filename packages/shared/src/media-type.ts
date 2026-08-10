@@ -28,4 +28,4 @@ export const MEDIA_TYPE_PATH: Record<MediaType, string> = {
 
 // Seções com rotas/integração de fato implementadas — as demais aparecem na
 // UI como "em breve", sem navegação real ainda.
-export const IMPLEMENTED_MEDIA_TYPES: readonly MediaType[] = ["games"];
+export const IMPLEMENTED_MEDIA_TYPES: readonly MediaType[] = ["games", "series"];

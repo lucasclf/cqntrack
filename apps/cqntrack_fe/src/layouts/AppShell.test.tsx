@@ -9,7 +9,8 @@ function renderShell(initialEntry: string) {
       <Routes>
         <Route element={<AppShell />}>
           <Route index element={<p>conteúdo da home</p>} />
-          <Route path="jogos/buscar" element={<p>conteúdo de busca</p>} />
+          <Route path="jogos/buscar" element={<p>conteúdo de busca de jogos</p>} />
+          <Route path="series/buscar" element={<p>conteúdo de busca de séries</p>} />
         </Route>
       </Routes>
     </MemoryRouter>,
@@ -34,5 +35,21 @@ describe("AppShell", () => {
 
     expect(screen.getByRole("link", { name: /Buscar/ })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: /Início/ })).not.toHaveAttribute("aria-current");
+  });
+
+  it("fora de uma seção, Buscar/Marcações/Listas apontam pra jogos (padrão)", () => {
+    renderShell("/");
+
+    expect(screen.getByRole("link", { name: /Buscar/ })).toHaveAttribute("href", "/jogos/buscar");
+    expect(screen.getByRole("link", { name: /Marcações/ })).toHaveAttribute("href", "/jogos/marcacoes");
+    expect(screen.getByRole("link", { name: /Listas/ })).toHaveAttribute("href", "/jogos/listas");
+  });
+
+  it("dentro da seção de séries, Buscar/Marcações/Listas seguem a seção ativa", () => {
+    renderShell("/series/buscar");
+
+    expect(screen.getByRole("link", { name: /Buscar/ })).toHaveAttribute("href", "/series/buscar");
+    expect(screen.getByRole("link", { name: /Marcações/ })).toHaveAttribute("href", "/series/marcacoes");
+    expect(screen.getByRole("link", { name: /Listas/ })).toHaveAttribute("href", "/series/listas");
   });
 });

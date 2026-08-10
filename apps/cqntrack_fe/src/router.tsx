@@ -12,6 +12,7 @@ import { PublicListDetail } from "./profile/PublicListDetail";
 import { PublicProfile } from "./profile/PublicProfile";
 import { RedirectToJogosListDetail } from "./routes/RedirectToJogosListDetail";
 import { RequireAuth } from "./routes/RequireAuth";
+import { SeriesSearch } from "./series/SeriesSearch";
 import { Signup } from "./Signup";
 import { Unavailable } from "./Unavailable";
 
@@ -43,6 +44,10 @@ export const routes: RouteObject[] = [
               { path: "listas", element: <MyLists /> },
               { path: "listas/:listId", element: <ListDetail /> },
             ],
+          },
+          {
+            path: "series",
+            children: [{ path: "buscar", element: <SeriesSearch /> }],
           },
         ],
       },
