@@ -1,20 +1,21 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GamesApiError } from "../lib/games-client";
 import { ListDetail } from "./ListDetail";
 
-const { getMock, patchMock, deleteMock } = vi.hoisted(() => ({
+const { getMock, patchMock, deleteMock, putMock } = vi.hoisted(() => ({
   getMock: vi.fn(),
   patchMock: vi.fn(),
   deleteMock: vi.fn(),
+  putMock: vi.fn(),
 }));
 
 vi.mock("../lib/games-client", async () => {
   const actual = await vi.importActual<typeof import("../lib/games-client")>("../lib/games-client");
   return {
     ...actual,
-    gamesClient: { get: getMock, patch: patchMock, delete: deleteMock, put: vi.fn(), post: vi.fn() },
+    gamesClient: { get: getMock, patch: patchMock, delete: deleteMock, put: putMock, post: vi.fn() },
   };
 });
 
@@ -54,6 +55,7 @@ describe("ListDetail", () => {
     getMock.mockReset();
     patchMock.mockReset();
     deleteMock.mockReset();
+    putMock.mockReset();
   });
 
   afterEach(() => {
@@ -116,5 +118,50 @@ describe("ListDetail", () => {
 
     expect(deleteMock).toHaveBeenCalledWith("/api/lists/1");
     expect(await screen.findByText("tela de listas")).toBeInTheDocument();
+  });
+
+  it("adiciona um jogo à lista pela busca embutida na própria página", async () => {
+    getMock.mockImplementation((path: string) => {
+      if (path === "/api/lists/1") return Promise.resolve(DETAIL);
+      if (path.startsWith("/api/games/search")) {
+        return Promise.resolve({
+          results: [
+            {
+              igdbId: 802,
+              name: "Celeste",
+              coverUrl: null,
+              firstReleaseDate: null,
+              platforms: [],
+              genres: [],
+              rating: null,
+            },
+          ],
+        });
+      }
+      return Promise.reject(new Error("rota inesperada: " + path));
+    });
+    putMock.mockResolvedValue(undefined);
+
+    renderPage();
+    await screen.findByRole("heading", { name: "Quero jogar" });
+
+    // Timers falsos só a partir daqui — o findBy acima usa polling real.
+    vi.useFakeTimers();
+
+    fireEvent.change(screen.getByLabelText("Buscar jogo pra adicionar à lista"), {
+      target: { value: "celeste" },
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Adicionar" }));
+    });
+
+    expect(putMock).toHaveBeenCalledWith("/api/lists/1/items/802");
+    expect(screen.getAllByText("Celeste").length).toBeGreaterThan(0);
+
+    vi.useRealTimers();
   });
 });

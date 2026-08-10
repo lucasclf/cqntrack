@@ -1,7 +1,8 @@
-import type { GameList, GameListDetail as GameListDetailDto } from "@cqntrack/shared";
+import type { GameList, GameListDetail as GameListDetailDto, GameSummary } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { GamesApiError, gamesClient } from "../lib/games-client";
+import { AddGameSearch } from "./AddGameSearch";
 import { GameCard } from "./GameCard";
 import styles from "./ListDetail.module.css";
 import { ListFormModal } from "./ListFormModal";
@@ -54,6 +55,20 @@ export function ListDetail() {
     }
   }
 
+  async function handleAddGame(game: GameSummary) {
+    setActionError(null);
+    try {
+      await gamesClient.put(`/api/lists/${listId}/items/${game.igdbId}`);
+      setDetail((current) =>
+        current && !current.items.some((item) => item.igdbId === game.igdbId)
+          ? { ...current, items: [game, ...current.items], itemCount: current.itemCount + 1 }
+          : current,
+      );
+    } catch {
+      setActionError("Falha ao adicionar o jogo à lista. Tente novamente.");
+    }
+  }
+
   async function handleDeleteList() {
     if (!window.confirm("Remover esta lista? Essa ação não pode ser desfeita.")) {
       return;
@@ -88,6 +103,11 @@ export function ListDetail() {
           </button>
         </div>
       </div>
+
+      <AddGameSearch
+        onAdd={handleAddGame}
+        addedIds={new Set(detail.items.map((item) => item.igdbId))}
+      />
 
       {actionError && <p role="alert">{actionError}</p>}
 
