@@ -6,6 +6,7 @@ export function Home() {
   return (
     <div className={styles.page}>
       <h1>cqntrack</h1>
+      <h2>Jogos favoritos</h2>
       <FavoriteSlots />
       <h2>Atividade recente</h2>
       <ActivityFeed />

@@ -1,7 +1,9 @@
+import { MEDIA_TYPE_PATH, MEDIA_TYPES } from "@cqntrack/shared";
 import type { SVGProps } from "react";
-import { NavLink, Outlet } from "react-router";
+import { NavLink, Outlet, useLocation } from "react-router";
 import { ThemeToggle } from "../ThemeToggle";
 import styles from "./AppShell.module.css";
+import { SectionSwitcher } from "./SectionSwitcher";
 
 function iconProps(props: SVGProps<SVGSVGElement>): SVGProps<SVGSVGElement> {
   return {
@@ -58,17 +60,29 @@ function UserIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+// Buscar/Marcações/Listas hoje sempre apontam pra seção de jogos — única
+// implementada. Quando uma segunda seção existir, é aqui que esses hrefs
+// passam a depender da seção ativa (ver SectionSwitcher).
 const NAV_ITEMS = [
   { to: "/", label: "Início", Icon: HomeIcon, end: true },
-  { to: "/buscar", label: "Buscar", Icon: SearchIcon, end: false },
-  { to: "/marcacoes", label: "Marcações", Icon: BookmarkIcon, end: false },
-  { to: "/listas", label: "Listas", Icon: FolderIcon, end: false },
+  { to: "/jogos/buscar", label: "Buscar", Icon: SearchIcon, end: false },
+  { to: "/jogos/marcacoes", label: "Marcações", Icon: BookmarkIcon, end: false },
+  { to: "/jogos/listas", label: "Listas", Icon: FolderIcon, end: false },
   { to: "/conta", label: "Conta", Icon: UserIcon, end: false },
 ] as const;
+
+function isInsideSection(pathname: string): boolean {
+  return MEDIA_TYPES.some((mediaType) => {
+    const prefix = `/${MEDIA_TYPE_PATH[mediaType]}`;
+    return pathname === prefix || pathname.startsWith(`${prefix}/`);
+  });
+}
 
 // Casca da área autenticada: barra de abas no rodapé (mobile) ou sidebar
 // (desktop), conforme o mesmo breakpoint de 860px já usado em AuthLayout.
 export function AppShell() {
+  const { pathname } = useLocation();
+
   return (
     <div className={styles.shell}>
       <nav className={styles.nav} aria-label="Navegação principal">
@@ -95,6 +109,7 @@ export function AppShell() {
       </nav>
       <ThemeToggle />
       <main className={styles.content}>
+        {isInsideSection(pathname) && <SectionSwitcher />}
         <Outlet />
       </main>
     </div>

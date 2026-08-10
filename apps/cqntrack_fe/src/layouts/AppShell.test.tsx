@@ -9,7 +9,7 @@ function renderShell(initialEntry: string) {
       <Routes>
         <Route element={<AppShell />}>
           <Route index element={<p>conteúdo da home</p>} />
-          <Route path="buscar" element={<p>conteúdo de busca</p>} />
+          <Route path="jogos/buscar" element={<p>conteúdo de busca</p>} />
         </Route>
       </Routes>
     </MemoryRouter>,
@@ -30,7 +30,7 @@ describe("AppShell", () => {
   });
 
   it("marca o link ativo com aria-current quando a rota corresponde", () => {
-    renderShell("/buscar");
+    renderShell("/jogos/buscar");
 
     expect(screen.getByRole("link", { name: /Buscar/ })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: /Início/ })).not.toHaveAttribute("aria-current");
