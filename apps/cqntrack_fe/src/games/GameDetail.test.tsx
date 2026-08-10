@@ -23,7 +23,7 @@ const GAME = {
   name: "The Witcher 3: Wild Hunt",
   coverUrl: null,
   firstReleaseDate: "2015-05-19",
-  platforms: ["PC (Microsoft Windows)"],
+  platforms: ["PC (Microsoft Windows)", "PS5"],
   genres: ["RPG"],
   rating: 92.7,
   summary: "Um bruxo caça monstros.",
@@ -58,9 +58,39 @@ describe("GameDetail", () => {
     expect(await screen.findByRole("heading", { name: "The Witcher 3: Wild Hunt" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Jogando" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "★ Favoritado" })).toBeInTheDocument();
-    expect(screen.getByDisplayValue("PS5")).toBeInTheDocument();
+    expect(screen.getByLabelText("Plataforma jogada")).toHaveValue("PS5");
     expect(screen.getByDisplayValue("Muito bom")).toBeInTheDocument();
     expect(getMock).toHaveBeenCalledWith("/api/games/1942");
+  });
+
+  it("salva a plataforma imediatamente ao selecionar", async () => {
+    getMock.mockResolvedValue({
+      game: GAME,
+      entry: {
+        id: "1",
+        status: null,
+        rating: null,
+        favorite: false,
+        platform: null,
+        review: null,
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    });
+    putMock.mockResolvedValue({
+      id: "1",
+      status: null,
+      rating: null,
+      favorite: false,
+      platform: "PS5",
+      review: null,
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    renderDetail();
+
+    await screen.findByRole("heading", { name: "The Witcher 3: Wild Hunt" });
+    fireEvent.change(screen.getByLabelText("Plataforma jogada"), { target: { value: "PS5" } });
+
+    expect(putMock).toHaveBeenCalledWith("/api/games/1942/entry", { platform: "PS5" });
   });
 
   it("cria a marcação ao escolher um status quando ainda não existe entry", async () => {

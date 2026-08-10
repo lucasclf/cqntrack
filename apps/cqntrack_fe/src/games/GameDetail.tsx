@@ -89,12 +89,34 @@ export function GameDetail() {
         {game.coverUrl && <img className={styles.cover} src={game.coverUrl} alt="" />}
         <div>
           <h1>{game.name}</h1>
-          <p className={styles.meta}>
-            {[year, game.platforms.join(", "), game.genres.join(", ")].filter(Boolean).join(" · ")}
-          </p>
-          {game.rating !== null && (
-            <p className={styles.igdbRating}>Nota IGDB: {Math.round(game.rating)}</p>
+
+          <div className={styles.metaRow}>
+            {year && <span className={styles.metaBadge}>{year}</span>}
+            {game.rating !== null && (
+              <span className={styles.metaBadge}>★ {Math.round(game.rating)}</span>
+            )}
+          </div>
+
+          {game.platforms.length > 0 && (
+            <div className={styles.tagRow}>
+              {game.platforms.map((platform) => (
+                <span key={platform} className={styles.platformTag}>
+                  {platform}
+                </span>
+              ))}
+            </div>
           )}
+
+          {game.genres.length > 0 && (
+            <div className={styles.tagRow}>
+              {game.genres.map((genre) => (
+                <span key={genre} className={styles.genreTag}>
+                  {genre}
+                </span>
+              ))}
+            </div>
+          )}
+
           {game.summary && <p className={styles.summary}>{game.summary}</p>}
         </div>
       </div>
@@ -123,17 +145,24 @@ export function GameDetail() {
 
         <label className={styles.field}>
           <span>Plataforma jogada</span>
-          <input
-            type="text"
+          <select
             value={platformDraft}
-            placeholder="ex.: PS5, Switch"
-            onChange={(event) => setPlatformDraft(event.target.value)}
-            onBlur={() => {
-              if (platformDraft !== (entry?.platform ?? "")) {
-                savePatch({ platform: platformDraft || null });
-              }
+            disabled={game.platforms.length === 0}
+            onChange={(event) => {
+              const value = event.target.value;
+              setPlatformDraft(value);
+              savePatch({ platform: value || null });
             }}
-          />
+          >
+            <option value="">
+              {game.platforms.length === 0 ? "Plataforma não informada pela IGDB" : "Nenhuma selecionada"}
+            </option>
+            {game.platforms.map((platform) => (
+              <option key={platform} value={platform}>
+                {platform}
+              </option>
+            ))}
+          </select>
         </label>
 
         <label className={styles.field}>
