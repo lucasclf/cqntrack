@@ -16,14 +16,6 @@ export const GAME_STATUS_LABELS: Record<GameStatus, string> = {
   platinum: "Platinado",
 };
 
-export const GAME_ACTIVITY_TYPES = [
-  "status_changed",
-  "favorited",
-  "rated",
-  "reviewed",
-  "added_to_list",
-] as const;
-
 // DTO enxuto de um jogo — nunca a entity Drizzle crua. `rating` aqui é a nota
 // agregada da própria IGDB (0-100); não confundir com a nota pessoal do
 // usuário (0-5), que vive em GameEntrySchema (adicionado numa etapa futura).
@@ -190,45 +182,6 @@ export type CreateGameListRequest = z.infer<typeof CreateGameListRequestSchema>;
 export const UpdateGameListRequestSchema = CreateGameListRequestSchema.partial();
 
 export type UpdateGameListRequest = z.infer<typeof UpdateGameListRequestSchema>;
-
-// Feed de atividade da home — log append-only (ver game_activity), uma
-// variante por tipo pra cada um trazer só o campo que faz sentido pra ele.
-const activityBaseFields = {
-  id: z.string(),
-  createdAt: z.iso.datetime(),
-  game: GameSummarySchema,
-};
-
-export const ActivityItemSchema = z.discriminatedUnion("type", [
-  z.object({ ...activityBaseFields, type: z.literal("status_changed"), status: GameStatusSchema }),
-  z.object({ ...activityBaseFields, type: z.literal("favorited") }),
-  z.object({ ...activityBaseFields, type: z.literal("rated"), rating: z.number() }),
-  z.object({ ...activityBaseFields, type: z.literal("reviewed") }),
-  z.object({
-    ...activityBaseFields,
-    type: z.literal("added_to_list"),
-    listId: z.string(),
-    listName: z.string(),
-  }),
-]);
-
-export type ActivityItem = z.infer<typeof ActivityItemSchema>;
-
-// Paginação por cursor (createdAt do último item da página anterior) — um
-// log append-only sofreria drift com paginação por offset.
-export const ListActivityQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(50).default(20),
-  before: z.iso.datetime().optional(),
-});
-
-export type ListActivityQuery = z.infer<typeof ListActivityQuerySchema>;
-
-export const ActivityFeedResponseSchema = z.object({
-  items: z.array(ActivityItemSchema),
-  nextCursor: z.iso.datetime().nullable(),
-});
-
-export type ActivityFeedResponse = z.infer<typeof ActivityFeedResponseSchema>;
 
 // Perfil público (/u/:username) — sem toggle de privacidade por item, tudo
 // que existe aqui já é público por padrão (decisão de produto já fechada).

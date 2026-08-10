@@ -1,9 +1,9 @@
 import type { CreateGameListRequest, GameList, GameListDetail, UpdateGameListRequest } from "@cqntrack/shared";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import type { createDb } from "../db/client";
-import { gameActivity, gameList, gameListItem } from "../db/schema";
+import { activity, gameList, gameListItem } from "../db/schema";
 import { withoutUndefined } from "../lib/without-undefined";
-import { getOrCacheGame, mapCachedGameToSummary } from "./games.service";
+import { getOrCacheGame, mapCachedGameToSummary, toActivitySnapshot } from "./games.service";
 
 type Db = ReturnType<typeof createDb>;
 type GameListRow = typeof gameList.$inferSelect;
@@ -169,7 +169,7 @@ export async function addGameToList(
   igdbId: number,
 ): Promise<void> {
   const list = await getOwnedGameList(db, userId, listId);
-  await getOrCacheGame(env, db, igdbId); // garante a FK gameId
+  const cachedGame = await getOrCacheGame(env, db, igdbId); // garante a FK gameId
 
   const inserted = await db
     .insert(gameListItem)
@@ -180,9 +180,9 @@ export async function addGameToList(
   // Só loga atividade se o jogo realmente entrou agora (evita duplicar o
   // registro quando o jogo já estava na lista).
   if (inserted.length > 0) {
-    await db.insert(gameActivity).values({
+    await db.insert(activity).values({
       userId,
-      gameId: igdbId,
+      ...toActivitySnapshot(cachedGame),
       type: "added_to_list",
       metadata: { listId, listName: list.name },
     });

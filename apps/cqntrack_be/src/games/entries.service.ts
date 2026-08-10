@@ -9,9 +9,9 @@ import {
 } from "@cqntrack/shared";
 import { and, asc, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import type { createDb } from "../db/client";
-import { gameActivity, gameEntry } from "../db/schema";
+import { activity, gameEntry } from "../db/schema";
 import { withoutUndefined } from "../lib/without-undefined";
-import { getOrCacheGame, mapCachedGameToSummary } from "./games.service";
+import { type CachedGame, getOrCacheGame, mapCachedGameToSummary, toActivitySnapshot } from "./games.service";
 
 type Db = ReturnType<typeof createDb>;
 type GameEntryRow = typeof gameEntry.$inferSelect;
@@ -42,25 +42,26 @@ function toGameEntry(row: GameEntryRow): GameEntry {
 async function logGameEntryActivities(
   db: Db,
   userId: string,
-  gameId: number,
+  cachedGame: CachedGame,
   input: UpsertGameEntryRequest,
 ): Promise<void> {
-  const activities: (typeof gameActivity.$inferInsert)[] = [];
+  const snapshot = toActivitySnapshot(cachedGame);
+  const activities: (typeof activity.$inferInsert)[] = [];
 
   // Só loga quando um status real é definido — desmarcar (status: null),
   // como desfavoritar, não vira atividade no feed.
   if (input.status !== undefined && input.status !== null) {
-    activities.push({ userId, gameId, type: "status_changed", metadata: { status: input.status } });
+    activities.push({ userId, ...snapshot, type: "status_changed", metadata: { status: input.status } });
   }
   if (input.rating !== undefined && input.rating !== null) {
-    activities.push({ userId, gameId, type: "rated", metadata: { rating: input.rating } });
+    activities.push({ userId, ...snapshot, type: "rated", metadata: { rating: input.rating } });
   }
   if (input.review !== undefined && input.review !== null && input.review.trim() !== "") {
-    activities.push({ userId, gameId, type: "reviewed" });
+    activities.push({ userId, ...snapshot, type: "reviewed" });
   }
 
   if (activities.length > 0) {
-    await db.insert(gameActivity).values(activities);
+    await db.insert(activity).values(activities);
   }
 }
 
@@ -82,7 +83,7 @@ export async function upsertGameEntry(
   igdbId: number,
   input: UpsertGameEntryRequest,
 ): Promise<GameEntry> {
-  await getOrCacheGame(env, db, igdbId); // garante que a FK gameId existe
+  const cachedGame = await getOrCacheGame(env, db, igdbId); // garante que a FK gameId existe
 
   const existing = await db.query.gameEntry.findFirst({
     where: and(eq(gameEntry.userId, userId), eq(gameEntry.gameId, igdbId)),
@@ -103,7 +104,7 @@ export async function upsertGameEntry(
     throw new Error("Falha ao gravar a marcação do jogo");
   }
 
-  await logGameEntryActivities(db, userId, igdbId, input);
+  await logGameEntryActivities(db, userId, cachedGame, input);
 
   return toGameEntry(row);
 }
@@ -120,7 +121,7 @@ export async function setFavoriteSlot(
   slot: FavoriteSlotNumber,
   igdbId: number,
 ): Promise<GameEntry> {
-  await getOrCacheGame(env, db, igdbId);
+  const cachedGame = await getOrCacheGame(env, db, igdbId);
 
   await db
     .update(gameEntry)
@@ -143,7 +144,7 @@ export async function setFavoriteSlot(
     throw new Error("Falha ao definir o favorito");
   }
 
-  await db.insert(gameActivity).values({ userId, gameId: igdbId, type: "favorited" });
+  await db.insert(activity).values({ userId, ...toActivitySnapshot(cachedGame), type: "favorited" });
 
   return toGameEntry(row);
 }

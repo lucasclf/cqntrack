@@ -1,9 +1,9 @@
 import { AuthUserSchema, HealthResponseSchema } from "@cqntrack/shared";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { activityRouter } from "./activity/activity.routes";
 import { createAuth } from "./auth/auth";
 import { requireSession } from "./auth/require-session";
-import { activityRouter } from "./games/activity.routes";
 import { gamesRouter } from "./games/games.routes";
 import { listsRouter } from "./games/lists.routes";
 import { usersRouter } from "./users/users.routes";

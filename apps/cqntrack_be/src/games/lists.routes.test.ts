@@ -167,9 +167,9 @@ describe("/api/lists", () => {
     expect(secondAddRes.status).toBe(204);
     vi.unstubAllGlobals();
 
-    const activities = await createDb(env).query.gameActivity.findMany();
+    const activities = await createDb(env).query.activity.findMany();
     const addedToList = activities.filter(
-      (activity) => activity.type === "added_to_list" && activity.gameId === 802,
+      (item) => item.type === "added_to_list" && item.itemId === "802",
     );
     expect(addedToList).toHaveLength(1);
   });

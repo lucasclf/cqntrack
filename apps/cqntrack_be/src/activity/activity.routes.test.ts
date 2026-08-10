@@ -101,12 +101,18 @@ describe("/api/activity", () => {
     expect(body.nextCursor).toBeNull();
 
     // mais recente primeiro
-    expect(body.items[0]).toMatchObject({ type: "added_to_list", listId, listName: "Favoritos" });
-    expect(body.items[1]).toMatchObject({ type: "rated", rating: 4.5 });
-    expect(body.items[2]).toMatchObject({ type: "status_changed", status: "playing" });
+    expect(body.items[0]).toMatchObject({
+      type: "added_to_list",
+      mediaType: "games",
+      itemId: "902",
+      itemHref: "/jogos/902",
+      metadata: { listId, listName: "Favoritos" },
+    });
+    expect(body.items[1]).toMatchObject({ type: "rated", metadata: { rating: 4.5 } });
+    expect(body.items[2]).toMatchObject({ type: "status_changed", metadata: { status: "playing" } });
 
     for (const item of body.items) {
-      expect(item.game).toMatchObject({ name: expect.any(String) });
+      expect(item.itemTitle).toEqual(expect.any(String));
     }
   });
 

@@ -1,4 +1,4 @@
-import { GAME_ACTIVITY_TYPES, GAME_STATUSES } from "@cqntrack/shared";
+import { GAME_STATUSES } from "@cqntrack/shared";
 import { relations, sql } from "drizzle-orm";
 import { index, integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { user } from "./auth.schema";
@@ -113,30 +113,6 @@ export const gameListItem = sqliteTable(
   (table) => [uniqueIndex("game_list_item_list_game_unique").on(table.listId, table.gameId)],
 );
 
-// Log append-only — resolve a home (atividade recente) com precisão, sem
-// inferir "o que mudou" a partir de updatedAt (ambíguo quando status/nota/
-// review mudam juntos numa mesma chamada).
-export const gameActivity = sqliteTable(
-  "game_activity",
-  {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    gameId: integer("game_id")
-      .notNull()
-      .references(() => game.igdbId, { onDelete: "cascade" }),
-    type: text("type", { enum: GAME_ACTIVITY_TYPES }).notNull(),
-    metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown>>(),
-    createdAt: integer("created_at", { mode: "timestamp_ms" })
-      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-      .notNull(),
-  },
-  (table) => [index("game_activity_user_created_idx").on(table.userId, table.createdAt)],
-);
-
 export const gameRelations = relations(game, ({ many }) => ({
   entries: many(gameEntry),
   listItems: many(gameListItem),
@@ -155,9 +131,4 @@ export const gameListRelations = relations(gameList, ({ one, many }) => ({
 export const gameListItemRelations = relations(gameListItem, ({ one }) => ({
   list: one(gameList, { fields: [gameListItem.listId], references: [gameList.id] }),
   game: one(game, { fields: [gameListItem.gameId], references: [game.igdbId] }),
-}));
-
-export const gameActivityRelations = relations(gameActivity, ({ one }) => ({
-  user: one(user, { fields: [gameActivity.userId], references: [user.id] }),
-  game: one(game, { fields: [gameActivity.gameId], references: [game.igdbId] }),
 }));

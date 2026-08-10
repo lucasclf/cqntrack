@@ -246,9 +246,9 @@ describe("CRUD de marcação (/api/games/:igdbId/entry)", () => {
     const body = await res.json();
     expect(body).toMatchObject({ status: null, rating: 5 });
 
-    const activities = await createDb(env).query.gameActivity.findMany();
+    const activities = await createDb(env).query.activity.findMany();
     const statusChanged = activities.filter(
-      (activity) => activity.gameId === 605 && activity.type === "status_changed",
+      (item) => item.itemId === "605" && item.type === "status_changed",
     );
     expect(statusChanged).toHaveLength(1); // só o "playing" inicial, não o clear
   });

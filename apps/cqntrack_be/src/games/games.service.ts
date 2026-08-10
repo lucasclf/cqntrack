@@ -6,7 +6,20 @@ import { getGameById, searchGames as igdbSearchGames } from "../integrations/igd
 import { buildCoverUrl, type IgdbGame } from "../integrations/igdb/types";
 
 type Db = ReturnType<typeof createDb>;
-type CachedGame = typeof game.$inferSelect;
+export type CachedGame = typeof game.$inferSelect;
+
+// Campos de snapshot pra gravar na tabela genérica `activity` — jogos são a
+// única seção "mediaType" implementada até agora, mas o formato do snapshot
+// já é o mesmo que qualquer seção futura vai preencher.
+export function toActivitySnapshot(cachedGame: CachedGame) {
+  return {
+    mediaType: "games" as const,
+    itemId: String(cachedGame.igdbId),
+    itemTitle: cachedGame.name,
+    itemHref: `/jogos/${cachedGame.igdbId}`,
+    itemCoverUrl: cachedGame.coverImageId ? buildCoverUrl(cachedGame.coverImageId, "cover_big") : null,
+  };
+}
 
 export class GameNotFoundError extends Error {
   constructor(public readonly igdbId: number) {
