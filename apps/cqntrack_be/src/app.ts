@@ -6,6 +6,7 @@ import { requireSession } from "./auth/require-session";
 import { activityRouter } from "./games/activity.routes";
 import { gamesRouter } from "./games/games.routes";
 import { listsRouter } from "./games/lists.routes";
+import { usersRouter } from "./users/users.routes";
 
 export const app = new Hono<{ Bindings: Env }>();
 
@@ -39,3 +40,4 @@ app.get("/api/me", requireSession, (c) => {
 app.route("/api/games", gamesRouter);
 app.route("/api/lists", listsRouter);
 app.route("/api/activity", activityRouter);
+app.route("/api/users", usersRouter);

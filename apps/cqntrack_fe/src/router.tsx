@@ -7,6 +7,7 @@ import { MyLists } from "./games/MyLists";
 import { AppShell } from "./layouts/AppShell";
 import { Home } from "./Home";
 import { Login } from "./Login";
+import { PublicProfile } from "./profile/PublicProfile";
 import { RequireAuth } from "./routes/RequireAuth";
 import { Signup } from "./Signup";
 import { Unavailable } from "./Unavailable";
@@ -15,6 +16,7 @@ export const routes: RouteObject[] = [
   { path: "/login", element: <Login /> },
   { path: "/cadastro", element: <Signup /> },
   { path: "/esqueci-senha", element: <Unavailable /> },
+  { path: "/u/:username", element: <PublicProfile /> },
   {
     path: "/",
     element: <RequireAuth />,

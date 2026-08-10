@@ -197,3 +197,20 @@ export const ActivityFeedResponseSchema = z.object({
 });
 
 export type ActivityFeedResponse = z.infer<typeof ActivityFeedResponseSchema>;
+
+// Perfil público (/u/:username) — sem toggle de privacidade por item, tudo
+// que existe aqui já é público por padrão (decisão de produto já fechada).
+export const PublicProfileSchema = z.object({
+  username: z.string(),
+  displayUsername: z.string(),
+  memberSince: z.iso.datetime(),
+  stats: z.object({
+    total: z.number().int(),
+    completed: z.number().int(),
+    playing: z.number().int(),
+    platinum: z.number().int(),
+    favorites: z.number().int(),
+  }),
+});
+
+export type PublicProfile = z.infer<typeof PublicProfileSchema>;
