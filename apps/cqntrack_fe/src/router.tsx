@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate, type RouteObject } from "react-router";
 import { GameDetail } from "./games/GameDetail";
 import { GameSearch } from "./games/GameSearch";
+import { MyEntries } from "./games/MyEntries";
 import { AppShell } from "./layouts/AppShell";
 import { Home } from "./Home";
 import { Login } from "./Login";
@@ -22,9 +23,9 @@ export const routes: RouteObject[] = [
           { index: true, element: <Home /> },
           { path: "buscar", element: <GameSearch /> },
           { path: "jogos/:igdbId", element: <GameDetail /> },
-          // Marcações (Commit 10) e Listas (Commit 11) ainda não têm
-          // página própria — apontam pra Unavailable até lá.
-          { path: "marcacoes", element: <Unavailable /> },
+          { path: "marcacoes", element: <MyEntries /> },
+          // Listas (Commit 11) ainda não tem página própria — aponta pra
+          // Unavailable até lá.
           { path: "listas", element: <Unavailable /> },
         ],
       },

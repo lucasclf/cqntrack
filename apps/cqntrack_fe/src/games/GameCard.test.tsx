@@ -1,4 +1,4 @@
-import type { GameSummary } from "@cqntrack/shared";
+import type { GameEntry, GameSummary } from "@cqntrack/shared";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
@@ -14,10 +14,10 @@ const BASE_GAME: GameSummary = {
   rating: 92.76,
 };
 
-function renderCard(game: GameSummary) {
+function renderCard(game: GameSummary, entry?: GameEntry) {
   render(
     <MemoryRouter>
-      <GameCard game={game} />
+      <GameCard game={game} entry={entry} />
     </MemoryRouter>,
   );
 }
@@ -45,5 +45,21 @@ describe("GameCard", () => {
 
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
     expect(screen.getByText("Data desconhecida")).toBeInTheDocument();
+  });
+
+  it("mostra status, nota pessoal e selo de favorito quando há entry", () => {
+    renderCard(BASE_GAME, {
+      id: "1",
+      status: "completed",
+      rating: 4.5,
+      favorite: true,
+      platform: "PC",
+      review: null,
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    expect(screen.getByText("Finalizado")).toBeInTheDocument();
+    expect(screen.getByText("★ 4.5")).toBeInTheDocument();
+    expect(screen.getByLabelText("Favoritado")).toBeInTheDocument();
   });
 });
