@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { FavoriteSlotNumberSchema } from "./favorites";
 
 // Fonte única de verdade dos 5 status — importado tanto pelo schema Drizzle
 // (enum da coluna) quanto pelo z.enum abaixo.
@@ -49,17 +50,6 @@ export const GameDetailSchema = GameSummarySchema.extend({
 });
 
 export type GameDetail = z.infer<typeof GameDetailSchema>;
-
-export const FAVORITE_SLOTS = [1, 2, 3, 4] as const;
-
-export const FavoriteSlotNumberSchema = z.union([
-  z.literal(1),
-  z.literal(2),
-  z.literal(3),
-  z.literal(4),
-]);
-
-export type FavoriteSlotNumber = z.infer<typeof FavoriteSlotNumberSchema>;
 
 // Marcação do usuário para um jogo específico — sem o `game` embutido (quem
 // consome isso normalmente já sabe de qual jogo se trata pelo contexto da
