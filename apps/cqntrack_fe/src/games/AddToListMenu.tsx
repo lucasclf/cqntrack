@@ -32,6 +32,7 @@ export function AddToListMenu({ igdbId }: AddToListMenuProps) {
     try {
       await gamesClient.put(`/api/lists/${listId}/items/${igdbId}`);
       setAddedIds((current) => new Set(current).add(listId));
+      setOpen(false);
     } catch {
       setError("Falha ao adicionar o jogo à lista.");
     }

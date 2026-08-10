@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AddToListMenu } from "./AddToListMenu";
 
@@ -19,20 +19,25 @@ describe("AddToListMenu", () => {
     expect(getMock).not.toHaveBeenCalled();
   });
 
-  it("busca e mostra as listas ao abrir, e marca como adicionado ao clicar", async () => {
-    getMock.mockResolvedValue({ lists: [{ id: "1", name: "Quero jogar", description: null, itemCount: 0, createdAt: "", updatedAt: "" }] });
+  it("busca e mostra as listas ao abrir, adiciona ao clicar e fecha o submenu", async () => {
+    getMock.mockResolvedValue({ lists: [{ id: "1", name: "Backlog", description: null, itemCount: 0, createdAt: "", updatedAt: "" }] });
     putMock.mockResolvedValue(undefined);
     render(<AddToListMenu igdbId={1942} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Adicionar a uma lista" }));
 
-    expect(await screen.findByRole("button", { name: "Quero jogar" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Backlog" })).toBeInTheDocument();
     expect(getMock).toHaveBeenCalledWith("/api/lists");
 
-    fireEvent.click(screen.getByRole("button", { name: "Quero jogar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Backlog" }));
 
     expect(putMock).toHaveBeenCalledWith("/api/lists/1/items/1942");
-    expect(await screen.findByRole("button", { name: "✓ Quero jogar" })).toBeDisabled();
+    // O submenu fecha assim que a adição é confirmada.
+    await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());
+
+    // Reabrindo, a lista aparece marcada como já adicionada (e desabilitada).
+    fireEvent.click(screen.getByRole("button", { name: "Adicionar a uma lista" }));
+    expect(await screen.findByRole("button", { name: "✓ Backlog" })).toBeDisabled();
   });
 
   it("mostra mensagem quando o usuário ainda não tem listas", async () => {
