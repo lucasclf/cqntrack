@@ -53,12 +53,8 @@ export function GameDetail() {
     try {
       const entry = await gamesClient.put<GameEntry>(`/api/games/${igdbId}/entry`, patch);
       setDetail((current) => (current ? { ...current, entry } : current));
-    } catch (error) {
-      setSaveError(
-        error instanceof GamesApiError && error.status === 409
-          ? "Você já tem 4 jogos favoritos — desfavorite um antes de favoritar outro."
-          : "Falha ao salvar sua marcação. Tente novamente.",
-      );
+    } catch {
+      setSaveError("Falha ao salvar sua marcação. Tente novamente.");
     }
   }
 
@@ -141,19 +137,7 @@ export function GameDetail() {
 
         <AddToListMenu igdbId={game.igdbId} />
 
-        <div className={styles.row}>
-          <StarRating value={entry?.rating ?? null} onChange={(rating) => savePatch({ rating })} />
-          <button
-            type="button"
-            className={
-              entry?.favorite ? `${styles.favoriteBtn} ${styles.favoriteActive}` : styles.favoriteBtn
-            }
-            aria-pressed={entry?.favorite ?? false}
-            onClick={() => savePatch({ favorite: !(entry?.favorite ?? false) })}
-          >
-            {entry?.favorite ? "★ Favoritado" : "☆ Favoritar"}
-          </button>
-        </div>
+        <StarRating value={entry?.rating ?? null} onChange={(rating) => savePatch({ rating })} />
 
         <fieldset className={styles.field}>
           <legend>Plataformas jogadas</legend>

@@ -107,7 +107,7 @@ export function PublicProfile() {
           </div>
         </dl>
 
-        <FavoritesSection entriesEndpoint={`/api/users/${username}/entries`} />
+        <FavoritesSection favoritesEndpoint={`/api/users/${username}/favorites`} />
 
         {lists.lists.length > 0 && (
           <section>

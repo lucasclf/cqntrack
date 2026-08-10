@@ -75,7 +75,16 @@ describe("/api/users", () => {
       {
         method: "PUT",
         headers: { cookie, "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "completed", favorite: true }),
+        body: JSON.stringify({ status: "completed" }),
+      },
+      env,
+    );
+    await app.request(
+      "/api/games/favorites/1",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ igdbId: 701 }),
       },
       env,
     );
@@ -115,5 +124,27 @@ describe("/api/users", () => {
       env,
     );
     expect(otherUserListDetailRes.status).toBe(404);
+  });
+
+  it("devolve os 4 slots de favoritos, sem exigir sessão", async () => {
+    const { cookie, username } = await createAuthenticatedUser(app, env);
+    stubIgdbFetchOnce([igdbGame(702, "Celeste")]);
+    await app.request(
+      "/api/games/favorites/1",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ igdbId: 702 }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const res = await app.request(`/api/users/${username}/favorites`, undefined, env);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { slots: Array<{ slot: number; entry: unknown }> };
+    expect(body.slots).toHaveLength(4);
+    expect(body.slots[0]).toMatchObject({ slot: 1, entry: { game: { igdbId: 702 } } });
+    expect(body.slots[1]).toEqual({ slot: 2, entry: null });
   });
 });

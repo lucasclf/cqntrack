@@ -1,22 +1,25 @@
 import {
+  FAVORITE_SLOTS,
+  FavoritesResponseSchema,
   GameDetailResponseSchema,
   GameEntrySchema,
   ListGameEntriesQuerySchema,
   PaginatedGameEntriesResponseSchema,
   SearchGamesQuerySchema,
   SearchGamesResponseSchema,
-  SetFavoriteRequestSchema,
+  SetFavoriteSlotRequestSchema,
   UpsertGameEntryRequestSchema,
+  type FavoriteSlotNumber,
 } from "@cqntrack/shared";
 import { Hono } from "hono";
 import { type AuthedEnv, requireSession } from "../auth/require-session";
 import { createDb } from "../db/client";
 import {
   deleteGameEntry,
+  getFavoriteSlots,
   getGameEntryForUser,
   listGameEntries,
-  setGameFavorite,
-  TooManyFavoritesError,
+  setFavoriteSlot,
   upsertGameEntry,
 } from "./entries.service";
 import { GameNotFoundError, getOrCacheGame, mapCachedGameToSummary, searchGamesForUser } from "./games.service";
@@ -30,8 +33,13 @@ function parseIgdbId(c: { req: { param: (name: string) => string } }): number | 
   return Number.isInteger(igdbId) ? igdbId : null;
 }
 
-// Rotas estáticas (/search, /entries) precisam vir ANTES de /:igdbId — senão o
-// parâmetro dinâmico captura o segmento literal.
+function parseFavoriteSlot(c: { req: { param: (name: string) => string } }): FavoriteSlotNumber | null {
+  const slot = Number(c.req.param("slot"));
+  return FAVORITE_SLOTS.includes(slot as FavoriteSlotNumber) ? (slot as FavoriteSlotNumber) : null;
+}
+
+// Rotas estáticas (/search, /entries, /favorites) precisam vir ANTES de
+// /:igdbId — senão o parâmetro dinâmico captura o segmento literal.
 gamesRouter.get("/search", async (c) => {
   const parsed = SearchGamesQuerySchema.safeParse({
     q: c.req.query("q"),
@@ -64,6 +72,36 @@ gamesRouter.get("/entries", async (c) => {
     total,
   });
   return c.json(body);
+});
+
+gamesRouter.get("/favorites", async (c) => {
+  const db = createDb(c.env);
+  const slots = await getFavoriteSlots(db, c.get("userId"));
+  return c.json(FavoritesResponseSchema.parse({ slots }));
+});
+
+gamesRouter.put("/favorites/:slot", async (c) => {
+  const slot = parseFavoriteSlot(c);
+  if (slot === null) {
+    return c.json({ error: "invalid_slot" }, 400);
+  }
+
+  const json = await c.req.json().catch(() => null);
+  const parsed = SetFavoriteSlotRequestSchema.safeParse(json);
+  if (!parsed.success) {
+    return c.json({ error: "invalid_body" }, 400);
+  }
+
+  const db = createDb(c.env);
+  try {
+    const entry = await setFavoriteSlot(c.env, db, c.get("userId"), slot, parsed.data.igdbId);
+    return c.json(GameEntrySchema.parse(entry));
+  } catch (error) {
+    if (error instanceof GameNotFoundError) {
+      return c.json({ error: "game_not_found" }, 404);
+    }
+    throw error;
+  }
 });
 
 gamesRouter.get("/:igdbId", async (c) => {
@@ -110,9 +148,6 @@ gamesRouter.put("/:igdbId/entry", async (c) => {
     if (error instanceof GameNotFoundError) {
       return c.json({ error: "game_not_found" }, 404);
     }
-    if (error instanceof TooManyFavoritesError) {
-      return c.json({ error: "too_many_favorites" }, 409);
-    }
     throw error;
   }
 });
@@ -126,31 +161,4 @@ gamesRouter.delete("/:igdbId/entry", async (c) => {
   const db = createDb(c.env);
   await deleteGameEntry(db, c.get("userId"), igdbId);
   return c.body(null, 204);
-});
-
-gamesRouter.patch("/:igdbId/favorite", async (c) => {
-  const igdbId = parseIgdbId(c);
-  if (igdbId === null) {
-    return c.json({ error: "invalid_id" }, 400);
-  }
-
-  const json = await c.req.json().catch(() => null);
-  const parsed = SetFavoriteRequestSchema.safeParse(json);
-  if (!parsed.success) {
-    return c.json({ error: "invalid_body" }, 400);
-  }
-
-  const db = createDb(c.env);
-  try {
-    const entry = await setGameFavorite(c.env, db, c.get("userId"), igdbId, parsed.data.favorite);
-    return c.json(GameEntrySchema.parse(entry));
-  } catch (error) {
-    if (error instanceof GameNotFoundError) {
-      return c.json({ error: "game_not_found" }, 404);
-    }
-    if (error instanceof TooManyFavoritesError) {
-      return c.json({ error: "too_many_favorites" }, 409);
-    }
-    throw error;
-  }
 });

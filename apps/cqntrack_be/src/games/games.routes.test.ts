@@ -166,7 +166,7 @@ describe("GET /api/games/:igdbId", () => {
   });
 });
 
-describe("CRUD de marcação (/api/games/:igdbId/entry, /favorite)", () => {
+describe("CRUD de marcação (/api/games/:igdbId/entry)", () => {
   beforeEach(async () => {
     resetIgdbTokenMemoryCache();
     resetRateLimiter();
@@ -189,7 +189,7 @@ describe("CRUD de marcação (/api/games/:igdbId/entry, /favorite)", () => {
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toMatchObject({ status: "playing", platforms: ["PC"], favorite: false, rating: null });
+    expect(body).toMatchObject({ status: "playing", platforms: ["PC"], favoriteSlot: null, rating: null });
     vi.unstubAllGlobals();
   });
 
@@ -278,73 +278,123 @@ describe("CRUD de marcação (/api/games/:igdbId/entry, /favorite)", () => {
     await expect(detailRes.json()).resolves.toMatchObject({ entry: null });
   });
 
-  it("PATCH /favorite marca como favorito e cria a marcação se ainda não existir", async () => {
-    const { cookie } = await createAuthenticatedUser(app, env);
-    stubIgdbFetchOnce([igdbGame(604, "Disco Elysium")]);
+});
 
-    const res = await app.request(
-      "/api/games/604/favorite",
-      {
-        method: "PATCH",
-        headers: { cookie, "Content-Type": "application/json" },
-        body: JSON.stringify({ favorite: true }),
-      },
-      env,
-    );
-
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body).toMatchObject({ favorite: true, status: null });
-    vi.unstubAllGlobals();
+describe("GET/PUT /api/games/favorites", () => {
+  beforeEach(async () => {
+    resetIgdbTokenMemoryCache();
+    resetRateLimiter();
+    await createDb(env).delete(igdbToken);
   });
 
-  it("bloqueia o 5º favorito com 409, mas permite reenviar favorite:true pro que já é", async () => {
+  it("sem sessão retorna 401 tanto pra GET quanto pra PUT", async () => {
+    const getRes = await app.request("/api/games/favorites", undefined, env);
+    expect(getRes.status).toBe(401);
+
+    const putRes = await app.request(
+      "/api/games/favorites/1",
+      { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ igdbId: 1 }) },
+      env,
+    );
+    expect(putRes.status).toBe(401);
+  });
+
+  it("GET começa com os 4 slots vazios", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
 
-    stubIgdbFetchOnce(
-      [igdbGame(610, "Jogo A")],
-      [igdbGame(611, "Jogo B")],
-      [igdbGame(612, "Jogo C")],
-      [igdbGame(613, "Jogo D")],
-      [igdbGame(614, "Jogo E")],
-    );
+    const res = await app.request("/api/games/favorites", { headers: { cookie } }, env);
 
-    for (const igdbId of [610, 611, 612, 613]) {
-      const res = await app.request(
-        `/api/games/${igdbId}/entry`,
-        {
-          method: "PUT",
-          headers: { cookie, "Content-Type": "application/json" },
-          body: JSON.stringify({ favorite: true }),
-        },
-        env,
-      );
-      expect(res.status).toBe(200);
-    }
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { slots: Array<{ slot: number; entry: unknown }> };
+    expect(body.slots).toEqual([
+      { slot: 1, entry: null },
+      { slot: 2, entry: null },
+      { slot: 3, entry: null },
+      { slot: 4, entry: null },
+    ]);
+  });
 
-    // Reenviar favorite: true pro primeiro (já favoritado) não conta contra o limite.
-    const repeatRes = await app.request(
-      "/api/games/610/entry",
+  it("PUT /favorites/:slot preenche um slot e reflete no GET", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubIgdbFetchOnce([igdbGame(620, "Disco Elysium")]);
+
+    const putRes = await app.request(
+      "/api/games/favorites/2",
       {
         method: "PUT",
         headers: { cookie, "Content-Type": "application/json" },
-        body: JSON.stringify({ favorite: true }),
+        body: JSON.stringify({ igdbId: 620 }),
       },
       env,
     );
-    expect(repeatRes.status).toBe(200);
-
-    const fifthRes = await app.request(
-      "/api/games/614/entry",
-      {
-        method: "PUT",
-        headers: { cookie, "Content-Type": "application/json" },
-        body: JSON.stringify({ favorite: true }),
-      },
-      env,
-    );
-    expect(fifthRes.status).toBe(409);
+    expect(putRes.status).toBe(200);
+    const putBody = await putRes.json();
+    expect(putBody).toMatchObject({ favoriteSlot: 2 });
     vi.unstubAllGlobals();
+
+    const getRes = await app.request("/api/games/favorites", { headers: { cookie } }, env);
+    const getBody = (await getRes.json()) as { slots: Array<{ slot: number; entry: { game: { igdbId: number } } | null }> };
+    expect(getBody.slots[1]).toMatchObject({ slot: 2, entry: { game: { igdbId: 620 } } });
+    expect(getBody.slots[0]).toEqual({ slot: 1, entry: null });
+  });
+
+  it("trocar um slot já ocupado libera o jogo que estava nele", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubIgdbFetchOnce([igdbGame(621, "Hades")], [igdbGame(622, "Celeste")]);
+
+    await app.request(
+      "/api/games/favorites/1",
+      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ igdbId: 621 }) },
+      env,
+    );
+    await app.request(
+      "/api/games/favorites/1",
+      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ igdbId: 622 }) },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const getRes = await app.request("/api/games/favorites", { headers: { cookie } }, env);
+    const getBody = (await getRes.json()) as { slots: Array<{ slot: number; entry: { game: { igdbId: number } } | null }> };
+    expect(getBody.slots[0]).toMatchObject({ slot: 1, entry: { game: { igdbId: 622 } } });
+
+    const entryRes = await app.request("/api/games/621", { headers: { cookie } }, env);
+    const entryBody = (await entryRes.json()) as { entry: { favoriteSlot: number | null } | null };
+    expect(entryBody.entry?.favoriteSlot ?? null).toBeNull();
+  });
+
+  it("escolher o mesmo jogo pra outro slot move-o (não duplica em dois slots)", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubIgdbFetchOnce([igdbGame(623, "Outer Wilds")]);
+
+    await app.request(
+      "/api/games/favorites/1",
+      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ igdbId: 623 }) },
+      env,
+    );
+    await app.request(
+      "/api/games/favorites/3",
+      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ igdbId: 623 }) },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const getRes = await app.request("/api/games/favorites", { headers: { cookie } }, env);
+    const getBody = (await getRes.json()) as { slots: Array<{ slot: number; entry: unknown }> };
+    expect(getBody.slots[0]).toEqual({ slot: 1, entry: null });
+    expect(getBody.slots[2]?.entry).not.toBeNull();
+  });
+
+  it("slot inválido (fora de 1-4) retorna 400", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+
+    const res = await app.request(
+      "/api/games/favorites/5",
+      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ igdbId: 1 }) },
+      env,
+    );
+
+    expect(res.status).toBe(400);
   });
 });
 

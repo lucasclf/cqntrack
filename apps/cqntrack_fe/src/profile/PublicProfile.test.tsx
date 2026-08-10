@@ -44,7 +44,7 @@ describe("PublicProfile", () => {
       if (path === "/api/users/gamer_1") return Promise.resolve(PROFILE);
       if (path === "/api/users/gamer_1/entries") {
         return Promise.resolve({
-          items: [{ id: "1", status: "playing", rating: null, favorite: false, platforms: null, review: null, updatedAt: "2026-01-01T00:00:00.000Z", game: GAME }],
+          items: [{ id: "1", status: "playing", rating: null, favoriteSlot: null, platforms: null, review: null, updatedAt: "2026-01-01T00:00:00.000Z", game: GAME }],
           page: 1,
           pageSize: 24,
           total: 1,
@@ -52,6 +52,16 @@ describe("PublicProfile", () => {
       }
       if (path === "/api/users/gamer_1/lists") {
         return Promise.resolve({ lists: [{ id: "l1", name: "Favoritos", description: null, itemCount: 3, createdAt: "", updatedAt: "" }] });
+      }
+      if (path === "/api/users/gamer_1/favorites") {
+        return Promise.resolve({
+          slots: [
+            { slot: 1, entry: null },
+            { slot: 2, entry: null },
+            { slot: 3, entry: null },
+            { slot: 4, entry: null },
+          ],
+        });
       }
       return Promise.reject(new Error("rota inesperada: " + path));
     });

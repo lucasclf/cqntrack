@@ -58,6 +58,17 @@ export const GameDetailSchema = GameSummarySchema.extend({
 
 export type GameDetail = z.infer<typeof GameDetailSchema>;
 
+export const FAVORITE_SLOTS = [1, 2, 3, 4] as const;
+
+export const FavoriteSlotNumberSchema = z.union([
+  z.literal(1),
+  z.literal(2),
+  z.literal(3),
+  z.literal(4),
+]);
+
+export type FavoriteSlotNumber = z.infer<typeof FavoriteSlotNumberSchema>;
+
 // Marcação do usuário para um jogo específico — sem o `game` embutido (quem
 // consome isso normalmente já sabe de qual jogo se trata pelo contexto da
 // chamada). Ver GameEntryWithGameSchema para o caso de listas/feeds.
@@ -65,7 +76,9 @@ export const GameEntrySchema = z.object({
   id: z.string(),
   status: GameStatusSchema.nullable(),
   rating: z.number().nullable(),
-  favorite: z.boolean(),
+  // Favoritar só acontece pelos 4 slots fixos da home (ver FavoritesResponseSchema)
+  // — null = esse jogo não está em nenhum dos 4 favoritos do usuário.
+  favoriteSlot: FavoriteSlotNumberSchema.nullable(),
   // Um jogo pode ter sido jogado em mais de uma plataforma — lista, não texto
   // único. null = nenhuma selecionada.
   platforms: z.array(z.string()).nullable(),
@@ -93,19 +106,34 @@ export const UpsertGameEntryRequestSchema = z.object({
   rating: z.number().min(0).max(5).multipleOf(0.5).nullable().optional(),
   review: z.string().max(2000).nullable().optional(),
   platforms: z.array(z.string().min(1).max(60)).max(10).nullable().optional(),
-  favorite: z.boolean().optional(),
 });
 
 export type UpsertGameEntryRequest = z.infer<typeof UpsertGameEntryRequestSchema>;
 
-export const SetFavoriteRequestSchema = z.object({
-  favorite: z.boolean(),
+// Corpo de PUT /api/games/favorites/:slot — o slot vai na URL, aqui só o
+// jogo escolhido.
+export const SetFavoriteSlotRequestSchema = z.object({
+  igdbId: z.number().int(),
 });
 
-export type SetFavoriteRequest = z.infer<typeof SetFavoriteRequestSchema>;
+export type SetFavoriteSlotRequest = z.infer<typeof SetFavoriteSlotRequestSchema>;
+
+export const FavoriteSlotSchema = z.object({
+  slot: FavoriteSlotNumberSchema,
+  entry: GameEntryWithGameSchema.nullable(),
+});
+
+export type FavoriteSlot = z.infer<typeof FavoriteSlotSchema>;
+
+export const FavoritesResponseSchema = z.object({
+  slots: z.array(FavoriteSlotSchema).length(4),
+});
+
+export type FavoritesResponse = z.infer<typeof FavoritesResponseSchema>;
 
 // "platform" (singular) continua sendo o nome do campo de ordenação/filtro —
 // filtra/ordena por conter essa plataforma na lista `platforms` da entry.
+// "favorite" ordena/filtra por favoriteSlot (null = não favoritado).
 export const GAME_ENTRY_SORT_FIELDS = ["status", "rating", "favorite", "platform", "updatedAt"] as const;
 
 export const ListGameEntriesQuerySchema = z.object({

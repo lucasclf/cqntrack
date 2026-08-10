@@ -43,7 +43,10 @@ export const gameEntry = sqliteTable(
     // Opcional: null = jogo sem status marcado (usuário pode desmarcar).
     status: text("status", { enum: GAME_STATUSES }),
     rating: real("rating"),
-    favorite: integer("favorite", { mode: "boolean" }).notNull().default(false),
+    // 1-4, null = não é favorito. Favoritar só acontece pelos 4 slots fixos
+    // da home (PUT /api/games/favorites/:slot) — não é mais um boolean solto
+    // editável em qualquer marcação.
+    favoriteSlot: integer("favorite_slot"),
     // Lista — um jogo pode ter sido jogado em mais de uma plataforma.
     platforms: text("platforms", { mode: "json" }).$type<string[]>(),
     review: text("review"),
@@ -58,7 +61,11 @@ export const gameEntry = sqliteTable(
   (table) => [
     uniqueIndex("game_entry_user_game_unique").on(table.userId, table.gameId),
     index("game_entry_user_status_idx").on(table.userId, table.status),
-    index("game_entry_user_favorite_idx").on(table.userId, table.favorite),
+    // Parcial: só entra no índice quem tem um slot — garante no banco que um
+    // usuário nunca tem dois jogos no mesmo slot (1-4) ao mesmo tempo.
+    uniqueIndex("game_entry_user_favorite_slot_unique")
+      .on(table.userId, table.favoriteSlot)
+      .where(sql`${table.favoriteSlot} is not null`),
   ],
 );
 

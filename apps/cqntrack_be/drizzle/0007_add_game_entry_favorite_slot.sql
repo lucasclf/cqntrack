@@ -1,0 +1,2 @@
+ALTER TABLE `game_entry` ADD `favorite_slot` integer;--> statement-breakpoint
+CREATE UNIQUE INDEX `game_entry_user_favorite_slot_unique` ON `game_entry` (`user_id`,`favorite_slot`) WHERE "game_entry"."favorite_slot" is not null;

@@ -19,17 +19,24 @@ const GAME = {
   rating: null,
 };
 
+const EMPTY_SLOTS = {
+  slots: [
+    { slot: 1, entry: null },
+    { slot: 2, entry: null },
+    { slot: 3, entry: null },
+    { slot: 4, entry: null },
+  ],
+};
+
 describe("Home", () => {
   beforeEach(() => {
     getMock.mockReset();
   });
 
-  it("mostra o título e a atividade recente do usuário", async () => {
+  it("mostra o título, os slots de favoritos e a atividade recente do usuário", async () => {
     getMock.mockImplementation((path: string) => {
       if (path === "/api/activity") return Promise.resolve({ items: [], nextCursor: null });
-      if (path.startsWith("/api/games/entries")) {
-        return Promise.resolve({ items: [], page: 1, pageSize: 4, total: 0 });
-      }
+      if (path === "/api/games/favorites") return Promise.resolve(EMPTY_SLOTS);
       return Promise.reject(new Error("rota inesperada: " + path));
     });
     render(
@@ -40,29 +47,34 @@ describe("Home", () => {
 
     expect(screen.getByRole("heading", { name: "cqntrack" })).toBeInTheDocument();
     expect(await screen.findByText(/Nenhuma atividade ainda/)).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Adicionar favorito 1" })).toBeInTheDocument();
     expect(getMock).toHaveBeenCalledWith("/api/activity");
+    expect(getMock).toHaveBeenCalledWith("/api/games/favorites");
   });
 
-  it("mostra a seção de favoritos quando o usuário tem jogos favoritados", async () => {
+  it("mostra os jogos já favoritados nos respectivos slots", async () => {
     getMock.mockImplementation((path: string) => {
       if (path === "/api/activity") return Promise.resolve({ items: [], nextCursor: null });
-      if (path.startsWith("/api/games/entries")) {
+      if (path === "/api/games/favorites") {
         return Promise.resolve({
-          items: [
+          slots: [
             {
-              id: "1",
-              status: null,
-              rating: null,
-              favorite: true,
-              platforms: null,
-              review: null,
-              updatedAt: "2026-01-01T00:00:00.000Z",
-              game: GAME,
+              slot: 1,
+              entry: {
+                id: "1",
+                status: null,
+                rating: null,
+                favoriteSlot: 1,
+                platforms: null,
+                review: null,
+                updatedAt: "2026-01-01T00:00:00.000Z",
+                game: GAME,
+              },
             },
+            { slot: 2, entry: null },
+            { slot: 3, entry: null },
+            { slot: 4, entry: null },
           ],
-          page: 1,
-          pageSize: 4,
-          total: 1,
         });
       }
       return Promise.reject(new Error("rota inesperada: " + path));
@@ -73,8 +85,7 @@ describe("Home", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole("heading", { name: "Favoritos" })).toBeInTheDocument();
-    expect(screen.getByText("The Witcher 3: Wild Hunt")).toBeInTheDocument();
-    expect(getMock).toHaveBeenCalledWith("/api/games/entries?favorite=true&pageSize=4");
+    expect(await screen.findByText("The Witcher 3: Wild Hunt")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Trocar favorito 1" })).toBeInTheDocument();
   });
 });

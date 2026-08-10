@@ -15,7 +15,7 @@ const BASE_GAME: GameSummary = {
 };
 
 function renderCard(game: GameSummary, entry?: GameEntry) {
-  render(
+  return render(
     <MemoryRouter>
       <GameCard game={game} entry={entry} />
     </MemoryRouter>,
@@ -52,7 +52,7 @@ describe("GameCard", () => {
       id: "1",
       status: "completed",
       rating: 4.5,
-      favorite: true,
+      favoriteSlot: 2,
       platforms: ["PC"],
       review: null,
       updatedAt: "2026-01-01T00:00:00.000Z",
@@ -61,5 +61,21 @@ describe("GameCard", () => {
     expect(screen.getByText("Finalizado")).toBeInTheDocument();
     expect(screen.getByText("★ 4.5")).toBeInTheDocument();
     expect(screen.getByLabelText("Favoritado")).toBeInTheDocument();
+  });
+
+  it("reserva a linha de status/nota mesmo quando a entry não tem nenhum dos dois", () => {
+    // Favoritar não define status nem nota — sem isso, esse card fica mais
+    // baixo que os vizinhos que têm status/nota, quebrando o grid (bug real).
+    const { container } = renderCard(BASE_GAME, {
+      id: "1",
+      status: null,
+      rating: null,
+      favoriteSlot: 1,
+      platforms: null,
+      review: null,
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    expect(container.querySelector("p:last-child")).toBeEmptyDOMElement();
   });
 });

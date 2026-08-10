@@ -1,6 +1,17 @@
+/* Altura fixa em pixel pro card inteiro (não aspect-ratio, não %) — é o
+   jeito que realmente garante o mesmo tamanho em qualquer grid que use
+   este componente, sem depender de largura de coluna, stretch do grid
+   ou peculiaridade de layout entre navegadores. */
 .card {
   display: flex;
   flex-direction: column;
+  /* min-width:0 anula o min-width:auto padrão de item flex/grid — sem
+     isso, uma capa com dimensão intrínseca grande (comum em jogos
+     antigos) força a coluna inteira do grid a alargar, mesmo com
+     width:100% na imagem. */
+  min-width: 0;
+  width: 100%;
+  height: 302px;
   border-radius: var(--radius-lg);
   overflow: hidden;
   background: var(--panel-bg);
@@ -15,13 +26,16 @@
 
 .coverWrap {
   position: relative;
-  aspect-ratio: 3 / 4;
+  height: 200px;
+  min-width: 0;
+  flex-shrink: 0;
   background: var(--input-bg);
 }
 
 .cover {
   width: 100%;
   height: 100%;
+  min-width: 0;
   object-fit: cover;
   display: block;
 }

@@ -24,7 +24,7 @@ export function GameCard({ game, entry }: GameCardProps) {
           <div className={styles.coverPlaceholder} aria-hidden="true" />
         )}
         {game.rating !== null && <span className={styles.ratingBadge}>{Math.round(game.rating)}</span>}
-        {entry?.favorite && (
+        {entry?.favoriteSlot != null && (
           <span className={styles.favoriteBadge} aria-label="Favoritado">
             ♥
           </span>
@@ -37,7 +37,10 @@ export function GameCard({ game, entry }: GameCardProps) {
           {game.platforms.length > 0 &&
             ` · ${game.platforms[0]}${extraPlatforms > 0 ? ` +${extraPlatforms}` : ""}`}
         </p>
-        {entry && (entry.status || entry.rating !== null) && (
+        {/* Sempre reserva a linha quando há entry, com status/nota ou vazia —
+            senão os cards sem nenhum dos dois ficam mais baixos que os
+            vizinhos que têm, quebrando o alinhamento da fileira no grid. */}
+        {entry && (
           <p className={styles.entryMeta}>
             {entry.status && <span className={styles.statusPill}>{GAME_STATUS_LABELS[entry.status]}</span>}
             {entry.rating !== null && (

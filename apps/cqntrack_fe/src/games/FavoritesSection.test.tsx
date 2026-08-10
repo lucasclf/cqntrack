@@ -19,10 +19,21 @@ const GAME = {
   rating: null,
 };
 
-function renderSection(entriesEndpoint = "/api/games/entries") {
-  render(
+const ENTRY = {
+  id: "1",
+  status: null,
+  rating: null,
+  favoriteSlot: 1,
+  platforms: null,
+  review: null,
+  updatedAt: "2026-01-01T00:00:00.000Z",
+  game: GAME,
+};
+
+function renderSection(favoritesEndpoint = "/api/users/gamer_1/favorites") {
+  return render(
     <MemoryRouter>
-      <FavoritesSection entriesEndpoint={entriesEndpoint} />
+      <FavoritesSection favoritesEndpoint={favoritesEndpoint} />
     </MemoryRouter>,
   );
 }
@@ -32,56 +43,40 @@ describe("FavoritesSection", () => {
     getMock.mockReset();
   });
 
-  it("busca com favorite=true&pageSize=4 e mostra os jogos favoritados", async () => {
+  it("busca no endpoint informado e mostra só os slots preenchidos", async () => {
     getMock.mockResolvedValue({
-      items: [
-        {
-          id: "1",
-          status: null,
-          rating: null,
-          favorite: true,
-          platforms: null,
-          review: null,
-          updatedAt: "2026-01-01T00:00:00.000Z",
-          game: GAME,
-        },
+      slots: [
+        { slot: 1, entry: ENTRY },
+        { slot: 2, entry: null },
+        { slot: 3, entry: null },
+        { slot: 4, entry: null },
       ],
-      page: 1,
-      pageSize: 4,
-      total: 1,
     });
     renderSection();
 
     expect(await screen.findByRole("heading", { name: "Favoritos" })).toBeInTheDocument();
     expect(screen.getByText("The Witcher 3: Wild Hunt")).toBeInTheDocument();
-    expect(getMock).toHaveBeenCalledWith("/api/games/entries?favorite=true&pageSize=4");
+    expect(getMock).toHaveBeenCalledWith("/api/users/gamer_1/favorites");
   });
 
-  it("usa o endpoint público quando informado", async () => {
-    getMock.mockResolvedValue({ items: [], page: 1, pageSize: 4, total: 0 });
-    renderSection("/api/users/gamer_1/entries");
+  it("não renderiza nada quando todos os slots estão vazios", async () => {
+    getMock.mockResolvedValue({
+      slots: [
+        { slot: 1, entry: null },
+        { slot: 2, entry: null },
+        { slot: 3, entry: null },
+        { slot: 4, entry: null },
+      ],
+    });
+    const { container } = renderSection();
 
-    expect(getMock).toHaveBeenCalledWith("/api/users/gamer_1/entries?favorite=true&pageSize=4");
-  });
-
-  it("não renderiza nada quando não há favoritos", () => {
-    getMock.mockResolvedValue({ items: [], page: 1, pageSize: 4, total: 0 });
-    const { container } = render(
-      <MemoryRouter>
-        <FavoritesSection entriesEndpoint="/api/games/entries" />
-      </MemoryRouter>,
-    );
-
+    await waitFor(() => expect(getMock).toHaveBeenCalled());
     expect(container).toBeEmptyDOMElement();
   });
 
   it("não renderiza nada quando a busca falha", async () => {
     getMock.mockRejectedValue(new Error("falha de rede"));
-    const { container } = render(
-      <MemoryRouter>
-        <FavoritesSection entriesEndpoint="/api/games/entries" />
-      </MemoryRouter>,
-    );
+    const { container } = renderSection();
 
     await waitFor(() => expect(getMock).toHaveBeenCalled());
     expect(container).toBeEmptyDOMElement();

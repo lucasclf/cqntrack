@@ -13,7 +13,7 @@ const ENTRY = {
   id: "1",
   status: "playing" as const,
   rating: 4,
-  favorite: false,
+  favoriteSlot: null,
   platforms: ["PC"],
   review: null,
   updatedAt: "2026-01-01T00:00:00.000Z",

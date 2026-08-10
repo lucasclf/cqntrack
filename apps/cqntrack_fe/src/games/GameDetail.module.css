@@ -77,28 +77,6 @@
   gap: 16px;
 }
 
-.row {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.favoriteBtn {
-  padding: 8px 14px;
-  border-radius: var(--radius);
-  border: 1px solid var(--input-border);
-  background: var(--input-bg);
-  color: var(--text-secondary);
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.favoriteActive {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
 .field {
   display: flex;
   flex-direction: column;

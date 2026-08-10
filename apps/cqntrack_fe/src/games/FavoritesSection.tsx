@@ -1,32 +1,31 @@
-import type { GameEntryWithGame, PaginatedGameEntriesResponse } from "@cqntrack/shared";
+import type { FavoritesResponse } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { gamesClient } from "../lib/games-client";
 import { GameCard } from "./GameCard";
 import styles from "./FavoritesSection.module.css";
 
 interface FavoritesSectionProps {
-  // "/api/games/entries" (próprio usuário) ou "/api/users/:username/entries"
-  // (perfil público) — mesmo formato de resposta nos dois casos.
-  entriesEndpoint: string;
+  // "/api/users/:username/favorites" — leitura pública, sem interação (a
+  // edição dos slots só existe na própria home, via FavoriteSlots).
+  favoritesEndpoint: string;
 }
 
 type LoadStatus = "loading" | "ready" | "error";
 
-// Favoritos são limitados a 4 por usuário (MAX_FAVORITE_GAMES no backend) —
-// cabem numa fileira só, sem paginação. Seção discreta: se falhar ou não
-// houver nenhum favorito, some sem atrapalhar o resto da página.
-export function FavoritesSection({ entriesEndpoint }: FavoritesSectionProps) {
-  const [items, setItems] = useState<GameEntryWithGame[]>([]);
+// Só mostra os slots preenchidos — diferente de FavoriteSlots (home,
+// interativo), aqui não faz sentido mostrar slot vazio pro visitante.
+export function FavoritesSection({ favoritesEndpoint }: FavoritesSectionProps) {
+  const [data, setData] = useState<FavoritesResponse | null>(null);
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
 
   useEffect(() => {
     let cancelled = false;
 
     gamesClient
-      .get<PaginatedGameEntriesResponse>(`${entriesEndpoint}?favorite=true&pageSize=4`)
-      .then((data) => {
+      .get<FavoritesResponse>(favoritesEndpoint)
+      .then((res) => {
         if (!cancelled) {
-          setItems(data.items);
+          setData(res);
           setLoadStatus("ready");
         }
       })
@@ -39,9 +38,14 @@ export function FavoritesSection({ entriesEndpoint }: FavoritesSectionProps) {
     return () => {
       cancelled = true;
     };
-  }, [entriesEndpoint]);
+  }, [favoritesEndpoint]);
 
-  if (loadStatus !== "ready" || items.length === 0) {
+  if (loadStatus !== "ready" || !data) {
+    return null;
+  }
+
+  const filled = data.slots.filter((slot) => slot.entry !== null);
+  if (filled.length === 0) {
     return null;
   }
 
@@ -49,8 +53,8 @@ export function FavoritesSection({ entriesEndpoint }: FavoritesSectionProps) {
     <section className={styles.section}>
       <h2>Favoritos</h2>
       <div className={styles.grid}>
-        {items.map((item) => (
-          <GameCard key={item.game.igdbId} game={item.game} entry={item} />
+        {filled.map(({ slot, entry }) => (
+          <GameCard key={slot} game={entry!.game} entry={entry!} />
         ))}
       </div>
     </section>

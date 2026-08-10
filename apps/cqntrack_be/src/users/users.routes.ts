@@ -1,4 +1,5 @@
 import {
+  FavoritesResponseSchema,
   GameListDetailSchema,
   GameListsResponseSchema,
   ListGameEntriesQuerySchema,
@@ -7,7 +8,7 @@ import {
 } from "@cqntrack/shared";
 import { Hono } from "hono";
 import { createDb } from "../db/client";
-import { listGameEntries } from "../games/entries.service";
+import { getFavoriteSlots, listGameEntries } from "../games/entries.service";
 import { GameListNotFoundError, getGameListDetail, listGameLists } from "../games/lists.service";
 import { getPublicProfile, resolveUserIdByUsername, UserNotFoundError } from "./users.service";
 
@@ -46,6 +47,20 @@ usersRouter.get("/:username/entries", async (c) => {
         total,
       }),
     );
+  } catch (error) {
+    if (error instanceof UserNotFoundError) {
+      return c.json({ error: "user_not_found" }, 404);
+    }
+    throw error;
+  }
+});
+
+usersRouter.get("/:username/favorites", async (c) => {
+  const db = createDb(c.env);
+  try {
+    const userId = await resolveUserIdByUsername(db, c.req.param("username"));
+    const slots = await getFavoriteSlots(db, userId);
+    return c.json(FavoritesResponseSchema.parse({ slots }));
   } catch (error) {
     if (error instanceof UserNotFoundError) {
       return c.json({ error: "user_not_found" }, 404);

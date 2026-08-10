@@ -1,5 +1,5 @@
 import type { PublicProfile } from "@cqntrack/shared";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNotNull, sql } from "drizzle-orm";
 import type { createDb } from "../db/client";
 import { gameEntry, user } from "../db/schema";
 
@@ -45,7 +45,7 @@ export async function getPublicProfile(db: Db, username: string): Promise<Public
   const [favoritesRow] = await db
     .select({ count: sql<number>`count(*)` })
     .from(gameEntry)
-    .where(and(eq(gameEntry.userId, row.id), eq(gameEntry.favorite, true)));
+    .where(and(eq(gameEntry.userId, row.id), isNotNull(gameEntry.favoriteSlot)));
 
   const countByStatus = new Map(statusCounts.map((entry) => [entry.status, entry.count]));
   const total = statusCounts.reduce((sum, entry) => sum + entry.count, 0);
