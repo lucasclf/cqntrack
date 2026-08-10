@@ -4,3 +4,4 @@ FRONTEND_ORIGIN=http://localhost:5173
 COOKIE_DOMAIN=
 IGDB_CLIENT_ID=client-id-do-app-criado-no-twitch-developer-console
 IGDB_CLIENT_SECRET=client-secret-do-mesmo-app
+TMDB_ACCESS_TOKEN=api-read-access-token-v4-gerado-em-themoviedb-org
