@@ -1,13 +1,18 @@
 import {
+  BookFavoritesResponseSchema,
+  BookListDetailSchema,
+  BookListsResponseSchema,
   FavoritesResponseSchema,
   GameListDetailSchema,
   GameListsResponseSchema,
+  ListBookEntriesQuerySchema,
   ListGameEntriesQuerySchema,
   ListMovieEntriesQuerySchema,
   ListSeriesEntriesQuerySchema,
   MovieFavoritesResponseSchema,
   MovieListDetailSchema,
   MovieListsResponseSchema,
+  PaginatedBookEntriesResponseSchema,
   PaginatedGameEntriesResponseSchema,
   PaginatedMovieEntriesResponseSchema,
   PaginatedSeriesEntriesResponseSchema,
@@ -17,6 +22,8 @@ import {
   SeriesListsResponseSchema,
 } from "@cqntrack/shared";
 import { Hono } from "hono";
+import { getFavoriteSlots as getBookFavoriteSlots, listBookEntries } from "../books/entries.service";
+import { BookListNotFoundError, getBookListDetail, listBookLists } from "../books/lists.service";
 import { createDb } from "../db/client";
 import { getFavoriteSlots as getGameFavoriteSlots, listGameEntries } from "../games/entries.service";
 import { GameListNotFoundError, getGameListDetail, listGameLists } from "../games/lists.service";
@@ -251,6 +258,77 @@ usersRouter.get("/:username/movies/lists/:listId", async (c) => {
       return c.json({ error: "user_not_found" }, 404);
     }
     if (error instanceof MovieListNotFoundError) {
+      return c.json({ error: "list_not_found" }, 404);
+    }
+    throw error;
+  }
+});
+
+usersRouter.get("/:username/books/entries", async (c) => {
+  const parsed = ListBookEntriesQuerySchema.safeParse(c.req.query());
+  if (!parsed.success) {
+    return c.json({ error: "invalid_query" }, 400);
+  }
+
+  const db = createDb(c.env);
+  try {
+    const userId = await resolveUserIdByUsername(db, c.req.param("username"));
+    const { items, total } = await listBookEntries(db, userId, parsed.data);
+    return c.json(
+      PaginatedBookEntriesResponseSchema.parse({
+        items,
+        page: parsed.data.page,
+        pageSize: parsed.data.pageSize,
+        total,
+      }),
+    );
+  } catch (error) {
+    if (error instanceof UserNotFoundError) {
+      return c.json({ error: "user_not_found" }, 404);
+    }
+    throw error;
+  }
+});
+
+usersRouter.get("/:username/books/favorites", async (c) => {
+  const db = createDb(c.env);
+  try {
+    const userId = await resolveUserIdByUsername(db, c.req.param("username"));
+    const slots = await getBookFavoriteSlots(db, userId);
+    return c.json(BookFavoritesResponseSchema.parse({ slots }));
+  } catch (error) {
+    if (error instanceof UserNotFoundError) {
+      return c.json({ error: "user_not_found" }, 404);
+    }
+    throw error;
+  }
+});
+
+usersRouter.get("/:username/books/lists", async (c) => {
+  const db = createDb(c.env);
+  try {
+    const userId = await resolveUserIdByUsername(db, c.req.param("username"));
+    const lists = await listBookLists(db, userId);
+    return c.json(BookListsResponseSchema.parse({ lists }));
+  } catch (error) {
+    if (error instanceof UserNotFoundError) {
+      return c.json({ error: "user_not_found" }, 404);
+    }
+    throw error;
+  }
+});
+
+usersRouter.get("/:username/books/lists/:listId", async (c) => {
+  const db = createDb(c.env);
+  try {
+    const userId = await resolveUserIdByUsername(db, c.req.param("username"));
+    const detail = await getBookListDetail(db, userId, c.req.param("listId"));
+    return c.json(BookListDetailSchema.parse(detail));
+  } catch (error) {
+    if (error instanceof UserNotFoundError) {
+      return c.json({ error: "user_not_found" }, 404);
+    }
+    if (error instanceof BookListNotFoundError) {
       return c.json({ error: "list_not_found" }, 404);
     }
     throw error;
