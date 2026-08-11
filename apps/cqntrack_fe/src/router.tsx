@@ -10,6 +10,7 @@ import { Home } from "./Home";
 import { Login } from "./Login";
 import { MovieDetail } from "./movies/MovieDetail";
 import { MovieSearch } from "./movies/MovieSearch";
+import { MyMovieEntries } from "./movies/MyMovieEntries";
 import { PublicListDetail } from "./profile/PublicListDetail";
 import { PublicProfile } from "./profile/PublicProfile";
 import { RedirectToJogosListDetail } from "./routes/RedirectToJogosListDetail";
@@ -66,6 +67,7 @@ export const routes: RouteObject[] = [
             children: [
               { path: "buscar", element: <MovieSearch /> },
               { path: ":tmdbId", element: <MovieDetail /> },
+              { path: "marcacoes", element: <MyMovieEntries /> },
             ],
           },
         ],
