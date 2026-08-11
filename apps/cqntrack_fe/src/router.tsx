@@ -12,6 +12,7 @@ import { PublicListDetail } from "./profile/PublicListDetail";
 import { PublicProfile } from "./profile/PublicProfile";
 import { RedirectToJogosListDetail } from "./routes/RedirectToJogosListDetail";
 import { RequireAuth } from "./routes/RequireAuth";
+import { MySeriesEntries } from "./series/MySeriesEntries";
 import { SeriesDetail } from "./series/SeriesDetail";
 import { SeriesSearch } from "./series/SeriesSearch";
 import { Signup } from "./Signup";
@@ -51,6 +52,7 @@ export const routes: RouteObject[] = [
             children: [
               { path: "buscar", element: <SeriesSearch /> },
               { path: ":tmdbId", element: <SeriesDetail /> },
+              { path: "marcacoes", element: <MySeriesEntries /> },
             ],
           },
         ],
