@@ -1,6 +1,8 @@
 import type {
   GameListsResponse,
+  MovieListsResponse,
   PaginatedGameEntriesResponse,
+  PaginatedMovieEntriesResponse,
   PaginatedSeriesEntriesResponse,
   PublicProfile as PublicProfileDto,
   SeriesListsResponse,
@@ -11,6 +13,8 @@ import { FavoritesSection } from "../games/FavoritesSection";
 import { GameCard } from "../games/GameCard";
 import { PublicLayout } from "../layouts/PublicLayout";
 import { ApiError, apiClient } from "../lib/api-client";
+import { MovieCard } from "../movies/MovieCard";
+import { MovieFavoritesSection } from "../movies/MovieFavoritesSection";
 import { SeriesCard } from "../series/SeriesCard";
 import { SeriesFavoritesSection } from "../series/SeriesFavoritesSection";
 import styles from "./PublicProfile.module.css";
@@ -27,6 +31,8 @@ export function PublicProfile() {
   const [lists, setLists] = useState<GameListsResponse | null>(null);
   const [seriesEntries, setSeriesEntries] = useState<PaginatedSeriesEntriesResponse | null>(null);
   const [seriesLists, setSeriesLists] = useState<SeriesListsResponse | null>(null);
+  const [movieEntries, setMovieEntries] = useState<PaginatedMovieEntriesResponse | null>(null);
+  const [movieLists, setMovieLists] = useState<MovieListsResponse | null>(null);
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
 
   useEffect(() => {
@@ -38,16 +44,30 @@ export function PublicProfile() {
       apiClient.get<GameListsResponse>(`/api/users/${username}/games/lists`),
       apiClient.get<PaginatedSeriesEntriesResponse>(`/api/users/${username}/series/entries`),
       apiClient.get<SeriesListsResponse>(`/api/users/${username}/series/lists`),
+      apiClient.get<PaginatedMovieEntriesResponse>(`/api/users/${username}/movies/entries`),
+      apiClient.get<MovieListsResponse>(`/api/users/${username}/movies/lists`),
     ])
-      .then(([profileData, entriesData, listsData, seriesEntriesData, seriesListsData]) => {
-        if (cancelled) return;
-        setProfile(profileData);
-        setEntries(entriesData);
-        setLists(listsData);
-        setSeriesEntries(seriesEntriesData);
-        setSeriesLists(seriesListsData);
-        setLoadStatus("ready");
-      })
+      .then(
+        ([
+          profileData,
+          entriesData,
+          listsData,
+          seriesEntriesData,
+          seriesListsData,
+          movieEntriesData,
+          movieListsData,
+        ]) => {
+          if (cancelled) return;
+          setProfile(profileData);
+          setEntries(entriesData);
+          setLists(listsData);
+          setSeriesEntries(seriesEntriesData);
+          setSeriesLists(seriesListsData);
+          setMovieEntries(movieEntriesData);
+          setMovieLists(movieListsData);
+          setLoadStatus("ready");
+        },
+      )
       .catch((error: unknown) => {
         if (cancelled) return;
         setLoadStatus(error instanceof ApiError && error.status === 404 ? "not-found" : "error");
@@ -72,7 +92,16 @@ export function PublicProfile() {
       </PublicLayout>
     );
   }
-  if (loadStatus === "error" || !profile || !entries || !lists || !seriesEntries || !seriesLists) {
+  if (
+    loadStatus === "error" ||
+    !profile ||
+    !entries ||
+    !lists ||
+    !seriesEntries ||
+    !seriesLists ||
+    !movieEntries ||
+    !movieLists
+  ) {
     return (
       <PublicLayout>
         <p role="alert">Falha ao carregar o perfil. Tente novamente.</p>
@@ -174,6 +203,38 @@ export function PublicProfile() {
             <div className={styles.grid}>
               {seriesEntries.items.map((item) => (
                 <SeriesCard key={item.series.tmdbId} series={item.series} entry={item} />
+              ))}
+            </div>
+          )}
+        </section>
+
+        <MovieFavoritesSection favoritesEndpoint={`/api/users/${username}/movies/favorites`} />
+
+        {movieLists.lists.length > 0 && (
+          <section>
+            <h2>Listas de filmes</h2>
+            {/* Sem link — não existe (ainda) uma página pública de detalhe de
+                lista de filmes, diferente de /u/:username/listas/:listId (jogos). */}
+            <ul className={styles.listNames}>
+              {movieLists.lists.map((list) => (
+                <li key={list.id}>
+                  <span className={styles.listNameStatic}>
+                    {list.name} <span className={styles.listCount}>({list.itemCount})</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        <section>
+          <h2>Marcações de filmes</h2>
+          {movieEntries.items.length === 0 ? (
+            <p className={styles.hint}>Nenhuma marcação ainda.</p>
+          ) : (
+            <div className={styles.grid}>
+              {movieEntries.items.map((item) => (
+                <MovieCard key={item.movie.tmdbId} movie={item.movie} entry={item} />
               ))}
             </div>
           )}

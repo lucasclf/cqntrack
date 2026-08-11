@@ -43,6 +43,16 @@ const SERIES = {
   rating: null,
 };
 
+const MOVIE = {
+  tmdbId: 27205,
+  name: "Inception",
+  posterUrl: null,
+  releaseDate: "2010-07-15",
+  genres: [],
+  runtime: null,
+  rating: null,
+};
+
 const EMPTY_SERIES_FAVORITES = {
   slots: [
     { slot: 1, entry: null },
@@ -51,6 +61,8 @@ const EMPTY_SERIES_FAVORITES = {
     { slot: 4, entry: null },
   ],
 };
+
+const EMPTY_MOVIE_FAVORITES = EMPTY_SERIES_FAVORITES;
 
 function renderProfile(username = "gamer_1") {
   render(
@@ -144,6 +156,41 @@ describe("PublicProfile", () => {
       if (path === "/api/users/gamer_1/series/favorites") {
         return Promise.resolve(EMPTY_SERIES_FAVORITES);
       }
+      if (path === "/api/users/gamer_1/movies/entries") {
+        return Promise.resolve({
+          items: [
+            {
+              id: "1",
+              rating: null,
+              watchedAt: null,
+              favoriteSlot: null,
+              review: null,
+              updatedAt: "2026-01-01T00:00:00.000Z",
+              movie: MOVIE,
+            },
+          ],
+          page: 1,
+          pageSize: 24,
+          total: 1,
+        });
+      }
+      if (path === "/api/users/gamer_1/movies/lists") {
+        return Promise.resolve({
+          lists: [
+            {
+              id: "ml1",
+              name: "Vistos em 2026",
+              description: null,
+              itemCount: 4,
+              createdAt: "",
+              updatedAt: "",
+            },
+          ],
+        });
+      }
+      if (path === "/api/users/gamer_1/movies/favorites") {
+        return Promise.resolve(EMPTY_MOVIE_FAVORITES);
+      }
       return Promise.reject(new Error("rota inesperada: " + path));
     });
 
@@ -166,6 +213,13 @@ describe("PublicProfile", () => {
     expect(screen.getByRole("heading", { name: "Listas de séries" })).toBeInTheDocument();
     expect(screen.getByText("Maratonadas")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Maratonadas/ })).not.toBeInTheDocument();
+
+    // Seção de filmes: mesma forma da de séries (sem link na lista).
+    expect(screen.getByRole("heading", { name: "Marcações de filmes" })).toBeInTheDocument();
+    expect(screen.getByText("Inception")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Listas de filmes" })).toBeInTheDocument();
+    expect(screen.getByText("Vistos em 2026")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Vistos em 2026/ })).not.toBeInTheDocument();
   });
 
   it("mostra 'usuário não encontrado' em 404", async () => {
