@@ -85,51 +85,77 @@ export async function searchSeriesForUser(
   return results.map(mapTmdbSearchResultToSummary);
 }
 
-// Busca a série no cache local (series); se não existir, consulta a TMDB e
-// cacheia antes de devolver. `onConflictDoNothing` torna isso seguro sob
-// requests concorrentes cacheando a mesma série pela primeira vez.
+// Séries em exibição ganham temporada nova (ou episódios novos numa
+// temporada já existente) com o tempo — sem expirar, `series.seasons`/
+// `numberOfSeasons`/`numberOfEpisodes` ficariam congelados na primeira vez
+// que alguém abriu a série. 24h porque isso não muda mais de uma vez por
+// dia nem em série semanal, e evita rechecar a TMDB a cada abertura de tela.
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+function isStale(row: CachedSeries): boolean {
+  return Date.now() - row.updatedAt.getTime() > CACHE_TTL_MS;
+}
+
+function mapSeriesDetailToRow(detail: NonNullable<Awaited<ReturnType<typeof getSeriesById>>>) {
+  return {
+    name: detail.name,
+    posterPath: detail.poster_path ?? null,
+    firstAirDate:
+      detail.first_air_date && detail.first_air_date.length > 0
+        ? new Date(detail.first_air_date)
+        : null,
+    overview: detail.overview ?? null,
+    genres: detail.genres?.map((genre) => genre.name) ?? [],
+    numberOfSeasons: detail.number_of_seasons ?? null,
+    numberOfEpisodes: detail.number_of_episodes ?? null,
+    seasons:
+      detail.seasons?.map((season) => ({
+        seasonNumber: season.season_number,
+        name: season.name,
+        episodeCount: season.episode_count,
+        airDate: season.air_date && season.air_date.length > 0 ? season.air_date : null,
+        posterPath: season.poster_path ?? null,
+      })) ?? [],
+    rating: detail.vote_average ?? null,
+  };
+}
+
+// Busca a série no cache local (series); se não existir OU se o cache
+// estiver velho, consulta a TMDB e grava (insert ou update) antes de
+// devolver. `onConflictDoNothing` torna o insert seguro sob requests
+// concorrentes cacheando a mesma série pela primeira vez.
 export async function getOrCacheSeries(env: Env, db: Db, tmdbId: number): Promise<CachedSeries> {
   const [cached] = await db.select().from(series).where(eq(series.tmdbId, tmdbId));
-  if (cached) {
+  if (cached && !isStale(cached)) {
     return cached;
   }
 
   const detail = await getSeriesById(env, tmdbId);
   if (!detail) {
+    // TMDB indisponível ou série removida de lá — melhor devolver o cache
+    // velho (se existir) do que quebrar a tela por causa da revalidação.
+    if (cached) {
+      return cached;
+    }
     throw new SeriesNotFoundError(tmdbId);
   }
 
-  await db
-    .insert(series)
-    .values({
-      tmdbId: detail.id,
-      name: detail.name,
-      posterPath: detail.poster_path ?? null,
-      firstAirDate:
-        detail.first_air_date && detail.first_air_date.length > 0
-          ? new Date(detail.first_air_date)
-          : null,
-      overview: detail.overview ?? null,
-      genres: detail.genres?.map((genre) => genre.name) ?? [],
-      numberOfSeasons: detail.number_of_seasons ?? null,
-      numberOfEpisodes: detail.number_of_episodes ?? null,
-      seasons:
-        detail.seasons?.map((season) => ({
-          seasonNumber: season.season_number,
-          name: season.name,
-          episodeCount: season.episode_count,
-          airDate: season.air_date && season.air_date.length > 0 ? season.air_date : null,
-          posterPath: season.poster_path ?? null,
-        })) ?? [],
-      rating: detail.vote_average ?? null,
-    })
-    .onConflictDoNothing();
+  const values = mapSeriesDetailToRow(detail);
 
-  const [inserted] = await db.select().from(series).where(eq(series.tmdbId, tmdbId));
-  if (!inserted) {
+  if (cached) {
+    await db.update(series).set(values).where(eq(series.tmdbId, tmdbId));
+  } else {
+    await db
+      .insert(series)
+      .values({ tmdbId: detail.id, ...values })
+      .onConflictDoNothing();
+  }
+
+  const [row] = await db.select().from(series).where(eq(series.tmdbId, tmdbId));
+  if (!row) {
     // Não deveria acontecer (acabamos de inserir, ou outra request concorrente
     // já tinha inserido) — só pra manter o tipo de retorno não-nulo com segurança.
     throw new SeriesNotFoundError(tmdbId);
   }
-  return inserted;
+  return row;
 }

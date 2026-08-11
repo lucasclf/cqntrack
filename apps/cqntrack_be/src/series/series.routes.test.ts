@@ -1,8 +1,10 @@
 import { env } from "cloudflare:workers";
+import { eq } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
 import { createAuthenticatedUser } from "../../test/auth-helpers";
 import { app } from "../app";
 import { createDb } from "../db/client";
+import { series } from "../db/schema";
 
 const TMDB_SEARCH_RESULT = {
   id: 1396,
@@ -180,6 +182,70 @@ describe("GET /api/series/:tmdbId", () => {
 
     expect(res.status).toBe(200);
     expect(throwingFetch).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it("revalida o cache depois de 24h (ex.: série ganhou uma temporada nova)", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubTmdbFetchOnce(tmdbSeriesDetail(503, "Better Call Saul"));
+    await app.request("/api/series/503", { headers: { cookie } }, env);
+    vi.unstubAllGlobals();
+
+    // Simula o cache tendo mais de 24h.
+    await createDb(env)
+      .update(series)
+      .set({ updatedAt: new Date(Date.now() - 25 * 60 * 60 * 1000) })
+      .where(eq(series.tmdbId, 503));
+
+    const base = tmdbSeriesDetail(503, "Better Call Saul");
+    stubTmdbFetchOnce({
+      ...base,
+      number_of_seasons: 6,
+      seasons: [
+        ...base.seasons,
+        {
+          season_number: 2,
+          name: "Temporada 2",
+          episode_count: 10,
+          air_date: "2016-02-15",
+          poster_path: "/poster-503-s2.jpg",
+        },
+      ],
+    });
+
+    const res = await app.request("/api/series/503", { headers: { cookie } }, env);
+
+    expect(res.status).toBe(200);
+    expect(fetch).toHaveBeenCalledTimes(1); // revalidou de verdade, não usou o cache velho
+    const body = (await res.json()) as {
+      series: { numberOfSeasons: number; seasons: unknown[] };
+    };
+    expect(body.series.numberOfSeasons).toBe(6);
+    expect(body.series.seasons).toHaveLength(2);
+    vi.unstubAllGlobals();
+  });
+
+  it("mantém o cache velho se a TMDB estiver indisponível ao revalidar", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubTmdbFetchOnce(tmdbSeriesDetail(504, "Ozark"));
+    await app.request("/api/series/504", { headers: { cookie } }, env);
+    vi.unstubAllGlobals();
+
+    await createDb(env)
+      .update(series)
+      .set({ updatedAt: new Date(Date.now() - 25 * 60 * 60 * 1000) })
+      .where(eq(series.tmdbId, 504));
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValueOnce(jsonResponse({ status_message: "not found" }, 404)),
+    );
+
+    const res = await app.request("/api/series/504", { headers: { cookie } }, env);
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { series: { name: string } };
+    expect(body.series.name).toBe("Ozark");
     vi.unstubAllGlobals();
   });
 });
