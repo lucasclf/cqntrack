@@ -1,0 +1,118 @@
+.section {
+  border-top: 1px solid var(--card-border);
+  padding-top: 20px;
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.seasonTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.seasonTab {
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--card-border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.seasonTab[aria-selected="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--focus-ring);
+}
+
+.hint {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.seasonToggle {
+  align-self: flex-start;
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--card-border);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.seasonToggle:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.episodeList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.episode {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-radius: var(--radius);
+  border: 1px solid var(--card-border);
+}
+
+.still {
+  width: 96px;
+  height: 54px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  flex-shrink: 0;
+}
+
+.stillPlaceholder {
+  width: 96px;
+  height: 54px;
+  border-radius: var(--radius);
+  background: var(--input-bg);
+  flex-shrink: 0;
+}
+
+.episodeInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.episodeName {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.episodeDate {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.watchedToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}

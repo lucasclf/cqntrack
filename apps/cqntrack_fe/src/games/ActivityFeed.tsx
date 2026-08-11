@@ -12,10 +12,9 @@ import styles from "./ActivityFeed.module.css";
 type LoadStatus = "loading" | "ready" | "error";
 
 // `type`/`metadata` são genéricos entre seções (ver activity.schema.ts no
-// backend) — só jogos escreve esses tipos por enquanto, então a descrição
-// abaixo ainda é toda games-specific. Quando uma segunda seção existir, cada
-// uma passa a ter seu próprio vocabulário de `type` e essa função precisa
-// levar `item.mediaType` em conta.
+// backend), mas cada seção tem seu próprio vocabulário de `type` — só jogos
+// emite "status_changed" (série não tem status) e só séries emite
+// "season_watched" (não existe pra jogos).
 function describeActivity(item: ActivityItem): string {
   const metadata = item.metadata ?? {};
   switch (item.type) {
@@ -34,6 +33,13 @@ function describeActivity(item: ActivityItem): string {
     case "added_to_list": {
       const listName = metadata.listName as string | undefined;
       return listName ? `Adicionou à lista "${listName}"` : "Adicionou a uma lista";
+    }
+    case "season_watched": {
+      const season = metadata.season as number | undefined;
+      const episodeCount = metadata.episodeCount as number | undefined;
+      return season !== undefined
+        ? `Assistiu a temporada ${season}${episodeCount !== undefined ? ` (${episodeCount} episódios)` : ""}`
+        : "Assistiu uma temporada inteira";
     }
     default:
       return "Atividade";

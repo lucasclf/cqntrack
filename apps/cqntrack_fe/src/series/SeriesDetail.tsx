@@ -1,10 +1,16 @@
-import type { SeriesDetailResponse, SeriesEntry, UpsertSeriesEntryRequest } from "@cqntrack/shared";
+import type {
+  SeriesDetailResponse,
+  SeriesEntry,
+  SeriesSeasonEpisodesResponse,
+  UpsertSeriesEntryRequest,
+} from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router";
 import { StarRating } from "../components/StarRating";
 import { ApiError, apiClient } from "../lib/api-client";
 import { AddToSeriesListMenu } from "./AddToSeriesListMenu";
 import styles from "./SeriesDetail.module.css";
+import { SeriesEpisodeList } from "./SeriesEpisodeList";
 
 type LoadStatus = "loading" | "ready" | "not-found" | "error";
 
@@ -12,6 +18,13 @@ export function SeriesDetail() {
   const { tmdbId } = useParams<{ tmdbId: string }>();
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
   const [detail, setDetail] = useState<SeriesDetailResponse | null>(null);
+  // Temporada 1 buscada junto do detalhe (em paralelo, não em sequência) —
+  // assim, quando a página aparece, a lista de episódios já chega pronta,
+  // sem um segundo "carregando" logo depois do primeiro. null quando a
+  // série não tem Temporada 1 (aí SeriesEpisodeList busca o padrão sozinho).
+  const [initialSeasonData, setInitialSeasonData] = useState<SeriesSeasonEpisodesResponse | null>(
+    null,
+  );
   const [saveError, setSaveError] = useState<string | null>(null);
   const [reviewDraft, setReviewDraft] = useState("");
 
@@ -27,11 +40,16 @@ export function SeriesDetail() {
   useEffect(() => {
     let cancelled = false;
 
-    apiClient
-      .get<SeriesDetailResponse>(`/api/series/${tmdbId}`)
-      .then((data) => {
+    Promise.all([
+      apiClient.get<SeriesDetailResponse>(`/api/series/${tmdbId}`),
+      apiClient
+        .get<SeriesSeasonEpisodesResponse>(`/api/series/${tmdbId}/seasons/1`)
+        .catch(() => null),
+    ])
+      .then(([data, season1]) => {
         if (cancelled) return;
         setDetail(data);
+        setInitialSeasonData(season1);
         setReviewDraft(data.entry?.review ?? "");
         setLoadStatus("ready");
       })
@@ -120,6 +138,20 @@ export function SeriesDetail() {
 
         <StarRating value={entry?.rating ?? null} onChange={(rating) => savePatch({ rating })} />
 
+        {entry && (
+          <button type="button" className={styles.removeBtn} onClick={removeEntry}>
+            Remover marcação
+          </button>
+        )}
+      </section>
+
+      <SeriesEpisodeList
+        tmdbId={series.tmdbId}
+        seasons={series.seasons ?? []}
+        initialSeasonData={initialSeasonData}
+      />
+
+      <section className={styles.entrySection}>
         <label className={styles.field}>
           <span>Review</span>
           <textarea
@@ -134,12 +166,6 @@ export function SeriesDetail() {
             }}
           />
         </label>
-
-        {entry && (
-          <button type="button" className={styles.removeBtn} onClick={removeEntry}>
-            Remover marcação
-          </button>
-        )}
       </section>
     </div>
   );

@@ -136,6 +136,48 @@ describe("SeriesDetail", () => {
     });
   });
 
+  it("busca a Temporada 1 em paralelo com o detalhe, sem 'carregando' extra pro episódio", async () => {
+    const seriesWithSeasons = {
+      ...SERIES,
+      seasons: [
+        {
+          seasonNumber: 1,
+          name: "Temporada 1",
+          episodeCount: 2,
+          airDate: "2008-01-20",
+          posterUrl: null,
+        },
+      ],
+    };
+    getMock.mockImplementation((path: string) => {
+      if (path === "/api/series/1396")
+        return Promise.resolve({ series: seriesWithSeasons, entry: null });
+      if (path === "/api/series/1396/seasons/1") {
+        return Promise.resolve({
+          seasonNumber: 1,
+          episodes: [
+            {
+              episodeNumber: 1,
+              name: "Pilot",
+              airDate: "2008-01-20",
+              stillUrl: null,
+              watched: false,
+            },
+          ],
+        });
+      }
+      return Promise.reject(new Error("rota inesperada: " + path));
+    });
+
+    renderDetail();
+
+    expect(await screen.findByRole("heading", { name: "Breaking Bad" })).toBeInTheDocument();
+    // O episódio já aparece junto com o resto da página, sem "Carregando episódios..." separado.
+    expect(screen.getByText("1. Pilot")).toBeInTheDocument();
+    expect(screen.queryByText("Carregando episódios...")).not.toBeInTheDocument();
+    expect(getMock).toHaveBeenCalledWith("/api/series/1396/seasons/1");
+  });
+
   it("mostra 'série não encontrada' quando a API retorna 404", async () => {
     getMock.mockRejectedValue(new ApiError(404, "not found"));
     renderDetail();
