@@ -8,6 +8,8 @@ import { AppShell } from "./layouts/AppShell";
 import { Account } from "./Account";
 import { Home } from "./Home";
 import { Login } from "./Login";
+import { MovieDetail } from "./movies/MovieDetail";
+import { MovieSearch } from "./movies/MovieSearch";
 import { PublicListDetail } from "./profile/PublicListDetail";
 import { PublicProfile } from "./profile/PublicProfile";
 import { RedirectToJogosListDetail } from "./routes/RedirectToJogosListDetail";
@@ -57,6 +59,13 @@ export const routes: RouteObject[] = [
               { path: "marcacoes", element: <MySeriesEntries /> },
               { path: "listas", element: <MySeriesLists /> },
               { path: "listas/:listId", element: <SeriesListDetail /> },
+            ],
+          },
+          {
+            path: "filmes",
+            children: [
+              { path: "buscar", element: <MovieSearch /> },
+              { path: ":tmdbId", element: <MovieDetail /> },
             ],
           },
         ],

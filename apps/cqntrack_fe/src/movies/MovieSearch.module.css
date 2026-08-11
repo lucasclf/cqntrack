@@ -1,0 +1,39 @@
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.input {
+  display: block;
+  width: 100%;
+  max-width: 420px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 15px;
+  margin: 16px 0 24px;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 16px;
+}
+
+.hint {
+  color: var(--text-secondary);
+}
+
+.attribution {
+  margin: 32px 0 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
