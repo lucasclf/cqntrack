@@ -191,3 +191,195 @@ describe("GET /api/books/:googleBooksId", () => {
     vi.unstubAllGlobals();
   });
 });
+
+describe("CRUD de marcação (/api/books/:googleBooksId/entry)", () => {
+  it("PUT cria uma marcação nova, com status, nota e review", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubGoogleBooksFetchOnce(googleBooksVolume("book-601", "1984"));
+
+    const res = await app.request(
+      "/api/books/book-601/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "reading", rating: 4.5, review: "Excelente" }),
+      },
+      env,
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toMatchObject({
+      status: "reading",
+      rating: 4.5,
+      review: "Excelente",
+      favoriteSlot: null,
+    });
+    vi.unstubAllGlobals();
+  });
+
+  it("PUT com payload parcial não apaga campos já preenchidos", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubGoogleBooksFetchOnce(googleBooksVolume("book-603", "Admirável Mundo Novo"));
+    await app.request(
+      "/api/books/book-603/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ rating: 3.5, status: "reading" }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const res = await app.request(
+      "/api/books/book-603/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ review: "Revi e confirmo" }),
+      },
+      env,
+    );
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { rating: number; review: string; status: string };
+    expect(body.rating).toBe(3.5);
+    expect(body.review).toBe("Revi e confirmo");
+    expect(body.status).toBe("reading");
+  });
+
+  it("mudar o status gera atividade status_changed; desmarcar (status: null) não gera atividade", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubGoogleBooksFetchOnce(googleBooksVolume("book-604", "Fahrenheit 451"));
+
+    await app.request(
+      "/api/books/book-604/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "read" }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    await app.request(
+      "/api/books/book-604/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ status: null }),
+      },
+      env,
+    );
+
+    const activities = await createDb(env).query.activity.findMany();
+    const statusChanged = activities.filter(
+      (item) => item.itemId === "book-604" && item.type === "status_changed",
+    );
+    expect(statusChanged).toHaveLength(1); // só a marcação, não o clear
+    expect(statusChanged[0]?.metadata).toEqual({ status: "read" });
+  });
+
+  it("PUT com nota gera atividade rated", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubGoogleBooksFetchOnce(googleBooksVolume("book-605", "O Apanhador no Campo de Centeio"));
+
+    await app.request(
+      "/api/books/book-605/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ rating: 4 }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const activities = await createDb(env).query.activity.findMany();
+    const rated = activities.filter((item) => item.itemId === "book-605" && item.type === "rated");
+    expect(rated).toHaveLength(1);
+    expect(rated[0]?.metadata).toEqual({ rating: 4 });
+  });
+
+  it("DELETE remove a marcação", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubGoogleBooksFetchOnce(googleBooksVolume("book-606", "Cem Anos de Solidão"));
+    await app.request(
+      "/api/books/book-606/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ rating: 5 }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const deleteRes = await app.request(
+      "/api/books/book-606/entry",
+      { method: "DELETE", headers: { cookie } },
+      env,
+    );
+    expect(deleteRes.status).toBe(204);
+
+    stubGoogleBooksFetchOnce(googleBooksVolume("book-606", "Cem Anos de Solidão"));
+    const detailRes = await app.request("/api/books/book-606", { headers: { cookie } }, env);
+    await expect(detailRes.json()).resolves.toMatchObject({ entry: null });
+    vi.unstubAllGlobals();
+  });
+
+  it("sem sessão retorna 401", async () => {
+    const res = await app.request(
+      "/api/books/book-601/entry",
+      { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rating: 3 }) },
+      env,
+    );
+
+    expect(res.status).toBe(401);
+  });
+});
+
+describe("GET /api/books/entries", () => {
+  it("lista só as marcações do usuário logado, filtrando por status", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+
+    stubGoogleBooksFetchOnce(googleBooksVolume("book-701", "Neuromancer"));
+    await app.request(
+      "/api/books/book-701/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "read" }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    stubGoogleBooksFetchOnce(googleBooksVolume("book-702", "Duna"));
+    await app.request(
+      "/api/books/book-702/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "reading" }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const res = await app.request("/api/books/entries?status=read", { headers: { cookie } }, env);
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { total: number; items: Array<Record<string, unknown>> };
+    expect(body.total).toBe(1);
+    expect(body.items[0]).toMatchObject({ book: { googleBooksId: "book-701" } });
+  });
+
+  it("sem sessão retorna 401", async () => {
+    const res = await app.request("/api/books/entries", undefined, env);
+
+    expect(res.status).toBe(401);
+  });
+});
