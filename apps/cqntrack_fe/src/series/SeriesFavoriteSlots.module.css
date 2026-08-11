@@ -1,0 +1,68 @@
+.section {
+  margin-bottom: 24px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 860px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.slotWrap {
+  position: relative;
+  min-width: 0;
+}
+
+.editBtn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: var(--form-bg);
+  color: var(--text-primary);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.slotWrap:hover .editBtn,
+.slotWrap:focus-within .editBtn {
+  opacity: 1;
+}
+
+.editBtn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.emptySlot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 302px;
+  min-width: 0;
+  border-radius: var(--radius-lg);
+  border: 1px dashed var(--input-border);
+  background: var(--panel-bg);
+  color: var(--text-muted);
+  font-size: 32px;
+  cursor: pointer;
+}
+
+.emptySlot:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}

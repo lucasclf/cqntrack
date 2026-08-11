@@ -33,10 +33,11 @@ describe("Home", () => {
     getMock.mockReset();
   });
 
-  it("mostra o título, os slots de favoritos e a atividade recente do usuário", async () => {
+  it("mostra o título, os slots de favoritos (jogos e séries) e a atividade recente do usuário", async () => {
     getMock.mockImplementation((path: string) => {
       if (path === "/api/activity") return Promise.resolve({ items: [], nextCursor: null });
       if (path === "/api/games/favorites") return Promise.resolve(EMPTY_SLOTS);
+      if (path === "/api/series/favorites") return Promise.resolve(EMPTY_SLOTS);
       return Promise.reject(new Error("rota inesperada: " + path));
     });
     render(
@@ -46,15 +47,19 @@ describe("Home", () => {
     );
 
     expect(screen.getByRole("heading", { name: "cqntrack" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Jogos favoritos" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Séries favoritas" })).toBeInTheDocument();
     expect(await screen.findByText(/Nenhuma atividade ainda/)).toBeInTheDocument();
-    expect(await screen.findByRole("button", { name: "Adicionar favorito 1" })).toBeInTheDocument();
+    expect(await screen.findAllByRole("button", { name: "Adicionar favorito 1" })).toHaveLength(2);
     expect(getMock).toHaveBeenCalledWith("/api/activity");
     expect(getMock).toHaveBeenCalledWith("/api/games/favorites");
+    expect(getMock).toHaveBeenCalledWith("/api/series/favorites");
   });
 
   it("mostra os jogos já favoritados nos respectivos slots", async () => {
     getMock.mockImplementation((path: string) => {
       if (path === "/api/activity") return Promise.resolve({ items: [], nextCursor: null });
+      if (path === "/api/series/favorites") return Promise.resolve(EMPTY_SLOTS);
       if (path === "/api/games/favorites") {
         return Promise.resolve({
           slots: [
@@ -87,5 +92,53 @@ describe("Home", () => {
 
     expect(await screen.findByText("The Witcher 3: Wild Hunt")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Trocar favorito 1" })).toBeInTheDocument();
+  });
+
+  it("mostra as séries já favoritadas nos respectivos slots", async () => {
+    const SERIES = {
+      tmdbId: 1396,
+      name: "Breaking Bad",
+      posterUrl: null,
+      firstAirDate: "2008-01-20",
+      genres: [],
+      numberOfSeasons: null,
+      numberOfEpisodes: null,
+      rating: null,
+    };
+    getMock.mockImplementation((path: string) => {
+      if (path === "/api/activity") return Promise.resolve({ items: [], nextCursor: null });
+      if (path === "/api/games/favorites") return Promise.resolve(EMPTY_SLOTS);
+      if (path === "/api/series/favorites") {
+        return Promise.resolve({
+          slots: [
+            {
+              slot: 1,
+              entry: {
+                id: "1",
+                status: null,
+                rating: null,
+                currentSeason: null,
+                currentEpisode: null,
+                favoriteSlot: 1,
+                review: null,
+                updatedAt: "2026-01-01T00:00:00.000Z",
+                series: SERIES,
+              },
+            },
+            { slot: 2, entry: null },
+            { slot: 3, entry: null },
+            { slot: 4, entry: null },
+          ],
+        });
+      }
+      return Promise.reject(new Error("rota inesperada: " + path));
+    });
+    render(
+      <MemoryRouter>
+        <Home />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Breaking Bad")).toBeInTheDocument();
   });
 });

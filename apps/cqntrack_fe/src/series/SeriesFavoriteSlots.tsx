@@ -1,10 +1,10 @@
-import type { FavoriteSlotNumber, FavoritesResponse, GameEntry, GameSummary } from "@cqntrack/shared";
+import type { FavoriteSlotNumber, SeriesEntry, SeriesFavoritesResponse, SeriesSummary } from "@cqntrack/shared";
 import type { SVGProps } from "react";
 import { useEffect, useState } from "react";
 import { apiClient } from "../lib/api-client";
-import { FavoritePickerModal } from "./FavoritePickerModal";
-import styles from "./FavoriteSlots.module.css";
-import { GameCard } from "./GameCard";
+import { SeriesCard } from "./SeriesCard";
+import styles from "./SeriesFavoriteSlots.module.css";
+import { SeriesFavoritePickerModal } from "./SeriesFavoritePickerModal";
 
 type LoadStatus = "loading" | "ready" | "error";
 
@@ -26,10 +26,11 @@ function EditIcon(props: SVGProps<SVGSVGElement>) {
 }
 
 // 4 slots fixos de favorito, sempre visíveis — vazio mostra um "+" clicável
-// pra abrir o popup de busca; preenchido mostra o jogo, com um lápis que
-// aparece no hover pra trocar o favorito daquele slot.
-export function FavoriteSlots() {
-  const [data, setData] = useState<FavoritesResponse | null>(null);
+// pra abrir o popup de busca; preenchido mostra a série, com um lápis que
+// aparece no hover pra trocar o favorito daquele slot. Espelha FavoriteSlots
+// de jogos.
+export function SeriesFavoriteSlots() {
+  const [data, setData] = useState<SeriesFavoritesResponse | null>(null);
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
   const [editingSlot, setEditingSlot] = useState<FavoriteSlotNumber | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -38,7 +39,7 @@ export function FavoriteSlots() {
     let cancelled = false;
 
     apiClient
-      .get<FavoritesResponse>("/api/games/favorites")
+      .get<SeriesFavoritesResponse>("/api/series/favorites")
       .then((res) => {
         if (!cancelled) {
           setData(res);
@@ -56,24 +57,24 @@ export function FavoriteSlots() {
     };
   }, []);
 
-  async function handleSelect(game: GameSummary) {
+  async function handleSelect(series: SeriesSummary) {
     if (editingSlot === null) return;
     const slot = editingSlot;
     setSaveError(null);
     try {
-      const entry = await apiClient.put<GameEntry>(`/api/games/favorites/${slot}`, {
-        igdbId: game.igdbId,
+      const entry = await apiClient.put<SeriesEntry>(`/api/series/favorites/${slot}`, {
+        tmdbId: series.tmdbId,
       });
       setData((current) =>
         current
           ? {
               slots: current.slots.map((current_) => {
                 if (current_.slot === slot) {
-                  return { slot, entry: { ...entry, game } };
+                  return { slot, entry: { ...entry, series } };
                 }
-                // Se o jogo já estava em outro slot, o backend já limpou de
+                // Se a série já estava em outro slot, o backend já limpou de
                 // lá — reflete isso aqui também.
-                if (current_.entry?.game.igdbId === game.igdbId) {
+                if (current_.entry?.series.tmdbId === series.tmdbId) {
                   return { slot: current_.slot, entry: null };
                 }
                 return current_;
@@ -101,7 +102,7 @@ export function FavoriteSlots() {
         {data.slots.map(({ slot, entry }) =>
           entry ? (
             <div key={slot} className={styles.slotWrap}>
-              <GameCard game={entry.game} entry={entry} />
+              <SeriesCard series={entry.series} entry={entry} />
               <button
                 type="button"
                 className={styles.editBtn}
@@ -125,7 +126,7 @@ export function FavoriteSlots() {
         )}
       </div>
       {editingSlot !== null && (
-        <FavoritePickerModal onSelect={handleSelect} onClose={() => setEditingSlot(null)} />
+        <SeriesFavoritePickerModal onSelect={handleSelect} onClose={() => setEditingSlot(null)} />
       )}
     </section>
   );
