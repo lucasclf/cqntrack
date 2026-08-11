@@ -13,8 +13,9 @@ type LoadStatus = "loading" | "ready" | "error";
 
 // `type`/`metadata` são genéricos entre seções (ver activity.schema.ts no
 // backend), mas cada seção tem seu próprio vocabulário de `type` — só jogos
-// emite "status_changed" (série não tem status) e só séries emite
-// "season_watched" (não existe pra jogos).
+// emite "status_changed" (série/filme não tem status), só séries emite
+// "season_watched" e só filmes emite "watched" (marcar um filme assistido é
+// uma unidade só, sem o "episódio isolado x temporada inteira" de série).
 function describeActivity(item: ActivityItem): string {
   const metadata = item.metadata ?? {};
   switch (item.type) {
@@ -41,6 +42,8 @@ function describeActivity(item: ActivityItem): string {
         ? `Assistiu a temporada ${season}${episodeCount !== undefined ? ` (${episodeCount} episódios)` : ""}`
         : "Assistiu uma temporada inteira";
     }
+    case "watched":
+      return "Assistiu";
     default:
       return "Atividade";
   }

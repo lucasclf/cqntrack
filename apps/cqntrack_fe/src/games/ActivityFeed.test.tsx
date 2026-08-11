@@ -85,6 +85,26 @@ describe("ActivityFeed", () => {
     );
   });
 
+  it("descreve a atividade 'watched' de filme", async () => {
+    const items: ActivityItem[] = [
+      {
+        id: "1",
+        type: "watched",
+        metadata: null,
+        createdAt: "2026-01-01T10:00:00.000Z",
+        mediaType: "movies",
+        itemId: "27205",
+        itemTitle: "Inception",
+        itemHref: "/filmes/27205",
+        itemCoverUrl: null,
+      },
+    ];
+    getMock.mockResolvedValue({ items, nextCursor: null });
+    renderFeed();
+
+    expect(await screen.findByText("Assistiu")).toBeInTheDocument();
+  });
+
   it("carrega mais itens ao clicar em 'Carregar mais'", async () => {
     getMock.mockResolvedValueOnce({
       items: [
