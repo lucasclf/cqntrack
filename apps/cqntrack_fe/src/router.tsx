@@ -9,8 +9,10 @@ import { Account } from "./Account";
 import { Home } from "./Home";
 import { Login } from "./Login";
 import { MovieDetail } from "./movies/MovieDetail";
+import { MovieListDetail } from "./movies/MovieListDetail";
 import { MovieSearch } from "./movies/MovieSearch";
 import { MyMovieEntries } from "./movies/MyMovieEntries";
+import { MyMovieLists } from "./movies/MyMovieLists";
 import { PublicListDetail } from "./profile/PublicListDetail";
 import { PublicProfile } from "./profile/PublicProfile";
 import { RedirectToJogosListDetail } from "./routes/RedirectToJogosListDetail";
@@ -68,6 +70,8 @@ export const routes: RouteObject[] = [
               { path: "buscar", element: <MovieSearch /> },
               { path: ":tmdbId", element: <MovieDetail /> },
               { path: "marcacoes", element: <MyMovieEntries /> },
+              { path: "listas", element: <MyMovieLists /> },
+              { path: "listas/:listId", element: <MovieListDetail /> },
             ],
           },
         ],
