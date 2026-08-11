@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import type { createDb } from "../db/client";
 import { book } from "../db/schema";
 import { getBookById, searchBooks as googleBooksSearch } from "../integrations/googlebooks/books";
-import { toSecureImageUrl, type GoogleBooksVolume } from "../integrations/googlebooks/types";
+import { stripHtml, toSecureImageUrl, type GoogleBooksVolume } from "../integrations/googlebooks/types";
 
 type Db = ReturnType<typeof createDb>;
 export type CachedBook = typeof book.$inferSelect;
@@ -84,7 +84,7 @@ function mapVolumeToRow(volume: GoogleBooksVolume) {
     authors: volume.volumeInfo.authors ?? [],
     coverUrl: coverUrlFromVolume(volume.volumeInfo),
     publishedDate: volume.volumeInfo.publishedDate ?? null,
-    description: volume.volumeInfo.description ?? null,
+    description: volume.volumeInfo.description ? stripHtml(volume.volumeInfo.description) : null,
     categories: volume.volumeInfo.categories ?? [],
     pageCount: volume.volumeInfo.pageCount ?? null,
     rating: volume.volumeInfo.averageRating ?? null,

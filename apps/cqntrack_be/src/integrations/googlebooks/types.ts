@@ -30,3 +30,21 @@ export interface GoogleBooksSearchResponse {
 export function toSecureImageUrl(url: string): string {
   return url.replace(/^http:\/\//, "https://");
 }
+
+// `description` vem com marcação HTML básica (<p>, <b>, <br> etc.) — sem
+// isso, as tags apareceriam como texto literal na tela (React escapa JSX,
+// não interpreta HTML). Tira as tags e decodifica as entidades mais comuns;
+// não precisa de um parser HTML completo pra esse caso.
+export function stripHtml(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .trim();
+}

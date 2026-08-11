@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it, vi } from "vitest";
 import { getBookById, searchBooks } from "./books";
+import { stripHtml } from "./types";
 
 const BOOK_VOLUME = {
   id: "PCq3AAAAQBAJ",
@@ -74,5 +75,22 @@ describe("integrations/googlebooks", () => {
     expect(result).toBeNull();
 
     vi.unstubAllGlobals();
+  });
+});
+
+describe("stripHtml", () => {
+  it("tira tags e decodifica entidades comuns, preservando quebras de parágrafo", () => {
+    const raw =
+      "<p> <b>Com texto estabelecido</b> a partir de edições revistas.</p><p>Segundo parágrafo &amp; mais.</p>";
+
+    expect(stripHtml(raw)).toBe("Com texto estabelecido a partir de edições revistas.\n\nSegundo parágrafo & mais.");
+  });
+
+  it("converte <br> em quebra de linha simples", () => {
+    expect(stripHtml("Linha 1<br>Linha 2")).toBe("Linha 1\nLinha 2");
+  });
+
+  it("texto sem HTML fica igual (só aparado)", () => {
+    expect(stripHtml("  Texto simples sem marcação  ")).toBe("Texto simples sem marcação");
   });
 });
