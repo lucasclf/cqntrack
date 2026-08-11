@@ -1,6 +1,7 @@
 import { ActivityFeed } from "./games/ActivityFeed";
 import { FavoriteSlots } from "./games/FavoriteSlots";
 import styles from "./Home.module.css";
+import { MovieFavoriteSlots } from "./movies/MovieFavoriteSlots";
 import { SeriesFavoriteSlots } from "./series/SeriesFavoriteSlots";
 
 export function Home() {
@@ -11,6 +12,8 @@ export function Home() {
       <FavoriteSlots />
       <h2>Séries favoritas</h2>
       <SeriesFavoriteSlots />
+      <h2>Filmes favoritos</h2>
+      <MovieFavoriteSlots />
       <h2>Atividade recente</h2>
       <ActivityFeed />
     </div>
