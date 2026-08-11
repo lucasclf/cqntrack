@@ -3,7 +3,11 @@ import { eq } from "drizzle-orm";
 import type { createDb } from "../db/client";
 import { series } from "../db/schema";
 import { getSeriesById, searchSeries as tmdbSearchSeries } from "../integrations/tmdb/series";
-import { buildPosterUrl, TV_GENRE_NAMES, type TmdbSeriesSearchResult } from "../integrations/tmdb/types";
+import {
+  buildPosterUrl,
+  TV_GENRE_NAMES,
+  type TmdbSeriesSearchResult,
+} from "../integrations/tmdb/types";
 
 type Db = ReturnType<typeof createDb>;
 export type CachedSeries = typeof series.$inferSelect;
@@ -35,12 +39,14 @@ export function mapTmdbSearchResultToSummary(result: TmdbSeriesSearchResult): Se
     tmdbId: result.id,
     name: result.name,
     posterUrl: result.poster_path ? buildPosterUrl(result.poster_path, "w342") : null,
-    firstAirDate: result.first_air_date && result.first_air_date.length > 0 ? result.first_air_date : null,
+    firstAirDate:
+      result.first_air_date && result.first_air_date.length > 0 ? result.first_air_date : null,
     genres: (result.genre_ids ?? [])
       .map((id) => TV_GENRE_NAMES[id])
       .filter((name): name is string => Boolean(name)),
     numberOfSeasons: null,
     numberOfEpisodes: null,
+    seasons: null,
     rating: result.vote_average ?? null,
   };
 }
@@ -58,6 +64,14 @@ export function mapCachedSeriesToSummary(row: CachedSeries): SeriesSummary {
     genres: row.genres ?? [],
     numberOfSeasons: row.numberOfSeasons,
     numberOfEpisodes: row.numberOfEpisodes,
+    seasons:
+      row.seasons?.map((season) => ({
+        seasonNumber: season.seasonNumber,
+        name: season.name,
+        episodeCount: season.episodeCount,
+        airDate: season.airDate,
+        posterUrl: season.posterPath ? buildPosterUrl(season.posterPath, "w185") : null,
+      })) ?? null,
     rating: row.rating,
   };
 }
@@ -92,11 +106,21 @@ export async function getOrCacheSeries(env: Env, db: Db, tmdbId: number): Promis
       name: detail.name,
       posterPath: detail.poster_path ?? null,
       firstAirDate:
-        detail.first_air_date && detail.first_air_date.length > 0 ? new Date(detail.first_air_date) : null,
+        detail.first_air_date && detail.first_air_date.length > 0
+          ? new Date(detail.first_air_date)
+          : null,
       overview: detail.overview ?? null,
       genres: detail.genres?.map((genre) => genre.name) ?? [],
       numberOfSeasons: detail.number_of_seasons ?? null,
       numberOfEpisodes: detail.number_of_episodes ?? null,
+      seasons:
+        detail.seasons?.map((season) => ({
+          seasonNumber: season.season_number,
+          name: season.name,
+          episodeCount: season.episode_count,
+          airDate: season.air_date && season.air_date.length > 0 ? season.air_date : null,
+          posterPath: season.poster_path ?? null,
+        })) ?? [],
       rating: detail.vote_average ?? null,
     })
     .onConflictDoNothing();

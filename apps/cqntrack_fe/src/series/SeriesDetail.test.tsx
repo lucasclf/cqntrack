@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "../lib/api-client";
@@ -26,6 +26,7 @@ const SERIES = {
   genres: ["Drama", "Crime"],
   numberOfSeasons: 5,
   numberOfEpisodes: 62,
+  seasons: null,
   rating: 8.9,
   overview: "Um professor de química vira fabricante de metanfetamina.",
 };
@@ -46,10 +47,8 @@ describe("SeriesDetail", () => {
       series: SERIES,
       entry: {
         id: "1",
-        status: "watching",
         rating: 4.5,
-        currentSeason: 2,
-        currentEpisode: 5,
+        watchedEpisodeCount: 12,
         favoriteSlot: 1,
         review: "Muito bom",
         updatedAt: "2026-01-01T00:00:00.000Z",
@@ -58,24 +57,39 @@ describe("SeriesDetail", () => {
     renderDetail();
 
     expect(await screen.findByRole("heading", { name: "Breaking Bad" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Assistindo" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByLabelText("Temporada")).toHaveValue(2);
-    expect(screen.getByLabelText("Episódio")).toHaveValue(5);
+    expect(screen.getByText("4.5")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Muito bom")).toBeInTheDocument();
     expect(getMock).toHaveBeenCalledWith("/api/series/1396");
     // Favoritar não acontece nesta página (só pelos slots da home).
     expect(screen.queryByRole("button", { name: /favorit/i })).not.toBeInTheDocument();
   });
 
-  it("salva temporada e episódio juntos ao sair do campo (blur)", async () => {
+  it("salva a nota ao clicar numa estrela, criando a marcação quando ainda não existe entry", async () => {
+    getMock.mockResolvedValue({ series: SERIES, entry: null });
+    putMock.mockResolvedValue({
+      id: "2",
+      rating: 5,
+      watchedEpisodeCount: 0,
+      favoriteSlot: null,
+      review: null,
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    renderDetail();
+
+    await screen.findByRole("heading", { name: "Breaking Bad" });
+    fireEvent.click(screen.getByRole("button", { name: "5 estrelas" }));
+
+    expect(putMock).toHaveBeenCalledWith("/api/series/1396/entry", { rating: 5 });
+    expect(await screen.findByText("5.0")).toBeInTheDocument();
+  });
+
+  it("salva a review ao sair do campo (blur)", async () => {
     getMock.mockResolvedValue({
       series: SERIES,
       entry: {
         id: "1",
-        status: null,
         rating: null,
-        currentSeason: null,
-        currentEpisode: null,
+        watchedEpisodeCount: 0,
         favoriteSlot: null,
         review: null,
         updatedAt: "2026-01-01T00:00:00.000Z",
@@ -83,49 +97,19 @@ describe("SeriesDetail", () => {
     });
     putMock.mockResolvedValue({
       id: "1",
-      status: null,
       rating: null,
-      currentSeason: 1,
-      currentEpisode: 3,
+      watchedEpisodeCount: 0,
       favoriteSlot: null,
-      review: null,
+      review: "Ótima série",
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
     renderDetail();
 
     await screen.findByRole("heading", { name: "Breaking Bad" });
-    fireEvent.change(screen.getByLabelText("Temporada"), { target: { value: "1" } });
-    fireEvent.change(screen.getByLabelText("Episódio"), { target: { value: "3" } });
-    fireEvent.blur(screen.getByLabelText("Episódio"));
+    fireEvent.change(screen.getByLabelText("Review"), { target: { value: "Ótima série" } });
+    fireEvent.blur(screen.getByLabelText("Review"));
 
-    expect(putMock).toHaveBeenCalledWith("/api/series/1396/entry", {
-      currentSeason: 1,
-      currentEpisode: 3,
-    });
-  });
-
-  it("cria a marcação ao escolher um status quando ainda não existe entry", async () => {
-    getMock.mockResolvedValue({ series: SERIES, entry: null });
-    putMock.mockResolvedValue({
-      id: "2",
-      status: "watching",
-      rating: null,
-      currentSeason: null,
-      currentEpisode: null,
-      favoriteSlot: null,
-      review: null,
-      updatedAt: "2026-01-01T00:00:00.000Z",
-    });
-    renderDetail();
-
-    await screen.findByRole("heading", { name: "Breaking Bad" });
-    fireEvent.click(screen.getByRole("button", { name: "Assistindo" }));
-
-    expect(putMock).toHaveBeenCalledWith("/api/series/1396/entry", { status: "watching" });
-    expect(await screen.findByRole("button", { name: "Assistindo" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    expect(putMock).toHaveBeenCalledWith("/api/series/1396/entry", { review: "Ótima série" });
   });
 
   it("remove a marcação existente", async () => {
@@ -133,10 +117,8 @@ describe("SeriesDetail", () => {
       series: SERIES,
       entry: {
         id: "1",
-        status: "watching",
-        rating: null,
-        currentSeason: null,
-        currentEpisode: null,
+        rating: 4,
+        watchedEpisodeCount: 3,
         favoriteSlot: null,
         review: null,
         updatedAt: "2026-01-01T00:00:00.000Z",
@@ -149,11 +131,9 @@ describe("SeriesDetail", () => {
     fireEvent.click(screen.getByRole("button", { name: "Remover marcação" }));
 
     expect(deleteMock).toHaveBeenCalledWith("/api/series/1396/entry");
-    expect(await screen.findByRole("button", { name: "Assistindo" })).toHaveAttribute(
-      "aria-pressed",
-      "false",
-    );
-    expect(screen.queryByRole("button", { name: "Remover marcação" })).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: "Remover marcação" })).not.toBeInTheDocument();
+    });
   });
 
   it("mostra 'série não encontrada' quando a API retorna 404", async () => {

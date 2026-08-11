@@ -12,6 +12,7 @@ const BASE_SERIES: SeriesSummary = {
   genres: ["Drama", "Crime"],
   numberOfSeasons: 5,
   numberOfEpisodes: 62,
+  seasons: null,
   rating: 8.947,
 };
 
@@ -48,33 +49,29 @@ describe("SeriesCard", () => {
     expect(screen.getByText("Data desconhecida")).toBeInTheDocument();
   });
 
-  it("mostra status, nota pessoal e selo de favorito quando há entry", () => {
+  it("mostra progresso de episódios, nota pessoal e selo de favorito quando há entry", () => {
     renderCard(BASE_SERIES, {
       id: "1",
-      status: "completed",
       rating: 4.5,
-      currentSeason: 5,
-      currentEpisode: 16,
+      watchedEpisodeCount: 40,
       favoriteSlot: 2,
       review: null,
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
 
-    expect(screen.getByText("Completo")).toBeInTheDocument();
+    expect(screen.getByText("40/62 ep.")).toBeInTheDocument();
     expect(screen.getByText("★ 4.5")).toBeInTheDocument();
     expect(screen.getByLabelText("Favoritado")).toBeInTheDocument();
   });
 
-  it("reserva a linha de status/nota mesmo quando a entry não tem nenhum dos dois", () => {
-    // Favoritar não define status nem nota — sem isso, esse card fica mais
-    // baixo que os vizinhos que têm status/nota, quebrando o grid (bug real,
-    // já corrigido pra jogos e replicado aqui de propósito).
+  it("reserva a linha de progresso/nota mesmo quando a entry não tem nenhum dos dois", () => {
+    // Favoritar não marca episódio nem nota — sem isso, esse card fica mais
+    // baixo que os vizinhos que têm progresso/nota, quebrando o grid (bug
+    // real, já corrigido pra jogos e replicado aqui de propósito).
     const { container } = renderCard(BASE_SERIES, {
       id: "1",
-      status: null,
       rating: null,
-      currentSeason: null,
-      currentEpisode: null,
+      watchedEpisodeCount: 0,
       favoriteSlot: 1,
       review: null,
       updatedAt: "2026-01-01T00:00:00.000Z",

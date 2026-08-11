@@ -31,6 +31,15 @@ function tmdbSeriesDetail(id: number, name: string) {
     number_of_seasons: 5,
     number_of_episodes: 62,
     vote_average: 8.9,
+    seasons: [
+      {
+        season_number: 1,
+        name: "Temporada 1",
+        episode_count: 3,
+        air_date: "2008-01-20",
+        poster_path: `/poster-${id}-s1.jpg`,
+      },
+    ],
   };
 }
 
@@ -63,7 +72,11 @@ describe("GET /api/series/search", () => {
     const { cookie } = await createAuthenticatedUser(app, env);
     stubTmdbFetchOnce({ results: [TMDB_SEARCH_RESULT] });
 
-    const res = await app.request("/api/series/search?q=breaking+bad", { headers: { cookie } }, env);
+    const res = await app.request(
+      "/api/series/search?q=breaking+bad",
+      { headers: { cookie } },
+      env,
+    );
 
     expect(res.status).toBe(200);
     expect(fetch).toHaveBeenCalledTimes(1);
@@ -77,6 +90,7 @@ describe("GET /api/series/search", () => {
           genres: ["Drama", "Crime"],
           numberOfSeasons: null,
           numberOfEpisodes: null,
+          seasons: null,
           rating: 8.9,
         },
       ],
@@ -97,7 +111,10 @@ describe("GET /api/series/:tmdbId", () => {
 
   it("série inexistente na TMDB retorna 404", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(jsonResponse({ status_message: "not found" }, 404)));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValueOnce(jsonResponse({ status_message: "not found" }, 404)),
+    );
 
     const res = await app.request("/api/series/999999999", { headers: { cookie } }, env);
 
@@ -121,6 +138,15 @@ describe("GET /api/series/:tmdbId", () => {
         genres: ["Drama"],
         numberOfSeasons: 5,
         numberOfEpisodes: 62,
+        seasons: [
+          {
+            seasonNumber: 1,
+            name: "Temporada 1",
+            episodeCount: 3,
+            airDate: "2008-01-20",
+            posterUrl: "https://image.tmdb.org/t/p/w185/poster-501-s1.jpg",
+          },
+        ],
         rating: 8.9,
         overview: "Resumo da série 501",
       },
@@ -147,7 +173,7 @@ describe("GET /api/series/:tmdbId", () => {
 });
 
 describe("CRUD de marcação (/api/series/:tmdbId/entry)", () => {
-  it("PUT cria uma marcação nova, com status/nota/progresso/review", async () => {
+  it("PUT cria uma marcação nova, com nota e review", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
     stubTmdbFetchOnce(tmdbSeriesDetail(601, "Better Call Saul"));
 
@@ -156,7 +182,7 @@ describe("CRUD de marcação (/api/series/:tmdbId/entry)", () => {
       {
         method: "PUT",
         headers: { cookie, "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "watching", rating: 4.5, currentSeason: 2, currentEpisode: 5 }),
+        body: JSON.stringify({ rating: 4.5, review: "Ótima série" }),
       },
       env,
     );
@@ -164,10 +190,9 @@ describe("CRUD de marcação (/api/series/:tmdbId/entry)", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toMatchObject({
-      status: "watching",
       rating: 4.5,
-      currentSeason: 2,
-      currentEpisode: 5,
+      review: "Ótima série",
+      watchedEpisodeCount: 0,
       favoriteSlot: null,
     });
     vi.unstubAllGlobals();
@@ -181,7 +206,7 @@ describe("CRUD de marcação (/api/series/:tmdbId/entry)", () => {
       {
         method: "PUT",
         headers: { cookie, "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "watching", currentSeason: 1, currentEpisode: 3 }),
+        body: JSON.stringify({ rating: 3.5 }),
       },
       env,
     );
@@ -192,17 +217,17 @@ describe("CRUD de marcação (/api/series/:tmdbId/entry)", () => {
       {
         method: "PUT",
         headers: { cookie, "Content-Type": "application/json" },
-        body: JSON.stringify({ currentEpisode: 4 }),
+        body: JSON.stringify({ review: "Melhorou depois da metade" }),
       },
       env,
     );
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toMatchObject({ status: "watching", currentSeason: 1, currentEpisode: 4 });
+    expect(body).toMatchObject({ rating: 3.5, review: "Melhorou depois da metade" });
   });
 
-  it("PUT com progresso gera atividade progress_updated (tipo que jogos não tem)", async () => {
+  it("PUT com nota gera atividade rated", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
     stubTmdbFetchOnce(tmdbSeriesDetail(604, "The Sopranos"));
 
@@ -211,49 +236,16 @@ describe("CRUD de marcação (/api/series/:tmdbId/entry)", () => {
       {
         method: "PUT",
         headers: { cookie, "Content-Type": "application/json" },
-        body: JSON.stringify({ currentSeason: 3, currentEpisode: 7 }),
+        body: JSON.stringify({ rating: 4 }),
       },
       env,
     );
     vi.unstubAllGlobals();
 
     const activities = await createDb(env).query.activity.findMany();
-    const progressUpdated = activities.filter(
-      (item) => item.itemId === "604" && item.type === "progress_updated",
-    );
-    expect(progressUpdated).toHaveLength(1);
-    expect(progressUpdated[0]?.metadata).toEqual({ season: 3, episode: 7 });
-  });
-
-  it("PUT com status: null desmarca o status sem apagar os outros campos, e não gera atividade extra", async () => {
-    const { cookie } = await createAuthenticatedUser(app, env);
-    stubTmdbFetchOnce(tmdbSeriesDetail(605, "Mindhunter"));
-    await app.request(
-      "/api/series/605/entry",
-      {
-        method: "PUT",
-        headers: { cookie, "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "watching", rating: 5 }),
-      },
-      env,
-    );
-    vi.unstubAllGlobals();
-
-    const res = await app.request(
-      "/api/series/605/entry",
-      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ status: null }) },
-      env,
-    );
-
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body).toMatchObject({ status: null, rating: 5 });
-
-    const activities = await createDb(env).query.activity.findMany();
-    const statusChanged = activities.filter(
-      (item) => item.itemId === "605" && item.type === "status_changed",
-    );
-    expect(statusChanged).toHaveLength(1); // só o "watching" inicial, não o clear
+    const rated = activities.filter((item) => item.itemId === "604" && item.type === "rated");
+    expect(rated).toHaveLength(1);
+    expect(rated[0]?.metadata).toEqual({ rating: 4 });
   });
 
   it("DELETE remove a marcação", async () => {
@@ -264,7 +256,7 @@ describe("CRUD de marcação (/api/series/:tmdbId/entry)", () => {
       {
         method: "PUT",
         headers: { cookie, "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "completed" }),
+        body: JSON.stringify({ rating: 5 }),
       },
       env,
     );
@@ -285,7 +277,7 @@ describe("CRUD de marcação (/api/series/:tmdbId/entry)", () => {
 });
 
 describe("GET /api/series/entries", () => {
-  it("lista só as marcações do usuário logado, filtrando por status", async () => {
+  it("lista só as marcações do usuário logado", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
 
     stubTmdbFetchOnce(tmdbSeriesDetail(701, "Succession"));
@@ -294,7 +286,7 @@ describe("GET /api/series/entries", () => {
       {
         method: "PUT",
         headers: { cookie, "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "completed" }),
+        body: JSON.stringify({ rating: 5 }),
       },
       env,
     );
@@ -306,19 +298,57 @@ describe("GET /api/series/entries", () => {
       {
         method: "PUT",
         headers: { cookie, "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "watching" }),
+        body: JSON.stringify({ rating: 3 }),
       },
       env,
     );
     vi.unstubAllGlobals();
 
-    const res = await app.request("/api/series/entries?status=completed", { headers: { cookie } }, env);
+    const res = await app.request("/api/series/entries", { headers: { cookie } }, env);
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { total: number; items: Array<Record<string, unknown>> };
+    expect(body.total).toBe(2);
+    expect(body.items).toHaveLength(2);
+  });
+
+  it("filtra por favorito", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+
+    stubTmdbFetchOnce(tmdbSeriesDetail(703, "Fargo"));
+    await app.request(
+      "/api/series/favorites/1",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ tmdbId: 703 }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    stubTmdbFetchOnce(tmdbSeriesDetail(704, "Ozark"));
+    await app.request(
+      "/api/series/704/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ rating: 3 }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const res = await app.request(
+      "/api/series/entries?favorite=true",
+      { headers: { cookie } },
+      env,
+    );
 
     expect(res.status).toBe(200);
     const body = (await res.json()) as { total: number; items: Array<Record<string, unknown>> };
     expect(body.total).toBe(1);
-    expect(body.items).toHaveLength(1);
-    expect(body.items[0]).toMatchObject({ status: "completed", series: { tmdbId: 701 } });
+    expect(body.items[0]).toMatchObject({ series: { tmdbId: 703 } });
   });
 
   it("sem sessão retorna 401", async () => {
@@ -335,7 +365,11 @@ describe("GET/PUT /api/series/favorites", () => {
 
     const putRes = await app.request(
       "/api/series/favorites/1",
-      { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tmdbId: 1 }) },
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tmdbId: 1 }),
+      },
       env,
     );
     expect(putRes.status).toBe(401);
@@ -387,7 +421,11 @@ describe("GET/PUT /api/series/favorites", () => {
     stubTmdbFetchOnce(tmdbSeriesDetail(621, "The Wire"));
     await app.request(
       "/api/series/favorites/1",
-      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ tmdbId: 621 }) },
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ tmdbId: 621 }),
+      },
       env,
     );
     vi.unstubAllGlobals();
@@ -395,7 +433,11 @@ describe("GET/PUT /api/series/favorites", () => {
     stubTmdbFetchOnce(tmdbSeriesDetail(622, "Chernobyl"));
     await app.request(
       "/api/series/favorites/1",
-      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ tmdbId: 622 }) },
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ tmdbId: 622 }),
+      },
       env,
     );
     vi.unstubAllGlobals();
@@ -416,16 +458,26 @@ describe("GET/PUT /api/series/favorites", () => {
     stubTmdbFetchOnce(tmdbSeriesDetail(623, "Better Call Saul"));
     await app.request(
       "/api/series/favorites/1",
-      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ tmdbId: 623 }) },
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ tmdbId: 623 }),
+      },
       env,
     );
     vi.unstubAllGlobals();
 
-    const throwingFetch = vi.fn().mockRejectedValue(new Error("já cacheada, não deveria chamar a TMDB de novo"));
+    const throwingFetch = vi
+      .fn()
+      .mockRejectedValue(new Error("já cacheada, não deveria chamar a TMDB de novo"));
     vi.stubGlobal("fetch", throwingFetch);
     await app.request(
       "/api/series/favorites/3",
-      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ tmdbId: 623 }) },
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ tmdbId: 623 }),
+      },
       env,
     );
     vi.unstubAllGlobals();
@@ -441,7 +493,11 @@ describe("GET/PUT /api/series/favorites", () => {
 
     const res = await app.request(
       "/api/series/favorites/5",
-      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ tmdbId: 1 }) },
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ tmdbId: 1 }),
+      },
       env,
     );
 
@@ -454,13 +510,19 @@ describe("GET/PUT /api/series/favorites", () => {
 
     await app.request(
       "/api/series/favorites/1",
-      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ tmdbId: 624 }) },
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ tmdbId: 624 }),
+      },
       env,
     );
     vi.unstubAllGlobals();
 
     const activities = await createDb(env).query.activity.findMany();
-    const favorited = activities.filter((item) => item.itemId === "624" && item.type === "favorited");
+    const favorited = activities.filter(
+      (item) => item.itemId === "624" && item.type === "favorited",
+    );
     expect(favorited).toHaveLength(1);
   });
 });

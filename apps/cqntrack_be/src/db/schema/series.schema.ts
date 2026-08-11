@@ -1,4 +1,3 @@
-import { SERIES_STATUSES } from "@cqntrack/shared";
 import { relations, sql } from "drizzle-orm";
 import { index, integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { user } from "./auth.schema";
@@ -7,8 +6,10 @@ import { user } from "./auth.schema";
 // pra user, nunca é afetado por exclusão de conta. `rating` aqui é a nota
 // agregada da própria TMDB (0-10) — não confundir com a nota pessoal do
 // usuário (0-5, campo `rating` de seriesEntry). numberOfSeasons/
-// numberOfEpisodes só vêm preenchidos depois que a série é cacheada via
-// detalhe (a busca da TMDB não traz esse dado).
+// numberOfEpisodes/seasons só vêm preenchidos depois que a série é
+// cacheada via detalhe (a busca da TMDB não traz esse dado). `seasons` é
+// só o resumo (nome/contagem de episódios) — a lista de episódios em si
+// nunca é cacheada, é buscada ao vivo (ver series_episode_watch abaixo).
 export const series = sqliteTable("series", {
   tmdbId: integer("tmdb_id").primaryKey(),
   name: text("name").notNull(),
@@ -18,6 +19,15 @@ export const series = sqliteTable("series", {
   genres: text("genres", { mode: "json" }).$type<string[]>(),
   numberOfSeasons: integer("number_of_seasons"),
   numberOfEpisodes: integer("number_of_episodes"),
+  seasons: text("seasons", { mode: "json" }).$type<
+    {
+      seasonNumber: number;
+      name: string;
+      episodeCount: number;
+      airDate: string | null;
+      posterPath: string | null;
+    }[]
+  >(),
   rating: real("rating"),
   cachedAt: integer("cached_at", { mode: "timestamp_ms" })
     .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
@@ -28,10 +38,10 @@ export const series = sqliteTable("series", {
     .notNull(),
 });
 
-// Marcação do usuário para uma série: status, nota pessoal, progresso
-// (temporada/episódio atual), favorito e review. Um usuário só pode ter uma
-// marcação por série (upsert). Sem campo de "plataforma" — não existe
-// equivalente pra série (diferente de gameEntry).
+// Marcação do usuário para uma série: nota pessoal, favorito e review. Sem
+// status e sem ponteiro de progresso — o progresso de verdade mora em
+// series_episode_watch (uma linha por episódio assistido). Um usuário só
+// pode ter uma marcação por série (upsert).
 export const seriesEntry = sqliteTable(
   "series_entry",
   {
@@ -44,11 +54,7 @@ export const seriesEntry = sqliteTable(
     seriesId: integer("series_id")
       .notNull()
       .references(() => series.tmdbId, { onDelete: "cascade" }),
-    // Opcional: null = série sem status marcado (usuário pode desmarcar).
-    status: text("status", { enum: SERIES_STATUSES }),
     rating: real("rating"),
-    currentSeason: integer("current_season"),
-    currentEpisode: integer("current_episode"),
     // 1-4, null = não é favorito. Favoritar só acontece pelos 4 slots fixos
     // da home (PUT /api/series/favorites/:slot), mesmo padrão de gameEntry.
     favoriteSlot: integer("favorite_slot"),
@@ -63,12 +69,45 @@ export const seriesEntry = sqliteTable(
   },
   (table) => [
     uniqueIndex("series_entry_user_series_unique").on(table.userId, table.seriesId),
-    index("series_entry_user_status_idx").on(table.userId, table.status),
     // Parcial: só entra no índice quem tem um slot — garante no banco que um
     // usuário nunca tem duas séries no mesmo slot (1-4) ao mesmo tempo.
     uniqueIndex("series_entry_user_favorite_slot_unique")
       .on(table.userId, table.favoriteSlot)
       .where(sql`${table.favoriteSlot} is not null`),
+  ],
+);
+
+// Uma linha por episódio assistido — existência = assistido, sem coluna
+// boolean. Sem cache de nome/data/still do episódio (isso vem ao vivo da
+// TMDB a cada abertura de temporada); só o que é nosso (o "assistido")
+// fica salvo aqui. Sem FK composta pra um cache de episódio (não existe) —
+// a UI só deixa marcar depois que a temporada já carregou da TMDB.
+export const seriesEpisodeWatch = sqliteTable(
+  "series_episode_watch",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    seriesId: integer("series_id")
+      .notNull()
+      .references(() => series.tmdbId, { onDelete: "cascade" }),
+    seasonNumber: integer("season_number").notNull(),
+    episodeNumber: integer("episode_number").notNull(),
+    watchedAt: integer("watched_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("series_episode_watch_user_series_episode_unique").on(
+      table.userId,
+      table.seriesId,
+      table.seasonNumber,
+      table.episodeNumber,
+    ),
+    index("series_episode_watch_user_series_idx").on(table.userId, table.seriesId),
   ],
 );
 
@@ -119,11 +158,17 @@ export const seriesListItem = sqliteTable(
 export const seriesRelations = relations(series, ({ many }) => ({
   entries: many(seriesEntry),
   listItems: many(seriesListItem),
+  episodeWatches: many(seriesEpisodeWatch),
 }));
 
 export const seriesEntryRelations = relations(seriesEntry, ({ one }) => ({
   user: one(user, { fields: [seriesEntry.userId], references: [user.id] }),
   series: one(series, { fields: [seriesEntry.seriesId], references: [series.tmdbId] }),
+}));
+
+export const seriesEpisodeWatchRelations = relations(seriesEpisodeWatch, ({ one }) => ({
+  user: one(user, { fields: [seriesEpisodeWatch.userId], references: [user.id] }),
+  series: one(series, { fields: [seriesEpisodeWatch.seriesId], references: [series.tmdbId] }),
 }));
 
 export const seriesListRelations = relations(seriesList, ({ one, many }) => ({

@@ -7,9 +7,9 @@ import {
   type SeriesFavoriteSlot,
   type UpsertSeriesEntryRequest,
 } from "@cqntrack/shared";
-import { and, asc, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import type { createDb } from "../db/client";
-import { activity, seriesEntry } from "../db/schema";
+import { activity, seriesEntry, seriesEpisodeWatch } from "../db/schema";
 import { withoutUndefined } from "../lib/without-undefined";
 import {
   type CachedSeries,
@@ -22,19 +22,44 @@ type Db = ReturnType<typeof createDb>;
 type SeriesEntryRow = typeof seriesEntry.$inferSelect;
 
 const SORT_COLUMNS = {
-  status: seriesEntry.status,
   rating: seriesEntry.rating,
   favorite: seriesEntry.favoriteSlot,
   updatedAt: seriesEntry.updatedAt,
 } as const;
 
-function toSeriesEntry(row: SeriesEntryRow): SeriesEntry {
+async function getWatchedCount(db: Db, userId: string, seriesId: number): Promise<number> {
+  const [result] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(seriesEpisodeWatch)
+    .where(and(eq(seriesEpisodeWatch.userId, userId), eq(seriesEpisodeWatch.seriesId, seriesId)));
+  return result?.count ?? 0;
+}
+
+// Uma query em lote (GROUP BY) em vez de uma por linha — mesmo espírito de
+// withItemCount em lists.service.ts, evita N+1 em listSeriesEntries.
+async function getWatchedCounts(
+  db: Db,
+  userId: string,
+  seriesIds: number[],
+): Promise<Map<number, number>> {
+  if (seriesIds.length === 0) {
+    return new Map();
+  }
+  const rows = await db
+    .select({ seriesId: seriesEpisodeWatch.seriesId, count: sql<number>`count(*)` })
+    .from(seriesEpisodeWatch)
+    .where(
+      and(eq(seriesEpisodeWatch.userId, userId), inArray(seriesEpisodeWatch.seriesId, seriesIds)),
+    )
+    .groupBy(seriesEpisodeWatch.seriesId);
+  return new Map(rows.map((row) => [row.seriesId, row.count]));
+}
+
+function toSeriesEntry(row: SeriesEntryRow, watchedEpisodeCount: number): SeriesEntry {
   return {
     id: row.id,
-    status: row.status,
     rating: row.rating,
-    currentSeason: row.currentSeason,
-    currentEpisode: row.currentEpisode,
+    watchedEpisodeCount,
     favoriteSlot: row.favoriteSlot as SeriesEntry["favoriteSlot"],
     review: row.review,
     updatedAt: row.updatedAt.toISOString(),
@@ -50,29 +75,11 @@ async function logSeriesEntryActivities(
   const snapshot = toActivitySnapshot(cachedSeries);
   const activities: (typeof activity.$inferInsert)[] = [];
 
-  // Só loga quando um status real é definido — desmarcar (status: null),
-  // como desfavoritar, não vira atividade no feed.
-  if (input.status !== undefined && input.status !== null) {
-    activities.push({ userId, ...snapshot, type: "status_changed", metadata: { status: input.status } });
-  }
   if (input.rating !== undefined && input.rating !== null) {
     activities.push({ userId, ...snapshot, type: "rated", metadata: { rating: input.rating } });
   }
   if (input.review !== undefined && input.review !== null && input.review.trim() !== "") {
     activities.push({ userId, ...snapshot, type: "reviewed" });
-  }
-  // Tipo de atividade novo, só faz sentido pra séries — jogos não tem
-  // progresso por temporada/episódio.
-  if (
-    (input.currentSeason !== undefined && input.currentSeason !== null) ||
-    (input.currentEpisode !== undefined && input.currentEpisode !== null)
-  ) {
-    activities.push({
-      userId,
-      ...snapshot,
-      type: "progress_updated",
-      metadata: { season: input.currentSeason ?? null, episode: input.currentEpisode ?? null },
-    });
   }
 
   if (activities.length > 0) {
@@ -88,7 +95,35 @@ export async function getSeriesEntryForUser(
   const row = await db.query.seriesEntry.findFirst({
     where: and(eq(seriesEntry.userId, userId), eq(seriesEntry.seriesId, tmdbId)),
   });
-  return row ? toSeriesEntry(row) : null;
+  if (!row) {
+    return null;
+  }
+  const watchedEpisodeCount = await getWatchedCount(db, userId, tmdbId);
+  return toSeriesEntry(row, watchedEpisodeCount);
+}
+
+// Garante que existe uma marcação (mesmo vazia) pra essa série — usado por
+// interações que não passam por upsertSeriesEntry (favoritar já tinha seu
+// próprio caminho; assistir um episódio, ver episodes.service.ts, também
+// precisa que a série "apareça" em listSeriesEntries mesmo sem nota/review).
+export async function ensureSeriesEntry(
+  env: Env,
+  db: Db,
+  userId: string,
+  tmdbId: number,
+): Promise<{ cachedSeries: CachedSeries; row: SeriesEntryRow }> {
+  const cachedSeries = await getOrCacheSeries(env, db, tmdbId);
+  const existing = await db.query.seriesEntry.findFirst({
+    where: and(eq(seriesEntry.userId, userId), eq(seriesEntry.seriesId, tmdbId)),
+  });
+  if (existing) {
+    return { cachedSeries, row: existing };
+  }
+  const [row] = await db.insert(seriesEntry).values({ userId, seriesId: tmdbId }).returning();
+  if (!row) {
+    throw new Error("Falha ao criar a marcação da série");
+  }
+  return { cachedSeries, row };
 }
 
 export async function upsertSeriesEntry(
@@ -105,16 +140,16 @@ export async function upsertSeriesEntry(
   });
 
   const patch = withoutUndefined({
-    status: input.status,
     rating: input.rating,
-    currentSeason: input.currentSeason,
-    currentEpisode: input.currentEpisode,
     review: input.review,
   });
 
   const [row] = existing
     ? await db.update(seriesEntry).set(patch).where(eq(seriesEntry.id, existing.id)).returning()
-    : await db.insert(seriesEntry).values({ userId, seriesId: tmdbId, ...patch }).returning();
+    : await db
+        .insert(seriesEntry)
+        .values({ userId, seriesId: tmdbId, ...patch })
+        .returning();
 
   if (!row) {
     throw new Error("Falha ao gravar a marcação da série");
@@ -122,7 +157,8 @@ export async function upsertSeriesEntry(
 
   await logSeriesEntryActivities(db, userId, cachedSeries, input);
 
-  return toSeriesEntry(row);
+  const watchedEpisodeCount = await getWatchedCount(db, userId, tmdbId);
+  return toSeriesEntry(row, watchedEpisodeCount);
 }
 
 // Define qual série ocupa um dos 4 slots fixos de favorito do usuário — a
@@ -153,16 +189,26 @@ export async function setFavoriteSlot(
   });
 
   const [row] = existing
-    ? await db.update(seriesEntry).set({ favoriteSlot: slot }).where(eq(seriesEntry.id, existing.id)).returning()
-    : await db.insert(seriesEntry).values({ userId, seriesId: tmdbId, favoriteSlot: slot }).returning();
+    ? await db
+        .update(seriesEntry)
+        .set({ favoriteSlot: slot })
+        .where(eq(seriesEntry.id, existing.id))
+        .returning()
+    : await db
+        .insert(seriesEntry)
+        .values({ userId, seriesId: tmdbId, favoriteSlot: slot })
+        .returning();
 
   if (!row) {
     throw new Error("Falha ao definir o favorito");
   }
 
-  await db.insert(activity).values({ userId, ...toActivitySnapshot(cachedSeries), type: "favorited" });
+  await db
+    .insert(activity)
+    .values({ userId, ...toActivitySnapshot(cachedSeries), type: "favorited" });
 
-  return toSeriesEntry(row);
+  const watchedEpisodeCount = await getWatchedCount(db, userId, tmdbId);
+  return toSeriesEntry(row, watchedEpisodeCount);
 }
 
 // Sempre os 4 slots, preenchidos ou não — quem chama decide o que fazer com
@@ -172,13 +218,23 @@ export async function getFavoriteSlots(db: Db, userId: string): Promise<SeriesFa
     where: and(eq(seriesEntry.userId, userId), isNotNull(seriesEntry.favoriteSlot)),
     with: { series: true },
   });
+  const watchedCounts = await getWatchedCounts(
+    db,
+    userId,
+    rows.map((row) => row.seriesId),
+  );
   const bySlot = new Map(rows.map((row) => [row.favoriteSlot, row]));
 
   return FAVORITE_SLOTS.map((slot) => {
     const row = bySlot.get(slot);
     return {
       slot,
-      entry: row ? { ...toSeriesEntry(row), series: mapCachedSeriesToSummary(row.series) } : null,
+      entry: row
+        ? {
+            ...toSeriesEntry(row, watchedCounts.get(row.seriesId) ?? 0),
+            series: mapCachedSeriesToSummary(row.series),
+          }
+        : null,
     };
   });
 }
@@ -195,9 +251,6 @@ export async function listSeriesEntries(
   query: ListSeriesEntriesQuery,
 ): Promise<{ items: SeriesEntryWithSeries[]; total: number }> {
   const conditions = [eq(seriesEntry.userId, userId)];
-  if (query.status) {
-    conditions.push(eq(seriesEntry.status, query.status));
-  }
   if (query.favorite !== undefined) {
     conditions.push(
       query.favorite ? isNotNull(seriesEntry.favoriteSlot) : isNull(seriesEntry.favoriteSlot),
@@ -216,12 +269,21 @@ export async function listSeriesEntries(
       offset: (query.page - 1) * query.pageSize,
       with: { series: true },
     }),
-    db.select({ count: sql<number>`count(*)` }).from(seriesEntry).where(where),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(seriesEntry)
+      .where(where),
   ]);
+
+  const watchedCounts = await getWatchedCounts(
+    db,
+    userId,
+    rows.map((row) => row.seriesId),
+  );
 
   return {
     items: rows.map((row) => ({
-      ...toSeriesEntry(row),
+      ...toSeriesEntry(row, watchedCounts.get(row.seriesId) ?? 0),
       series: mapCachedSeriesToSummary(row.series),
     })),
     total: countResult[0]?.count ?? 0,

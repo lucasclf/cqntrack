@@ -1,4 +1,4 @@
-import type { PaginatedSeriesEntriesResponse, SeriesStatus } from "@cqntrack/shared";
+import type { PaginatedSeriesEntriesResponse } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { apiClient } from "../lib/api-client";
 import styles from "./MySeriesEntries.module.css";
@@ -8,7 +8,6 @@ import { SeriesEntryFilters, type SeriesEntrySortField } from "./SeriesEntryFilt
 type LoadStatus = "loading" | "ready" | "error";
 
 export function MySeriesEntries() {
-  const [status, setStatus] = useState<SeriesStatus | "">("");
   const [favoriteOnly, setFavoriteOnly] = useState(false);
   const [sortBy, setSortBy] = useState<SeriesEntrySortField>("updatedAt");
   const [order, setOrder] = useState<"asc" | "desc">("desc");
@@ -16,7 +15,7 @@ export function MySeriesEntries() {
 
   // Volta pra página 1 sempre que um filtro/ordenação muda — ajustado durante
   // o render (mesmo padrão de MyEntries), não dentro do efeito.
-  const filtersKey = JSON.stringify({ status, favoriteOnly, sortBy, order });
+  const filtersKey = JSON.stringify({ favoriteOnly, sortBy, order });
   const [trackedFiltersKey, setTrackedFiltersKey] = useState(filtersKey);
   if (filtersKey !== trackedFiltersKey) {
     setTrackedFiltersKey(filtersKey);
@@ -29,7 +28,6 @@ export function MySeriesEntries() {
   useEffect(() => {
     let cancelled = false;
     const params = new URLSearchParams();
-    if (status) params.set("status", status);
     if (favoriteOnly) params.set("favorite", "true");
     params.set("sortBy", sortBy);
     params.set("order", order);
@@ -52,7 +50,7 @@ export function MySeriesEntries() {
     return () => {
       cancelled = true;
     };
-  }, [status, favoriteOnly, sortBy, order, page]);
+  }, [favoriteOnly, sortBy, order, page]);
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
 
@@ -60,8 +58,6 @@ export function MySeriesEntries() {
     <div className={styles.page}>
       <h1>Minhas séries</h1>
       <SeriesEntryFilters
-        status={status}
-        onStatusChange={setStatus}
         favoriteOnly={favoriteOnly}
         onFavoriteOnlyChange={setFavoriteOnly}
         sortBy={sortBy}
@@ -71,7 +67,9 @@ export function MySeriesEntries() {
       />
 
       {loadStatus === "loading" && !data && <p className={styles.hint}>Carregando...</p>}
-      {loadStatus === "error" && <p role="alert">Falha ao carregar suas séries. Tente novamente.</p>}
+      {loadStatus === "error" && (
+        <p role="alert">Falha ao carregar suas séries. Tente novamente.</p>
+      )}
       {loadStatus === "ready" && data?.items.length === 0 && (
         <p className={styles.hint}>Nenhuma série encontrada com esses filtros.</p>
       )}
@@ -84,7 +82,11 @@ export function MySeriesEntries() {
             ))}
           </div>
           <div className={styles.pagination}>
-            <button type="button" disabled={page <= 1} onClick={() => setPage((current) => current - 1)}>
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => setPage((current) => current - 1)}
+            >
               Anterior
             </button>
             <span className={styles.pageInfo}>

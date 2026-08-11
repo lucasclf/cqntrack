@@ -107,29 +107,6 @@
   box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
-.hint {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 13px;
-}
-
-.progressRow {
-  display: flex;
-  gap: 12px;
-}
-
-.progressField {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
-.progressField input {
-  width: 100px;
-}
-
 .removeBtn {
   align-self: flex-start;
   padding: 8px 14px;

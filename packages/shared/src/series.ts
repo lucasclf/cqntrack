@@ -1,27 +1,25 @@
 import { z } from "zod";
 import { FavoriteSlotNumberSchema } from "./favorites";
 
-// Fonte única de verdade dos 4 status — importado tanto pelo schema Drizzle
-// (enum da coluna) quanto pelo z.enum abaixo. Sem "platinado" (não existe
-// equivalente pra série) — 4 status, não 5 como em jogos.
-export const SERIES_STATUSES = ["want_to_watch", "watching", "dropped", "completed"] as const;
+// Resumo de uma temporada — vem de graça no mesmo GET /tv/{id} que já
+// cacheia a série, sem chamada extra à TMDB. A lista de episódios em si
+// (nome/data/still de cada um) NÃO é cacheada — ver SeriesEpisodeSchema.
+export const SeriesSeasonSummarySchema = z.object({
+  seasonNumber: z.number().int(),
+  name: z.string(),
+  episodeCount: z.number().int(),
+  airDate: z.iso.date().nullable(),
+  posterUrl: z.url().nullable(),
+});
 
-export const SeriesStatusSchema = z.enum(SERIES_STATUSES);
-
-export type SeriesStatus = z.infer<typeof SeriesStatusSchema>;
-
-export const SERIES_STATUS_LABELS: Record<SeriesStatus, string> = {
-  want_to_watch: "Quero assistir",
-  watching: "Assistindo",
-  dropped: "Abandonei",
-  completed: "Completo",
-};
+export type SeriesSeasonSummary = z.infer<typeof SeriesSeasonSummarySchema>;
 
 // DTO enxuto de uma série — nunca a entity Drizzle crua. `rating` aqui é a
 // nota agregada da própria TMDB (0-10) — não confundir com a nota pessoal do
 // usuário (0-5), que vive em SeriesEntrySchema (adicionado numa etapa
-// futura). numberOfSeasons/numberOfEpisodes só vêm preenchidos quando a
-// série já foi cacheada via detalhe — a busca da TMDB não traz esse dado.
+// futura). numberOfSeasons/numberOfEpisodes/seasons só vêm preenchidos
+// quando a série já foi cacheada via detalhe — a busca da TMDB não traz
+// esse dado.
 export const SeriesSummarySchema = z.object({
   tmdbId: z.number().int(),
   name: z.string(),
@@ -30,6 +28,7 @@ export const SeriesSummarySchema = z.object({
   genres: z.array(z.string()),
   numberOfSeasons: z.number().int().nullable(),
   numberOfEpisodes: z.number().int().nullable(),
+  seasons: z.array(SeriesSeasonSummarySchema).nullable(),
   rating: z.number().nullable(),
 });
 
@@ -57,15 +56,14 @@ export type SeriesDetail = z.infer<typeof SeriesDetailSchema>;
 // Marcação do usuário para uma série específica — sem a `series` embutida
 // (quem consome isso normalmente já sabe de qual série se trata pelo
 // contexto da chamada). Ver SeriesEntryWithSeriesSchema para o caso de
-// listas/feeds. currentSeason/currentEpisode não são validados contra
-// numberOfSeasons/numberOfEpisodes da série (esse dado pode estar
-// desatualizado) — só um inteiro ≥ 1, a UI é quem sugere limites razoáveis.
+// listas/feeds. Sem status — o controle é só "quais episódios foram
+// assistidos" (ver SeriesEpisodeSchema/endpoints de temporada) + a nota.
+// watchedEpisodeCount vem de uma contagem em series_episode_watch, não de
+// uma coluna própria — permite mostrar "45/62" sem request extra.
 export const SeriesEntrySchema = z.object({
   id: z.string(),
-  status: SeriesStatusSchema.nullable(),
   rating: z.number().nullable(),
-  currentSeason: z.number().int().min(1).nullable(),
-  currentEpisode: z.number().int().min(1).nullable(),
+  watchedEpisodeCount: z.number().int(),
   // Favoritar só acontece pelos 4 slots fixos da home (ver SeriesFavoritesResponseSchema)
   // — null = essa série não está em nenhum dos 4 favoritos do usuário.
   favoriteSlot: FavoriteSlotNumberSchema.nullable(),
@@ -89,11 +87,8 @@ export const SeriesDetailResponseSchema = z.object({
 export type SeriesDetailResponse = z.infer<typeof SeriesDetailResponseSchema>;
 
 export const UpsertSeriesEntryRequestSchema = z.object({
-  status: SeriesStatusSchema.nullable().optional(),
   rating: z.number().min(0).max(5).multipleOf(0.5).nullable().optional(),
   review: z.string().max(2000).nullable().optional(),
-  currentSeason: z.number().int().min(1).nullable().optional(),
-  currentEpisode: z.number().int().min(1).nullable().optional(),
 });
 
 export type UpsertSeriesEntryRequest = z.infer<typeof UpsertSeriesEntryRequestSchema>;
@@ -120,11 +115,10 @@ export const SeriesFavoritesResponseSchema = z.object({
 export type SeriesFavoritesResponse = z.infer<typeof SeriesFavoritesResponseSchema>;
 
 // "favorite" ordena/filtra por favoriteSlot (null = não favoritado). Sem
-// campo "platform" (não existe equivalente pra série).
-export const SERIES_ENTRY_SORT_FIELDS = ["status", "rating", "favorite", "updatedAt"] as const;
+// "status" (não existe mais) nem "platform" (nunca existiu pra série).
+export const SERIES_ENTRY_SORT_FIELDS = ["rating", "favorite", "updatedAt"] as const;
 
 export const ListSeriesEntriesQuerySchema = z.object({
-  status: SeriesStatusSchema.optional(),
   favorite: z.coerce.boolean().optional(),
   sortBy: z.enum(SERIES_ENTRY_SORT_FIELDS).default("updatedAt"),
   order: z.enum(["asc", "desc"]).default("desc"),
@@ -176,3 +170,31 @@ export type CreateSeriesListRequest = z.infer<typeof CreateSeriesListRequestSche
 export const UpdateSeriesListRequestSchema = CreateSeriesListRequestSchema.partial();
 
 export type UpdateSeriesListRequest = z.infer<typeof UpdateSeriesListRequestSchema>;
+
+// Um episódio dentro de uma temporada — buscado ao vivo na TMDB a cada
+// abertura de tela (sem cache local de nome/data/still, só o "watched" é
+// nosso). Ver GET /api/series/:tmdbId/seasons/:seasonNumber.
+export const SeriesEpisodeSchema = z.object({
+  episodeNumber: z.number().int(),
+  name: z.string(),
+  airDate: z.iso.date().nullable(),
+  stillUrl: z.url().nullable(),
+  watched: z.boolean(),
+});
+
+export type SeriesEpisode = z.infer<typeof SeriesEpisodeSchema>;
+
+export const SeriesSeasonEpisodesResponseSchema = z.object({
+  seasonNumber: z.number().int(),
+  episodes: z.array(SeriesEpisodeSchema),
+});
+
+export type SeriesSeasonEpisodesResponse = z.infer<typeof SeriesSeasonEpisodesResponseSchema>;
+
+// Corpo de PUT .../episodes/:season/:episode e PUT .../seasons/:season —
+// mesmo formato pros dois casos (episódio único ou temporada inteira).
+export const SetWatchedRequestSchema = z.object({
+  watched: z.boolean(),
+});
+
+export type SetWatchedRequest = z.infer<typeof SetWatchedRequestSchema>;

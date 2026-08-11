@@ -8,7 +8,10 @@ const { getMock } = vi.hoisted(() => ({ getMock: vi.fn() }));
 
 vi.mock("../lib/api-client", async () => {
   const actual = await vi.importActual<typeof import("../lib/api-client")>("../lib/api-client");
-  return { ...actual, apiClient: { get: getMock, post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() } };
+  return {
+    ...actual,
+    apiClient: { get: getMock, post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
+  };
 });
 
 const PROFILE = {
@@ -36,6 +39,7 @@ const SERIES = {
   genres: [],
   numberOfSeasons: null,
   numberOfEpisodes: null,
+  seasons: null,
   rating: null,
 };
 
@@ -64,14 +68,36 @@ describe("PublicProfile", () => {
       if (path === "/api/users/gamer_1") return Promise.resolve(PROFILE);
       if (path === "/api/users/gamer_1/games/entries") {
         return Promise.resolve({
-          items: [{ id: "1", status: "playing", rating: null, favoriteSlot: null, platforms: null, review: null, updatedAt: "2026-01-01T00:00:00.000Z", game: GAME }],
+          items: [
+            {
+              id: "1",
+              status: "playing",
+              rating: null,
+              favoriteSlot: null,
+              platforms: null,
+              review: null,
+              updatedAt: "2026-01-01T00:00:00.000Z",
+              game: GAME,
+            },
+          ],
           page: 1,
           pageSize: 24,
           total: 1,
         });
       }
       if (path === "/api/users/gamer_1/games/lists") {
-        return Promise.resolve({ lists: [{ id: "l1", name: "Favoritos", description: null, itemCount: 3, createdAt: "", updatedAt: "" }] });
+        return Promise.resolve({
+          lists: [
+            {
+              id: "l1",
+              name: "Favoritos",
+              description: null,
+              itemCount: 3,
+              createdAt: "",
+              updatedAt: "",
+            },
+          ],
+        });
       }
       if (path === "/api/users/gamer_1/games/favorites") {
         return Promise.resolve({
@@ -88,10 +114,8 @@ describe("PublicProfile", () => {
           items: [
             {
               id: "1",
-              status: "watching",
               rating: null,
-              currentSeason: null,
-              currentEpisode: null,
+              watchedEpisodeCount: 0,
               favoriteSlot: null,
               review: null,
               updatedAt: "2026-01-01T00:00:00.000Z",
@@ -105,7 +129,16 @@ describe("PublicProfile", () => {
       }
       if (path === "/api/users/gamer_1/series/lists") {
         return Promise.resolve({
-          lists: [{ id: "sl1", name: "Maratonadas", description: null, itemCount: 2, createdAt: "", updatedAt: "" }],
+          lists: [
+            {
+              id: "sl1",
+              name: "Maratonadas",
+              description: null,
+              itemCount: 2,
+              createdAt: "",
+              updatedAt: "",
+            },
+          ],
         });
       }
       if (path === "/api/users/gamer_1/series/favorites") {

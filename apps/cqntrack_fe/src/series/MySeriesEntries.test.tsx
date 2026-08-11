@@ -11,10 +11,8 @@ vi.mock("../lib/api-client", () => ({
 
 const ENTRY = {
   id: "1",
-  status: "watching" as const,
   rating: 4,
-  currentSeason: 2,
-  currentEpisode: 5,
+  watchedEpisodeCount: 5,
   favoriteSlot: null,
   review: null,
   updatedAt: "2026-01-01T00:00:00.000Z",
@@ -26,6 +24,7 @@ const ENTRY = {
     genres: [],
     numberOfSeasons: 5,
     numberOfEpisodes: 62,
+    seasons: null,
     rating: null,
   },
 };
@@ -63,7 +62,9 @@ describe("MySeriesEntries", () => {
     getMock.mockResolvedValue({ items: [], page: 1, pageSize: 24, total: 0 });
     renderPage();
 
-    expect(await screen.findByText("Nenhuma série encontrada com esses filtros.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Nenhuma série encontrada com esses filtros."),
+    ).toBeInTheDocument();
   });
 
   it("mostra erro quando a busca falha", async () => {
@@ -73,15 +74,15 @@ describe("MySeriesEntries", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Falha ao carregar suas séries");
   });
 
-  it("refaz a busca com o novo status ao trocar o filtro", async () => {
+  it("refaz a busca com o filtro de favoritos ao marcar a checkbox", async () => {
     getMock.mockResolvedValue({ items: [ENTRY], page: 1, pageSize: 24, total: 1 });
     renderPage();
     await screen.findByText("Breaking Bad");
 
-    fireEvent.change(screen.getByLabelText("Status"), { target: { value: "watching" } });
+    fireEvent.click(screen.getByLabelText("Somente favoritos"));
 
     await screen.findByText("Breaking Bad");
-    expect(lastQuery().get("status")).toBe("watching");
+    expect(lastQuery().get("favorite")).toBe("true");
   });
 
   it("navega entre páginas e reseta pra página 1 ao mudar um filtro", async () => {
@@ -95,7 +96,7 @@ describe("MySeriesEntries", () => {
     await act(async () => {});
     expect(lastQuery().get("page")).toBe("2");
 
-    fireEvent.change(screen.getByLabelText("Status"), { target: { value: "watching" } });
+    fireEvent.click(screen.getByLabelText("Somente favoritos"));
     await act(async () => {});
     expect(lastQuery().get("page")).toBe("1");
   });

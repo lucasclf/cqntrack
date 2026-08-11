@@ -17,15 +17,14 @@ const SERIES = {
   genres: [],
   numberOfSeasons: null,
   numberOfEpisodes: null,
+  seasons: null,
   rating: null,
 };
 
 const ENTRY = {
   id: "1",
-  status: null,
   rating: null,
-  currentSeason: null,
-  currentEpisode: null,
+  watchedEpisodeCount: 0,
   favoriteSlot: 1,
   review: null,
   updatedAt: "2026-01-01T00:00:00.000Z",

@@ -1,4 +1,4 @@
-import { SERIES_STATUS_LABELS, type SeriesEntry, type SeriesSummary } from "@cqntrack/shared";
+import type { SeriesEntry, SeriesSummary } from "@cqntrack/shared";
 import { Link } from "react-router";
 import styles from "./SeriesCard.module.css";
 
@@ -39,13 +39,15 @@ export function SeriesCard({ series, entry }: SeriesCardProps) {
           {series.genres.length > 0 &&
             ` · ${series.genres[0]}${extraGenres > 0 ? ` +${extraGenres}` : ""}`}
         </p>
-        {/* Sempre reserva a linha quando há entry, com status/nota ou vazia —
-            senão os cards sem nenhum dos dois ficam mais baixos que os
-            vizinhos que têm, quebrando o alinhamento da fileira no grid. */}
+        {/* Sempre reserva a linha quando há entry, com progresso/nota ou
+            vazia — senão os cards sem nenhum dos dois ficam mais baixos que
+            os vizinhos que têm, quebrando o alinhamento da fileira no grid. */}
         {entry && (
           <p className={styles.entryMeta}>
-            {entry.status && (
-              <span className={styles.statusPill}>{SERIES_STATUS_LABELS[entry.status]}</span>
+            {entry.watchedEpisodeCount > 0 && (
+              <span className={styles.progressPill}>
+                {entry.watchedEpisodeCount}/{series.numberOfEpisodes ?? "?"} ep.
+              </span>
             )}
             {entry.rating !== null && (
               <span className={styles.personalRating}>★ {entry.rating.toFixed(1)}</span>

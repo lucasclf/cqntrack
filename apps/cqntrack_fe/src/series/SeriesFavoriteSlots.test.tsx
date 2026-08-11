@@ -17,6 +17,7 @@ const SERIES = {
   genres: [],
   numberOfSeasons: null,
   numberOfEpisodes: null,
+  seasons: null,
   rating: null,
 };
 
@@ -70,10 +71,8 @@ describe("SeriesFavoriteSlots", () => {
     });
     putMock.mockResolvedValue({
       id: "1",
-      status: null,
       rating: null,
-      currentSeason: null,
-      currentEpisode: null,
+      watchedEpisodeCount: 0,
       favoriteSlot: 1,
       review: null,
       updatedAt: "2026-01-01T00:00:00.000Z",
@@ -106,10 +105,8 @@ describe("SeriesFavoriteSlots", () => {
           slot: 1,
           entry: {
             id: "1",
-            status: null,
             rating: null,
-            currentSeason: null,
-            currentEpisode: null,
+            watchedEpisodeCount: 0,
             favoriteSlot: 1,
             review: null,
             updatedAt: "2026-01-01T00:00:00.000Z",

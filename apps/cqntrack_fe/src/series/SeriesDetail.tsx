@@ -5,7 +5,6 @@ import { StarRating } from "../components/StarRating";
 import { ApiError, apiClient } from "../lib/api-client";
 import { AddToSeriesListMenu } from "./AddToSeriesListMenu";
 import styles from "./SeriesDetail.module.css";
-import { SeriesStatusBadge } from "./SeriesStatusBadge";
 
 type LoadStatus = "loading" | "ready" | "not-found" | "error";
 
@@ -14,8 +13,6 @@ export function SeriesDetail() {
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
   const [detail, setDetail] = useState<SeriesDetailResponse | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [seasonDraft, setSeasonDraft] = useState("");
-  const [episodeDraft, setEpisodeDraft] = useState("");
   const [reviewDraft, setReviewDraft] = useState("");
 
   // Reseta o status assim que o :tmdbId da rota muda — feito durante o
@@ -35,8 +32,6 @@ export function SeriesDetail() {
       .then((data) => {
         if (cancelled) return;
         setDetail(data);
-        setSeasonDraft(data.entry?.currentSeason != null ? String(data.entry.currentSeason) : "");
-        setEpisodeDraft(data.entry?.currentEpisode != null ? String(data.entry.currentEpisode) : "");
         setReviewDraft(data.entry?.review ?? "");
         setLoadStatus("ready");
       })
@@ -60,27 +55,11 @@ export function SeriesDetail() {
     }
   }
 
-  // Temporada e episódio sempre são enviados juntos (mesmo quando só um dos
-  // dois campos mudou) — evita que a atividade "progress_updated" registre
-  // um valor incoerente com o que de fato ficou salvo.
-  function saveProgress() {
-    const season = seasonDraft ? Number(seasonDraft) : null;
-    const episode = episodeDraft ? Number(episodeDraft) : null;
-    const currentSeason = detail?.entry?.currentSeason ?? null;
-    const currentEpisode = detail?.entry?.currentEpisode ?? null;
-    if (season === currentSeason && episode === currentEpisode) {
-      return;
-    }
-    savePatch({ currentSeason: season, currentEpisode: episode });
-  }
-
   async function removeEntry() {
     setSaveError(null);
     try {
       await apiClient.delete(`/api/series/${tmdbId}/entry`);
       setDetail((current) => (current ? { ...current, entry: null } : current));
-      setSeasonDraft("");
-      setEpisodeDraft("");
       setReviewDraft("");
     } catch {
       setSaveError("Falha ao remover a marcação. Tente novamente.");
@@ -137,43 +116,9 @@ export function SeriesDetail() {
         <h2>Sua marcação</h2>
         {saveError && <p role="alert">{saveError}</p>}
 
-        <SeriesStatusBadge status={entry?.status ?? null} onChange={(status) => savePatch({ status })} />
-
         <AddToSeriesListMenu tmdbId={series.tmdbId} />
 
         <StarRating value={entry?.rating ?? null} onChange={(rating) => savePatch({ rating })} />
-
-        <fieldset className={styles.field}>
-          <legend>Progresso</legend>
-          <div className={styles.progressRow}>
-            <label className={styles.progressField}>
-              <span>Temporada</span>
-              <input
-                type="number"
-                min={1}
-                value={seasonDraft}
-                onChange={(event) => setSeasonDraft(event.target.value)}
-                onBlur={saveProgress}
-              />
-            </label>
-            <label className={styles.progressField}>
-              <span>Episódio</span>
-              <input
-                type="number"
-                min={1}
-                value={episodeDraft}
-                onChange={(event) => setEpisodeDraft(event.target.value)}
-                onBlur={saveProgress}
-              />
-            </label>
-          </div>
-          {series.numberOfSeasons !== null && series.numberOfEpisodes !== null && (
-            <p className={styles.hint}>
-              de {series.numberOfSeasons} temporada{series.numberOfSeasons === 1 ? "" : "s"} e{" "}
-              {series.numberOfEpisodes} episódios ao todo
-            </p>
-          )}
-        </fieldset>
 
         <label className={styles.field}>
           <span>Review</span>

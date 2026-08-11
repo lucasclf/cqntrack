@@ -1,18 +1,15 @@
-import { SERIES_ENTRY_SORT_FIELDS, SERIES_STATUSES, SERIES_STATUS_LABELS, type SeriesStatus } from "@cqntrack/shared";
+import { SERIES_ENTRY_SORT_FIELDS } from "@cqntrack/shared";
 import styles from "./SeriesEntryFilters.module.css";
 
 export type SeriesEntrySortField = (typeof SERIES_ENTRY_SORT_FIELDS)[number];
 
 const SORT_FIELD_LABELS: Record<SeriesEntrySortField, string> = {
-  status: "Status",
   rating: "Nota",
   favorite: "Favorito",
   updatedAt: "Atualizado em",
 };
 
 interface SeriesEntryFiltersProps {
-  status: SeriesStatus | "";
-  onStatusChange: (status: SeriesStatus | "") => void;
   favoriteOnly: boolean;
   onFavoriteOnlyChange: (value: boolean) => void;
   sortBy: SeriesEntrySortField;
@@ -24,8 +21,6 @@ interface SeriesEntryFiltersProps {
 // Sem campo de plataforma — sem equivalente pra série (diferente de
 // EntryFilters de jogos).
 export function SeriesEntryFilters({
-  status,
-  onStatusChange,
   favoriteOnly,
   onFavoriteOnlyChange,
   sortBy,
@@ -35,21 +30,6 @@ export function SeriesEntryFilters({
 }: SeriesEntryFiltersProps) {
   return (
     <div className={styles.filters}>
-      <label className={styles.field}>
-        <span>Status</span>
-        <select
-          value={status}
-          onChange={(event) => onStatusChange(event.target.value as SeriesStatus | "")}
-        >
-          <option value="">Todos</option>
-          {SERIES_STATUSES.map((option) => (
-            <option key={option} value={option}>
-              {SERIES_STATUS_LABELS[option]}
-            </option>
-          ))}
-        </select>
-      </label>
-
       <label className={styles.field}>
         <span>Ordenar por</span>
         <select

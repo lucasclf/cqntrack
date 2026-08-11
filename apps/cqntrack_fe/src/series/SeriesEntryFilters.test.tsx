@@ -4,8 +4,6 @@ import { SeriesEntryFilters } from "./SeriesEntryFilters";
 
 function renderFilters(overrides: Partial<Parameters<typeof SeriesEntryFilters>[0]> = {}) {
   const props = {
-    status: "" as const,
-    onStatusChange: vi.fn(),
     favoriteOnly: false,
     onFavoriteOnlyChange: vi.fn(),
     sortBy: "updatedAt" as const,
@@ -19,12 +17,12 @@ function renderFilters(overrides: Partial<Parameters<typeof SeriesEntryFilters>[
 }
 
 describe("SeriesEntryFilters", () => {
-  it("dispara onStatusChange ao trocar o status", () => {
+  it("dispara onSortByChange ao trocar a ordenação", () => {
     const props = renderFilters();
 
-    fireEvent.change(screen.getByLabelText("Status"), { target: { value: "watching" } });
+    fireEvent.change(screen.getByLabelText("Ordenar por"), { target: { value: "rating" } });
 
-    expect(props.onStatusChange).toHaveBeenCalledWith("watching");
+    expect(props.onSortByChange).toHaveBeenCalledWith("rating");
   });
 
   it("alterna a ordem ao clicar no botão", () => {
