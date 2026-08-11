@@ -58,7 +58,8 @@
   gap: 8px;
 }
 
-.listNames li a {
+.listNames li a,
+.listNames li .listNameStatic {
   display: inline-block;
   padding: 6px 12px;
   border-radius: 999px;

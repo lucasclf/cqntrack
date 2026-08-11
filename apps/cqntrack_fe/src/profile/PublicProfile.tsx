@@ -1,7 +1,9 @@
 import type {
   GameListsResponse,
   PaginatedGameEntriesResponse,
+  PaginatedSeriesEntriesResponse,
   PublicProfile as PublicProfileDto,
+  SeriesListsResponse,
 } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
@@ -9,6 +11,8 @@ import { FavoritesSection } from "../games/FavoritesSection";
 import { GameCard } from "../games/GameCard";
 import { PublicLayout } from "../layouts/PublicLayout";
 import { ApiError, apiClient } from "../lib/api-client";
+import { SeriesCard } from "../series/SeriesCard";
+import { SeriesFavoritesSection } from "../series/SeriesFavoritesSection";
 import styles from "./PublicProfile.module.css";
 
 type LoadStatus = "loading" | "ready" | "not-found" | "error";
@@ -21,6 +25,8 @@ export function PublicProfile() {
   const [profile, setProfile] = useState<PublicProfileDto | null>(null);
   const [entries, setEntries] = useState<PaginatedGameEntriesResponse | null>(null);
   const [lists, setLists] = useState<GameListsResponse | null>(null);
+  const [seriesEntries, setSeriesEntries] = useState<PaginatedSeriesEntriesResponse | null>(null);
+  const [seriesLists, setSeriesLists] = useState<SeriesListsResponse | null>(null);
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
 
   useEffect(() => {
@@ -30,12 +36,16 @@ export function PublicProfile() {
       apiClient.get<PublicProfileDto>(`/api/users/${username}`),
       apiClient.get<PaginatedGameEntriesResponse>(`/api/users/${username}/games/entries`),
       apiClient.get<GameListsResponse>(`/api/users/${username}/games/lists`),
+      apiClient.get<PaginatedSeriesEntriesResponse>(`/api/users/${username}/series/entries`),
+      apiClient.get<SeriesListsResponse>(`/api/users/${username}/series/lists`),
     ])
-      .then(([profileData, entriesData, listsData]) => {
+      .then(([profileData, entriesData, listsData, seriesEntriesData, seriesListsData]) => {
         if (cancelled) return;
         setProfile(profileData);
         setEntries(entriesData);
         setLists(listsData);
+        setSeriesEntries(seriesEntriesData);
+        setSeriesLists(seriesListsData);
         setLoadStatus("ready");
       })
       .catch((error: unknown) => {
@@ -62,7 +72,7 @@ export function PublicProfile() {
       </PublicLayout>
     );
   }
-  if (loadStatus === "error" || !profile || !entries || !lists) {
+  if (loadStatus === "error" || !profile || !entries || !lists || !seriesEntries || !seriesLists) {
     return (
       <PublicLayout>
         <p role="alert">Falha ao carregar o perfil. Tente novamente.</p>
@@ -132,6 +142,38 @@ export function PublicProfile() {
             <div className={styles.grid}>
               {entries.items.map((item) => (
                 <GameCard key={item.game.igdbId} game={item.game} entry={item} />
+              ))}
+            </div>
+          )}
+        </section>
+
+        <SeriesFavoritesSection favoritesEndpoint={`/api/users/${username}/series/favorites`} />
+
+        {seriesLists.lists.length > 0 && (
+          <section>
+            <h2>Listas de séries</h2>
+            {/* Sem link — não existe (ainda) uma página pública de detalhe de
+                lista de séries, diferente de /u/:username/listas/:listId (jogos). */}
+            <ul className={styles.listNames}>
+              {seriesLists.lists.map((list) => (
+                <li key={list.id}>
+                  <span className={styles.listNameStatic}>
+                    {list.name} <span className={styles.listCount}>({list.itemCount})</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        <section>
+          <h2>Marcações de séries</h2>
+          {seriesEntries.items.length === 0 ? (
+            <p className={styles.hint}>Nenhuma marcação ainda.</p>
+          ) : (
+            <div className={styles.grid}>
+              {seriesEntries.items.map((item) => (
+                <SeriesCard key={item.series.tmdbId} series={item.series} entry={item} />
               ))}
             </div>
           )}

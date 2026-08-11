@@ -28,6 +28,26 @@ const GAME = {
   rating: null,
 };
 
+const SERIES = {
+  tmdbId: 1396,
+  name: "Breaking Bad",
+  posterUrl: null,
+  firstAirDate: "2008-01-20",
+  genres: [],
+  numberOfSeasons: null,
+  numberOfEpisodes: null,
+  rating: null,
+};
+
+const EMPTY_SERIES_FAVORITES = {
+  slots: [
+    { slot: 1, entry: null },
+    { slot: 2, entry: null },
+    { slot: 3, entry: null },
+    { slot: 4, entry: null },
+  ],
+};
+
 function renderProfile(username = "gamer_1") {
   render(
     <MemoryRouter initialEntries={[`/u/${username}`]}>
@@ -63,6 +83,34 @@ describe("PublicProfile", () => {
           ],
         });
       }
+      if (path === "/api/users/gamer_1/series/entries") {
+        return Promise.resolve({
+          items: [
+            {
+              id: "1",
+              status: "watching",
+              rating: null,
+              currentSeason: null,
+              currentEpisode: null,
+              favoriteSlot: null,
+              review: null,
+              updatedAt: "2026-01-01T00:00:00.000Z",
+              series: SERIES,
+            },
+          ],
+          page: 1,
+          pageSize: 24,
+          total: 1,
+        });
+      }
+      if (path === "/api/users/gamer_1/series/lists") {
+        return Promise.resolve({
+          lists: [{ id: "sl1", name: "Maratonadas", description: null, itemCount: 2, createdAt: "", updatedAt: "" }],
+        });
+      }
+      if (path === "/api/users/gamer_1/series/favorites") {
+        return Promise.resolve(EMPTY_SERIES_FAVORITES);
+      }
       return Promise.reject(new Error("rota inesperada: " + path));
     });
 
@@ -77,6 +125,14 @@ describe("PublicProfile", () => {
       "/u/gamer_1/listas/l1",
     );
     expect(screen.getByText("The Witcher 3: Wild Hunt")).toBeInTheDocument();
+
+    // Seção de séries: marcações mostram, lista aparece SEM link (não existe
+    // página pública de detalhe de lista de séries ainda).
+    expect(screen.getByRole("heading", { name: "Marcações de séries" })).toBeInTheDocument();
+    expect(screen.getByText("Breaking Bad")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Listas de séries" })).toBeInTheDocument();
+    expect(screen.getByText("Maratonadas")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Maratonadas/ })).not.toBeInTheDocument();
   });
 
   it("mostra 'usuário não encontrado' em 404", async () => {
