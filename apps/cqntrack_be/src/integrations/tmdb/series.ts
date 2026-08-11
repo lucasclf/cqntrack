@@ -1,5 +1,10 @@
 import { TmdbRequestError, tmdbFetch } from "./client";
-import type { TmdbSearchResponse, TmdbSeriesDetail, TmdbSeriesSearchResult } from "./types";
+import type {
+  TmdbSearchResponse,
+  TmdbSeasonDetail,
+  TmdbSeriesDetail,
+  TmdbSeriesSearchResult,
+} from "./types";
 
 export async function searchSeries(
   env: Env,
@@ -18,6 +23,23 @@ export async function searchSeries(
 export async function getSeriesById(env: Env, tmdbId: number): Promise<TmdbSeriesDetail | null> {
   try {
     return await tmdbFetch<TmdbSeriesDetail>(env, `/tv/${tmdbId}`);
+  } catch (error) {
+    if (error instanceof TmdbRequestError && error.status === 404) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+// Buscado ao vivo a cada abertura de temporada, sem cache local (ver
+// comentário em db/schema/series.schema.ts).
+export async function getSeriesSeason(
+  env: Env,
+  tmdbId: number,
+  seasonNumber: number,
+): Promise<TmdbSeasonDetail | null> {
+  try {
+    return await tmdbFetch<TmdbSeasonDetail>(env, `/tv/${tmdbId}/season/${seasonNumber}`);
   } catch (error) {
     if (error instanceof TmdbRequestError && error.status === 404) {
       return null;

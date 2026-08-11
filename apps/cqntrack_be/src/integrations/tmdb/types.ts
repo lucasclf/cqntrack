@@ -22,8 +22,8 @@ export interface TmdbSeriesDetail {
   number_of_episodes?: number;
   vote_average?: number;
   // Resumo de cada temporada — já vem nesse mesmo GET /tv/{id}, sem
-  // request extra. A lista de episódios em si não é cacheada (buscada ao
-  // vivo, ver comentário em db/schema/series.schema.ts).
+  // request extra. A lista de episódios em si só vem no GET de temporada
+  // (ver TmdbSeasonDetail).
   seasons?: {
     season_number: number;
     name: string;
@@ -31,6 +31,20 @@ export interface TmdbSeriesDetail {
     air_date: string | null;
     poster_path: string | null;
   }[];
+}
+
+// GET /tv/{series_id}/season/{season_number} — buscado ao vivo, sem cache
+// local (ver comentário em db/schema/series.schema.ts).
+export interface TmdbEpisode {
+  episode_number: number;
+  name: string;
+  air_date: string | null;
+  still_path: string | null;
+}
+
+export interface TmdbSeasonDetail {
+  season_number: number;
+  episodes: TmdbEpisode[];
 }
 
 export interface TmdbSearchResponse<T> {
