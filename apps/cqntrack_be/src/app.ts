@@ -5,6 +5,7 @@ import { activityRouter } from "./activity/activity.routes";
 import { createAuth } from "./auth/auth";
 import { requireSession } from "./auth/require-session";
 import { booksRouter } from "./books/books.routes";
+import { bookListsRouter } from "./books/lists.routes";
 import { gamesRouter } from "./games/games.routes";
 import { listsRouter } from "./games/lists.routes";
 import { movieListsRouter } from "./movies/lists.routes";
@@ -43,6 +44,7 @@ app.get("/api/me", requireSession, (c) => {
 });
 
 app.route("/api/books", booksRouter);
+app.route("/api/books-lists", bookListsRouter);
 app.route("/api/games", gamesRouter);
 app.route("/api/lists", listsRouter);
 app.route("/api/series", seriesRouter);
