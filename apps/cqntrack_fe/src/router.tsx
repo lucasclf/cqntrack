@@ -1,4 +1,6 @@
 import { createBrowserRouter, Navigate, type RouteObject } from "react-router";
+import { BookDetail } from "./books/BookDetail";
+import { BookSearch } from "./books/BookSearch";
 import { GameDetail } from "./games/GameDetail";
 import { GameSearch } from "./games/GameSearch";
 import { ListDetail } from "./games/ListDetail";
@@ -72,6 +74,13 @@ export const routes: RouteObject[] = [
               { path: "marcacoes", element: <MyMovieEntries /> },
               { path: "listas", element: <MyMovieLists /> },
               { path: "listas/:listId", element: <MovieListDetail /> },
+            ],
+          },
+          {
+            path: "livros",
+            children: [
+              { path: "buscar", element: <BookSearch /> },
+              { path: ":googleBooksId", element: <BookDetail /> },
             ],
           },
         ],
