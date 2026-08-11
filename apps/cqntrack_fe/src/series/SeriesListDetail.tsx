@@ -1,18 +1,18 @@
-import type { GameList, GameListDetail as GameListDetailDto, GameSummary } from "@cqntrack/shared";
+import type { SeriesList, SeriesListDetail as SeriesListDetailDto, SeriesSummary } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { ListFormModal } from "../components/ListFormModal";
 import { ApiError, apiClient } from "../lib/api-client";
-import { AddGameSearch } from "./AddGameSearch";
-import { GameCard } from "./GameCard";
-import styles from "./ListDetail.module.css";
+import { AddSeriesSearch } from "./AddSeriesSearch";
+import styles from "./SeriesListDetail.module.css";
+import { SeriesCard } from "./SeriesCard";
 
 type LoadStatus = "loading" | "ready" | "not-found" | "error";
 
-export function ListDetail() {
+export function SeriesListDetail() {
   const { listId } = useParams<{ listId: string }>();
   const navigate = useNavigate();
-  const [detail, setDetail] = useState<GameListDetailDto | null>(null);
+  const [detail, setDetail] = useState<SeriesListDetailDto | null>(null);
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -20,7 +20,7 @@ export function ListDetail() {
   useEffect(() => {
     let cancelled = false;
     apiClient
-      .get<GameListDetailDto>(`/api/lists/${listId}`)
+      .get<SeriesListDetailDto>(`/api/series-lists/${listId}`)
       .then((data) => {
         if (!cancelled) {
           setDetail(data);
@@ -37,35 +37,35 @@ export function ListDetail() {
     };
   }, [listId]);
 
-  async function handleRemoveItem(igdbId: number) {
+  async function handleRemoveItem(tmdbId: number) {
     setActionError(null);
     try {
-      await apiClient.delete(`/api/lists/${listId}/items/${igdbId}`);
+      await apiClient.delete(`/api/series-lists/${listId}/items/${tmdbId}`);
       setDetail((current) =>
         current
           ? {
               ...current,
-              items: current.items.filter((item) => item.igdbId !== igdbId),
+              items: current.items.filter((item) => item.tmdbId !== tmdbId),
               itemCount: current.itemCount - 1,
             }
           : current,
       );
     } catch {
-      setActionError("Falha ao remover o jogo da lista. Tente novamente.");
+      setActionError("Falha ao remover a série da lista. Tente novamente.");
     }
   }
 
-  async function handleAddGame(game: GameSummary) {
+  async function handleAddSeries(series: SeriesSummary) {
     setActionError(null);
     try {
-      await apiClient.put(`/api/lists/${listId}/items/${game.igdbId}`);
+      await apiClient.put(`/api/series-lists/${listId}/items/${series.tmdbId}`);
       setDetail((current) =>
-        current && !current.items.some((item) => item.igdbId === game.igdbId)
-          ? { ...current, items: [game, ...current.items], itemCount: current.itemCount + 1 }
+        current && !current.items.some((item) => item.tmdbId === series.tmdbId)
+          ? { ...current, items: [series, ...current.items], itemCount: current.itemCount + 1 }
           : current,
       );
     } catch {
-      setActionError("Falha ao adicionar o jogo à lista. Tente novamente.");
+      setActionError("Falha ao adicionar a série à lista. Tente novamente.");
     }
   }
 
@@ -73,8 +73,8 @@ export function ListDetail() {
     if (!window.confirm("Remover esta lista? Essa ação não pode ser desfeita.")) {
       return;
     }
-    await apiClient.delete(`/api/lists/${listId}`);
-    void navigate("/jogos/listas");
+    await apiClient.delete(`/api/series-lists/${listId}`);
+    void navigate("/series/listas");
   }
 
   if (loadStatus === "loading") {
@@ -104,24 +104,24 @@ export function ListDetail() {
         </div>
       </div>
 
-      <AddGameSearch
-        onAdd={handleAddGame}
-        addedIds={new Set(detail.items.map((item) => item.igdbId))}
+      <AddSeriesSearch
+        onAdd={handleAddSeries}
+        addedIds={new Set(detail.items.map((item) => item.tmdbId))}
       />
 
       {actionError && <p role="alert">{actionError}</p>}
 
       {detail.items.length === 0 ? (
-        <p className={styles.hint}>Essa lista ainda não tem jogos.</p>
+        <p className={styles.hint}>Essa lista ainda não tem séries.</p>
       ) : (
         <div className={styles.grid}>
-          {detail.items.map((game) => (
-            <div key={game.igdbId} className={styles.gridItem}>
-              <GameCard game={game} />
+          {detail.items.map((series) => (
+            <div key={series.tmdbId} className={styles.gridItem}>
+              <SeriesCard series={series} />
               <button
                 type="button"
                 className={styles.removeItemBtn}
-                onClick={() => handleRemoveItem(game.igdbId)}
+                onClick={() => handleRemoveItem(series.tmdbId)}
               >
                 Remover da lista
               </button>
@@ -135,7 +135,7 @@ export function ListDetail() {
           mode="edit"
           initialValues={{ name: detail.name, description: detail.description }}
           onSubmit={async (values) => {
-            const updated = await apiClient.patch<GameList>(`/api/lists/${listId}`, values);
+            const updated = await apiClient.patch<SeriesList>(`/api/series-lists/${listId}`, values);
             setDetail((current) => (current ? { ...current, ...updated } : current));
           }}
           onClose={() => setEditModalOpen(false)}

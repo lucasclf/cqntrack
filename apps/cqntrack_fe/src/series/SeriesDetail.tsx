@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router";
 import { StarRating } from "../components/StarRating";
 import { ApiError, apiClient } from "../lib/api-client";
+import { AddToSeriesListMenu } from "./AddToSeriesListMenu";
 import styles from "./SeriesDetail.module.css";
 import { SeriesStatusBadge } from "./SeriesStatusBadge";
 
@@ -137,6 +138,8 @@ export function SeriesDetail() {
         {saveError && <p role="alert">{saveError}</p>}
 
         <SeriesStatusBadge status={entry?.status ?? null} onChange={(status) => savePatch({ status })} />
+
+        <AddToSeriesListMenu tmdbId={series.tmdbId} />
 
         <StarRating value={entry?.rating ?? null} onChange={(rating) => savePatch({ rating })} />
 

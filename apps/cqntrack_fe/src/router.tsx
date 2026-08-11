@@ -13,7 +13,9 @@ import { PublicProfile } from "./profile/PublicProfile";
 import { RedirectToJogosListDetail } from "./routes/RedirectToJogosListDetail";
 import { RequireAuth } from "./routes/RequireAuth";
 import { MySeriesEntries } from "./series/MySeriesEntries";
+import { MySeriesLists } from "./series/MySeriesLists";
 import { SeriesDetail } from "./series/SeriesDetail";
+import { SeriesListDetail } from "./series/SeriesListDetail";
 import { SeriesSearch } from "./series/SeriesSearch";
 import { Signup } from "./Signup";
 import { Unavailable } from "./Unavailable";
@@ -53,6 +55,8 @@ export const routes: RouteObject[] = [
               { path: "buscar", element: <SeriesSearch /> },
               { path: ":tmdbId", element: <SeriesDetail /> },
               { path: "marcacoes", element: <MySeriesEntries /> },
+              { path: "listas", element: <MySeriesLists /> },
+              { path: "listas/:listId", element: <SeriesListDetail /> },
             ],
           },
         ],

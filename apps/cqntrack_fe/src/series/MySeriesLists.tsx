@@ -1,21 +1,21 @@
-import type { GameList, GameListsResponse } from "@cqntrack/shared";
+import type { SeriesList, SeriesListsResponse } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { ListFormModal } from "../components/ListFormModal";
 import { apiClient } from "../lib/api-client";
-import styles from "./MyLists.module.css";
+import styles from "./MySeriesLists.module.css";
 
 type LoadStatus = "loading" | "ready" | "error";
 
-export function MyLists() {
-  const [lists, setLists] = useState<GameList[]>([]);
+export function MySeriesLists() {
+  const [lists, setLists] = useState<SeriesList[]>([]);
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
   const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     apiClient
-      .get<GameListsResponse>("/api/lists")
+      .get<SeriesListsResponse>("/api/series-lists")
       .then((data) => {
         if (!cancelled) {
           setLists(data.lists);
@@ -36,7 +36,7 @@ export function MyLists() {
     if (!window.confirm("Remover esta lista? Essa ação não pode ser desfeita.")) {
       return;
     }
-    await apiClient.delete(`/api/lists/${listId}`);
+    await apiClient.delete(`/api/series-lists/${listId}`);
     setLists((current) => current.filter((list) => list.id !== listId));
   }
 
@@ -58,9 +58,9 @@ export function MyLists() {
       <ul className={styles.list}>
         {lists.map((list) => (
           <li key={list.id} className={styles.card}>
-            <Link to={`/jogos/listas/${list.id}`} className={styles.cardLink}>
+            <Link to={`/series/listas/${list.id}`} className={styles.cardLink}>
               <span className={styles.name}>{list.name}</span>
-              <span className={styles.count}>{list.itemCount} jogo(s)</span>
+              <span className={styles.count}>{list.itemCount} série(s)</span>
               {list.description && <p className={styles.description}>{list.description}</p>}
             </Link>
             <button type="button" className={styles.deleteBtn} onClick={() => handleDelete(list.id)}>
@@ -74,7 +74,7 @@ export function MyLists() {
         <ListFormModal
           mode="create"
           onSubmit={async (values) => {
-            const created = await apiClient.post<GameList>("/api/lists", values);
+            const created = await apiClient.post<SeriesList>("/api/series-lists", values);
             setLists((current) => [created, ...current]);
           }}
           onClose={() => setModalOpen(false)}

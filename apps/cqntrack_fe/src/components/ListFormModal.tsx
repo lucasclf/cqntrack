@@ -14,8 +14,9 @@ interface ListFormModalProps {
   onClose: () => void;
 }
 
-// Modal simples (sem lib de portal) reutilizado por MyLists (criar) e
-// ListDetail (editar nome/descrição).
+// Modal simples (sem lib de portal) reutilizado por qualquer seção que tenha
+// listas (jogos, séries) — criar (MyLists/MySeriesLists) ou editar nome/
+// descrição (ListDetail/SeriesListDetail).
 export function ListFormModal({ mode, initialValues, onSubmit, onClose }: ListFormModalProps) {
   const [name, setName] = useState(initialValues?.name ?? "");
   const [description, setDescription] = useState(initialValues?.description ?? "");
