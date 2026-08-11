@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it, vi } from "vitest";
+import { getMovieById, searchMovies } from "./movies";
 import { getSeriesById, getSeriesSeason, searchSeries } from "./series";
 
 const SERIES_SEARCH_RESULT = {
@@ -117,6 +118,74 @@ describe("integrations/tmdb", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const result = await getSeriesSeason(env, 1396, 99);
+
+    expect(result).toBeNull();
+
+    vi.unstubAllGlobals();
+  });
+
+  it("busca filmes com Authorization: Bearer, sem etapa de token separada", async () => {
+    const movieSearchResult = {
+      id: 27205,
+      title: "Inception",
+      poster_path: "/edv5CZvWj09upOsy2Y6IwDhK8bt.jpg",
+      release_date: "2010-07-15",
+      genre_ids: [28, 878],
+      vote_average: 8.4,
+    };
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse({ results: [movieSearchResult] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const results = await searchMovies(env, "inception");
+
+    expect(results).toEqual([movieSearchResult]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url.toString()).toBe(
+      "https://api.themoviedb.org/3/search/movie?query=inception&include_adult=false",
+    );
+    expect((init as RequestInit).headers).toMatchObject({
+      Authorization: expect.stringContaining("Bearer "),
+    });
+
+    vi.unstubAllGlobals();
+  });
+
+  it("getMovieById devolve o detalhe completo (com gêneros nomeados)", async () => {
+    const movieDetail = {
+      id: 27205,
+      title: "Inception",
+      poster_path: "/edv5CZvWj09upOsy2Y6IwDhK8bt.jpg",
+      release_date: "2010-07-15",
+      overview: "Um ladrão que rouba segredos corporativos através do uso de tecnologia de sonhos.",
+      genres: [
+        { id: 28, name: "Action" },
+        { id: 878, name: "Science Fiction" },
+      ],
+      runtime: 148,
+      vote_average: 8.4,
+    };
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(movieDetail));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await getMovieById(env, 27205);
+
+    expect(result).toEqual(movieDetail);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.themoviedb.org/3/movie/27205",
+      expect.anything(),
+    );
+
+    vi.unstubAllGlobals();
+  });
+
+  it("getMovieById retorna null quando a TMDB responde 404", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ status_message: "not found" }, 404));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await getMovieById(env, 999999999);
 
     expect(result).toBeNull();
 

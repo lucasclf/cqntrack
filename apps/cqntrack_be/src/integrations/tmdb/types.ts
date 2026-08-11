@@ -47,6 +47,29 @@ export interface TmdbSeasonDetail {
   episodes: TmdbEpisode[];
 }
 
+// A busca (search/movie) devolve um subconjunto menor de campos que o
+// detalhe (movie/{id}) — mesmo espírito de TmdbSeriesSearchResult/
+// TmdbSeriesDetail. Filme não tem "seasons": sem substrutura.
+export interface TmdbMovieSearchResult {
+  id: number;
+  title: string;
+  poster_path: string | null;
+  release_date?: string; // "YYYY-MM-DD" ou string vazia quando desconhecida
+  genre_ids?: number[];
+  vote_average?: number;
+}
+
+export interface TmdbMovieDetail {
+  id: number;
+  title: string;
+  poster_path: string | null;
+  release_date?: string;
+  overview?: string;
+  genres?: { id: number; name: string }[];
+  runtime?: number; // minutos
+  vote_average?: number;
+}
+
 export interface TmdbSearchResponse<T> {
   results: T[];
 }
@@ -80,5 +103,32 @@ export const TV_GENRE_NAMES: Record<number, string> = {
   10766: "Soap",
   10767: "Talk",
   10768: "War & Politics",
+  37: "Western",
+};
+
+// Mesmo motivo/padrão de TV_GENRE_NAMES, mas os IDs de gênero de filme da
+// TMDB são uma lista *diferente* da de séries (ex.: 16 é "Animation" nos
+// dois, mas 10759 de série não existe pra filme, e 28/12/14/36/27/10402/
+// 10749/878/10770/53/10752 só existem pra filme) — não dá pra reaproveitar
+// o mesmo mapa.
+export const MOVIE_GENRE_NAMES: Record<number, string> = {
+  28: "Action",
+  12: "Adventure",
+  16: "Animation",
+  35: "Comedy",
+  80: "Crime",
+  99: "Documentary",
+  18: "Drama",
+  10751: "Family",
+  14: "Fantasy",
+  36: "History",
+  27: "Horror",
+  10402: "Music",
+  9648: "Mystery",
+  10749: "Romance",
+  878: "Science Fiction",
+  10770: "TV Movie",
+  53: "Thriller",
+  10752: "War",
   37: "Western",
 };
