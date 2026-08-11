@@ -45,7 +45,7 @@ describe("/api/users", () => {
     await createDb(env).delete(igdbToken);
   });
 
-  it("username inexistente retorna 404 em todas as sub-rotas, de jogos e de séries", async () => {
+  it("username inexistente retorna 404 em todas as sub-rotas, de jogos, séries e filmes", async () => {
     const profileRes = await app.request("/api/users/nao-existe", undefined, env);
     expect(profileRes.status).toBe(404);
 
@@ -60,6 +60,12 @@ describe("/api/users", () => {
 
     const seriesListsRes = await app.request("/api/users/nao-existe/series/lists", undefined, env);
     expect(seriesListsRes.status).toBe(404);
+
+    const movieEntriesRes = await app.request("/api/users/nao-existe/movies/entries", undefined, env);
+    expect(movieEntriesRes.status).toBe(404);
+
+    const movieListsRes = await app.request("/api/users/nao-existe/movies/lists", undefined, env);
+    expect(movieListsRes.status).toBe(404);
   });
 
   it("devolve o perfil e as estatísticas zeradas sem exigir sessão", async () => {
@@ -222,6 +228,82 @@ describe("/api/users", () => {
     expect(listsBody.lists).toEqual([expect.objectContaining({ id: listId, name: "Maratonadas" })]);
 
     const listDetailRes = await app.request(`/api/users/${username}/series/lists/${listId}`, undefined, env);
+    expect(listDetailRes.status).toBe(200);
+  });
+
+  it("lista as marcações, favoritos e listas públicas de filmes do usuário", async () => {
+    const { cookie, username } = await createAuthenticatedUser(app, env);
+
+    const tmdbMovieDetail = (id: number, title: string) => ({
+      id,
+      title,
+      poster_path: `/poster-${id}.jpg`,
+      release_date: "2010-07-15",
+      overview: `Resumo do filme ${id}`,
+      genres: [{ id: 28, name: "Action" }],
+      runtime: 148,
+      vote_average: 8.4,
+    });
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValueOnce(jsonResponse(tmdbMovieDetail(27205, "Inception"))),
+    );
+    await app.request(
+      "/api/movies/27205/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ watched: true }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValueOnce(jsonResponse(tmdbMovieDetail(27205, "Inception"))),
+    );
+    await app.request(
+      "/api/movies/favorites/1",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ tmdbId: 27205 }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const createListRes = await app.request(
+      "/api/movies-lists",
+      {
+        method: "POST",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Vistos em 2026" }),
+      },
+      env,
+    );
+    const { id: listId } = (await createListRes.json()) as { id: string };
+
+    const entriesRes = await app.request(`/api/users/${username}/movies/entries`, undefined, env);
+    expect(entriesRes.status).toBe(200);
+    const entriesBody = (await entriesRes.json()) as { items: Array<{ movie: { tmdbId: number } }> };
+    expect(entriesBody.items).toEqual([
+      expect.objectContaining({ movie: expect.objectContaining({ tmdbId: 27205 }) }),
+    ]);
+
+    const favoritesRes = await app.request(`/api/users/${username}/movies/favorites`, undefined, env);
+    expect(favoritesRes.status).toBe(200);
+    const favoritesBody = (await favoritesRes.json()) as { slots: Array<{ slot: number; entry: unknown }> };
+    expect(favoritesBody.slots[0]).toMatchObject({ slot: 1, entry: { movie: { tmdbId: 27205 } } });
+
+    const listsRes = await app.request(`/api/users/${username}/movies/lists`, undefined, env);
+    expect(listsRes.status).toBe(200);
+    const listsBody = (await listsRes.json()) as { lists: Array<{ id: string; name: string }> };
+    expect(listsBody.lists).toEqual([expect.objectContaining({ id: listId, name: "Vistos em 2026" })]);
+
+    const listDetailRes = await app.request(`/api/users/${username}/movies/lists/${listId}`, undefined, env);
     expect(listDetailRes.status).toBe(200);
   });
 });
