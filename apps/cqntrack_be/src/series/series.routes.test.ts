@@ -43,6 +43,18 @@ function tmdbSeriesDetail(id: number, name: string) {
   };
 }
 
+function tmdbSeasonDetail(seasonNumber: number, episodeCount: number) {
+  return {
+    season_number: seasonNumber,
+    episodes: Array.from({ length: episodeCount }, (_, index) => ({
+      episode_number: index + 1,
+      name: `Episódio ${index + 1}`,
+      air_date: "2008-01-20",
+      still_path: `/still-s${seasonNumber}e${index + 1}.jpg`,
+    })),
+  };
+}
+
 // A TMDB não tem etapa de token (diferente da IGDB) — um fetch mockado por
 // chamada é suficiente.
 function stubTmdbFetchOnce(...responses: unknown[]): void {
@@ -524,5 +536,250 @@ describe("GET/PUT /api/series/favorites", () => {
       (item) => item.itemId === "624" && item.type === "favorited",
     );
     expect(favorited).toHaveLength(1);
+  });
+});
+
+describe("GET /api/series/:tmdbId/seasons/:seasonNumber", () => {
+  it("retorna os episódios da temporada, todos não assistidos", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubTmdbFetchOnce(tmdbSeasonDetail(1, 2));
+
+    const res = await app.request("/api/series/801/seasons/1", { headers: { cookie } }, env);
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({
+      seasonNumber: 1,
+      episodes: [
+        {
+          episodeNumber: 1,
+          name: "Episódio 1",
+          airDate: "2008-01-20",
+          stillUrl: "https://image.tmdb.org/t/p/w185/still-s1e1.jpg",
+          watched: false,
+        },
+        {
+          episodeNumber: 2,
+          name: "Episódio 2",
+          airDate: "2008-01-20",
+          stillUrl: "https://image.tmdb.org/t/p/w185/still-s1e2.jpg",
+          watched: false,
+        },
+      ],
+    });
+    vi.unstubAllGlobals();
+  });
+
+  it("temporada inexistente na TMDB retorna 404", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValueOnce(jsonResponse({ status_message: "not found" }, 404)),
+    );
+
+    const res = await app.request("/api/series/802/seasons/99", { headers: { cookie } }, env);
+
+    expect(res.status).toBe(404);
+    vi.unstubAllGlobals();
+  });
+
+  it("sem sessão retorna 401", async () => {
+    const res = await app.request("/api/series/801/seasons/1", undefined, env);
+
+    expect(res.status).toBe(401);
+  });
+});
+
+describe("PUT /api/series/:tmdbId/episodes/:seasonNumber/:episodeNumber", () => {
+  it("marca e desmarca um episódio, sem gerar atividade", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubTmdbFetchOnce(tmdbSeriesDetail(901, "The Wire"));
+
+    const markRes = await app.request(
+      "/api/series/901/episodes/1/1",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ watched: true }),
+      },
+      env,
+    );
+    expect(markRes.status).toBe(204);
+    vi.unstubAllGlobals();
+
+    stubTmdbFetchOnce(tmdbSeasonDetail(1, 3));
+    const seasonRes = await app.request("/api/series/901/seasons/1", { headers: { cookie } }, env);
+    const seasonBody = (await seasonRes.json()) as {
+      episodes: Array<{ episodeNumber: number; watched: boolean }>;
+    };
+    expect(seasonBody.episodes[0]).toMatchObject({ episodeNumber: 1, watched: true });
+    vi.unstubAllGlobals();
+
+    const activities = await createDb(env).query.activity.findMany();
+    expect(activities.filter((item) => item.itemId === "901")).toHaveLength(0);
+
+    // Série já cacheada — desmarcar não deveria chamar a TMDB de novo.
+    const throwingFetch = vi.fn().mockRejectedValue(new Error("não deveria chamar a TMDB de novo"));
+    vi.stubGlobal("fetch", throwingFetch);
+    const unmarkRes = await app.request(
+      "/api/series/901/episodes/1/1",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ watched: false }),
+      },
+      env,
+    );
+    expect(unmarkRes.status).toBe(204);
+    vi.unstubAllGlobals();
+
+    stubTmdbFetchOnce(tmdbSeasonDetail(1, 3));
+    const seasonRes2 = await app.request("/api/series/901/seasons/1", { headers: { cookie } }, env);
+    const seasonBody2 = (await seasonRes2.json()) as {
+      episodes: Array<{ episodeNumber: number; watched: boolean }>;
+    };
+    expect(seasonBody2.episodes[0]).toMatchObject({ episodeNumber: 1, watched: false });
+    vi.unstubAllGlobals();
+  });
+
+  it("id inválido retorna 400", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+
+    const res = await app.request(
+      "/api/series/901/episodes/nao-e-um-id/1",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ watched: true }),
+      },
+      env,
+    );
+
+    expect(res.status).toBe(400);
+  });
+
+  it("sem sessão retorna 401", async () => {
+    const res = await app.request(
+      "/api/series/901/episodes/1/1",
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ watched: true }),
+      },
+      env,
+    );
+
+    expect(res.status).toBe(401);
+  });
+});
+
+describe("PUT /api/series/:tmdbId/seasons/:seasonNumber", () => {
+  it("marca a temporada inteira e gera atividade season_watched", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubTmdbFetchOnce(tmdbSeriesDetail(902, "Fargo"), tmdbSeasonDetail(1, 3));
+
+    const res = await app.request(
+      "/api/series/902/seasons/1",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ watched: true }),
+      },
+      env,
+    );
+    expect(res.status).toBe(204);
+    vi.unstubAllGlobals();
+
+    const activities = await createDb(env).query.activity.findMany();
+    const seasonWatched = activities.filter(
+      (item) => item.itemId === "902" && item.type === "season_watched",
+    );
+    expect(seasonWatched).toHaveLength(1);
+    expect(seasonWatched[0]?.metadata).toEqual({ season: 1, episodeCount: 3 });
+
+    stubTmdbFetchOnce(tmdbSeasonDetail(1, 3));
+    const seasonRes = await app.request("/api/series/902/seasons/1", { headers: { cookie } }, env);
+    const seasonBody = (await seasonRes.json()) as { episodes: Array<{ watched: boolean }> };
+    expect(seasonBody.episodes.every((episode) => episode.watched)).toBe(true);
+    vi.unstubAllGlobals();
+  });
+
+  it("desmarca a temporada inteira sem gerar nova atividade", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubTmdbFetchOnce(tmdbSeriesDetail(903, "Ozark"), tmdbSeasonDetail(1, 2));
+    await app.request(
+      "/api/series/903/seasons/1",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ watched: true }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    // Série já cacheada — desmarcar não deveria chamar a TMDB de novo.
+    const throwingFetch = vi.fn().mockRejectedValue(new Error("não deveria chamar a TMDB de novo"));
+    vi.stubGlobal("fetch", throwingFetch);
+    const res = await app.request(
+      "/api/series/903/seasons/1",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ watched: false }),
+      },
+      env,
+    );
+    expect(res.status).toBe(204);
+    vi.unstubAllGlobals();
+
+    const activities = await createDb(env).query.activity.findMany();
+    const seasonWatched = activities.filter(
+      (item) => item.itemId === "903" && item.type === "season_watched",
+    );
+    expect(seasonWatched).toHaveLength(1); // só a marcação, não o clear
+
+    stubTmdbFetchOnce(tmdbSeasonDetail(1, 2));
+    const seasonRes = await app.request("/api/series/903/seasons/1", { headers: { cookie } }, env);
+    const seasonBody = (await seasonRes.json()) as { episodes: Array<{ watched: boolean }> };
+    expect(seasonBody.episodes.every((episode) => !episode.watched)).toBe(true);
+    vi.unstubAllGlobals();
+  });
+
+  it("temporada inexistente na TMDB retorna 404", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    // Primeiro fetch cacheia a série (ensureSeriesEntry); o segundo busca a
+    // temporada em si, que aqui responde 404.
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(tmdbSeriesDetail(904, "Chernobyl")))
+      .mockResolvedValueOnce(jsonResponse({ status_message: "not found" }, 404));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await app.request(
+      "/api/series/904/seasons/99",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ watched: true }),
+      },
+      env,
+    );
+
+    expect(res.status).toBe(404);
+    vi.unstubAllGlobals();
+  });
+
+  it("sem sessão retorna 401", async () => {
+    const res = await app.request(
+      "/api/series/901/seasons/1",
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ watched: true }),
+      },
+      env,
+    );
+
+    expect(res.status).toBe(401);
   });
 });

@@ -7,7 +7,9 @@ import {
   SeriesDetailResponseSchema,
   SeriesEntrySchema,
   SeriesFavoritesResponseSchema,
+  SeriesSeasonEpisodesResponseSchema,
   SetSeriesFavoriteSlotRequestSchema,
+  SetWatchedRequestSchema,
   UpsertSeriesEntryRequestSchema,
   type FavoriteSlotNumber,
 } from "@cqntrack/shared";
@@ -22,7 +24,13 @@ import {
   setFavoriteSlot,
   upsertSeriesEntry,
 } from "./entries.service";
-import { getOrCacheSeries, mapCachedSeriesToSummary, SeriesNotFoundError, searchSeriesForUser } from "./series.service";
+import { getSeasonEpisodes, setEpisodeWatched, setSeasonWatched } from "./episodes.service";
+import {
+  getOrCacheSeries,
+  mapCachedSeriesToSummary,
+  SeriesNotFoundError,
+  searchSeriesForUser,
+} from "./series.service";
 
 export const seriesRouter = new Hono<AuthedEnv>();
 
@@ -33,9 +41,19 @@ function parseTmdbId(c: { req: { param: (name: string) => string } }): number | 
   return Number.isInteger(tmdbId) ? tmdbId : null;
 }
 
-function parseFavoriteSlot(c: { req: { param: (name: string) => string } }): FavoriteSlotNumber | null {
+function parseFavoriteSlot(c: {
+  req: { param: (name: string) => string };
+}): FavoriteSlotNumber | null {
   const slot = Number(c.req.param("slot"));
   return FAVORITE_SLOTS.includes(slot as FavoriteSlotNumber) ? (slot as FavoriteSlotNumber) : null;
+}
+
+function parseIntParam(
+  c: { req: { param: (name: string) => string } },
+  name: string,
+): number | null {
+  const value = Number(c.req.param(name));
+  return Number.isInteger(value) ? value : null;
 }
 
 // Rotas estáticas (/search, /entries, /favorites) precisam vir ANTES de
@@ -161,4 +179,89 @@ seriesRouter.delete("/:tmdbId/entry", async (c) => {
   const db = createDb(c.env);
   await deleteSeriesEntry(db, c.get("userId"), tmdbId);
   return c.body(null, 204);
+});
+
+seriesRouter.get("/:tmdbId/seasons/:seasonNumber", async (c) => {
+  const tmdbId = parseTmdbId(c);
+  const seasonNumber = parseIntParam(c, "seasonNumber");
+  if (tmdbId === null || seasonNumber === null) {
+    return c.json({ error: "invalid_id" }, 400);
+  }
+
+  const db = createDb(c.env);
+  const season = await getSeasonEpisodes(c.env, db, c.get("userId"), tmdbId, seasonNumber);
+  if (!season) {
+    return c.json({ error: "season_not_found" }, 404);
+  }
+
+  return c.json(SeriesSeasonEpisodesResponseSchema.parse(season));
+});
+
+seriesRouter.put("/:tmdbId/episodes/:seasonNumber/:episodeNumber", async (c) => {
+  const tmdbId = parseTmdbId(c);
+  const seasonNumber = parseIntParam(c, "seasonNumber");
+  const episodeNumber = parseIntParam(c, "episodeNumber");
+  if (tmdbId === null || seasonNumber === null || episodeNumber === null) {
+    return c.json({ error: "invalid_id" }, 400);
+  }
+
+  const json = await c.req.json().catch(() => null);
+  const parsed = SetWatchedRequestSchema.safeParse(json);
+  if (!parsed.success) {
+    return c.json({ error: "invalid_body" }, 400);
+  }
+
+  const db = createDb(c.env);
+  try {
+    await setEpisodeWatched(
+      c.env,
+      db,
+      c.get("userId"),
+      tmdbId,
+      seasonNumber,
+      episodeNumber,
+      parsed.data.watched,
+    );
+    return c.body(null, 204);
+  } catch (error) {
+    if (error instanceof SeriesNotFoundError) {
+      return c.json({ error: "series_not_found" }, 404);
+    }
+    throw error;
+  }
+});
+
+seriesRouter.put("/:tmdbId/seasons/:seasonNumber", async (c) => {
+  const tmdbId = parseTmdbId(c);
+  const seasonNumber = parseIntParam(c, "seasonNumber");
+  if (tmdbId === null || seasonNumber === null) {
+    return c.json({ error: "invalid_id" }, 400);
+  }
+
+  const json = await c.req.json().catch(() => null);
+  const parsed = SetWatchedRequestSchema.safeParse(json);
+  if (!parsed.success) {
+    return c.json({ error: "invalid_body" }, 400);
+  }
+
+  const db = createDb(c.env);
+  try {
+    const found = await setSeasonWatched(
+      c.env,
+      db,
+      c.get("userId"),
+      tmdbId,
+      seasonNumber,
+      parsed.data.watched,
+    );
+    if (!found) {
+      return c.json({ error: "season_not_found" }, 404);
+    }
+    return c.body(null, 204);
+  } catch (error) {
+    if (error instanceof SeriesNotFoundError) {
+      return c.json({ error: "series_not_found" }, 404);
+    }
+    throw error;
+  }
 });
