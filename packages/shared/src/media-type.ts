@@ -1,10 +1,8 @@
 import { z } from "zod";
 
-// Fonte única de verdade dos tipos de mídia que o cqntrack pretende suportar
-// (jogos, séries, filmes, livros) — usado tanto pela navegação/seletor de
-// seção no frontend quanto pela coluna `media_type` da tabela `activity` no
-// backend. "books" ainda não tem seção implementada; existe aqui como
-// preparação, não como funcionalidade pronta.
+// Fonte única de verdade dos tipos de mídia que o cqntrack suporta (jogos,
+// séries, filmes, livros) — usado tanto pela navegação/seletor de seção no
+// frontend quanto pela coluna `media_type` da tabela `activity` no backend.
 export const MEDIA_TYPES = ["games", "series", "movies", "books"] as const;
 
 export const MediaTypeSchema = z.enum(MEDIA_TYPES);
@@ -28,4 +26,4 @@ export const MEDIA_TYPE_PATH: Record<MediaType, string> = {
 
 // Seções com rotas/integração de fato implementadas — as demais aparecem na
 // UI como "em breve", sem navegação real ainda.
-export const IMPLEMENTED_MEDIA_TYPES: readonly MediaType[] = ["games", "series", "movies"];
+export const IMPLEMENTED_MEDIA_TYPES: readonly MediaType[] = ["games", "series", "movies", "books"];

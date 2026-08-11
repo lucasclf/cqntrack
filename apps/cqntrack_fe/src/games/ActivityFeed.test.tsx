@@ -105,6 +105,28 @@ describe("ActivityFeed", () => {
     expect(await screen.findByText("Assistiu")).toBeInTheDocument();
   });
 
+  it("descreve a atividade 'status_changed' de livro com o rótulo de status de livro", async () => {
+    const items: ActivityItem[] = [
+      {
+        id: "1",
+        type: "status_changed",
+        metadata: { status: "reading" },
+        createdAt: "2026-01-01T10:00:00.000Z",
+        mediaType: "books",
+        itemId: "PCq3AAAAQBAJ",
+        itemTitle: "Dom Casmurro",
+        itemHref: "/livros/PCq3AAAAQBAJ",
+        itemCoverUrl: null,
+      },
+    ];
+    getMock.mockResolvedValue({ items, nextCursor: null });
+    renderFeed();
+
+    // "reading" (Lendo) é rótulo de livro, diferente de "playing" (Jogando)
+    // de jogo — confirma que o mapa certo foi escolhido por mediaType.
+    expect(await screen.findByText('Marcou como "Lendo"')).toBeInTheDocument();
+  });
+
   it("carrega mais itens ao clicar em 'Carregar mais'", async () => {
     getMock.mockResolvedValueOnce({
       items: [

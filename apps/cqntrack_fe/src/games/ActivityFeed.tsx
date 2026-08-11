@@ -1,7 +1,9 @@
 import {
+  BOOK_STATUS_LABELS,
   GAME_STATUS_LABELS,
   type ActivityFeedResponse,
   type ActivityItem,
+  type BookStatus,
   type GameStatus,
 } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
@@ -12,14 +14,21 @@ import styles from "./ActivityFeed.module.css";
 type LoadStatus = "loading" | "ready" | "error";
 
 // `type`/`metadata` são genéricos entre seções (ver activity.schema.ts no
-// backend), mas cada seção tem seu próprio vocabulário de `type` — só jogos
-// emite "status_changed" (série/filme não tem status), só séries emite
-// "season_watched" e só filmes emite "watched" (marcar um filme assistido é
-// uma unidade só, sem o "episódio isolado x temporada inteira" de série).
+// backend), mas cada seção tem seu próprio vocabulário de `type` — jogos e
+// livros emitem "status_changed" (os dois são status-based; série/filme não
+// tem status), só séries emite "season_watched" e só filmes emite "watched"
+// (marcar um filme assistido é uma unidade só, sem o "episódio isolado x
+// temporada inteira" de série). Como duas seções emitem "status_changed" com
+// mapas de label diferentes, o case abaixo escolhe o mapa certo por
+// `item.mediaType`.
 function describeActivity(item: ActivityItem): string {
   const metadata = item.metadata ?? {};
   switch (item.type) {
     case "status_changed": {
+      if (item.mediaType === "books") {
+        const status = metadata.status as BookStatus | undefined;
+        return status ? `Marcou como "${BOOK_STATUS_LABELS[status]}"` : "Mudou o status";
+      }
       const status = metadata.status as GameStatus | undefined;
       return status ? `Marcou como "${GAME_STATUS_LABELS[status]}"` : "Mudou o status";
     }
