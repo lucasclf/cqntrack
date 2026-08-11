@@ -194,3 +194,224 @@ describe("GET /api/movies/:tmdbId", () => {
     vi.unstubAllGlobals();
   });
 });
+
+describe("CRUD de marcação (/api/movies/:tmdbId/entry)", () => {
+  it("PUT cria uma marcação nova, com nota e review, sem marcar assistido", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubTmdbFetchOnce(tmdbMovieDetail(601, "Oppenheimer"));
+
+    const res = await app.request(
+      "/api/movies/601/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ rating: 4.5, review: "Excelente" }),
+      },
+      env,
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toMatchObject({
+      rating: 4.5,
+      review: "Excelente",
+      watchedAt: null,
+      favoriteSlot: null,
+    });
+    vi.unstubAllGlobals();
+  });
+
+  it("PUT com watched: true marca como assistido; watched: false desmarca", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubTmdbFetchOnce(tmdbMovieDetail(602, "Barbie"));
+
+    const markRes = await app.request(
+      "/api/movies/602/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ watched: true }),
+      },
+      env,
+    );
+    expect(markRes.status).toBe(200);
+    const markBody = (await markRes.json()) as { watchedAt: string | null };
+    expect(markBody.watchedAt).not.toBeNull();
+    vi.unstubAllGlobals();
+
+    const unmarkRes = await app.request(
+      "/api/movies/602/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ watched: false }),
+      },
+      env,
+    );
+    expect(unmarkRes.status).toBe(200);
+    const unmarkBody = (await unmarkRes.json()) as { watchedAt: string | null };
+    expect(unmarkBody.watchedAt).toBeNull();
+  });
+
+  it("PUT com payload parcial não apaga campos já preenchidos", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubTmdbFetchOnce(tmdbMovieDetail(603, "Poor Things"));
+    await app.request(
+      "/api/movies/603/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ rating: 3.5, watched: true }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const res = await app.request(
+      "/api/movies/603/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ review: "Revi e confirmo" }),
+      },
+      env,
+    );
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { rating: number; review: string; watchedAt: string | null };
+    expect(body.rating).toBe(3.5);
+    expect(body.review).toBe("Revi e confirmo");
+    expect(body.watchedAt).not.toBeNull();
+  });
+
+  it("marcar como assistido gera atividade watched; desmarcar não gera atividade extra", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubTmdbFetchOnce(tmdbMovieDetail(604, "Killers of the Flower Moon"));
+
+    await app.request(
+      "/api/movies/604/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ watched: true }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    await app.request(
+      "/api/movies/604/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ watched: false }),
+      },
+      env,
+    );
+
+    const activities = await createDb(env).query.activity.findMany();
+    const watched = activities.filter((item) => item.itemId === "604" && item.type === "watched");
+    expect(watched).toHaveLength(1); // só a marcação, não o clear
+  });
+
+  it("PUT com nota gera atividade rated", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubTmdbFetchOnce(tmdbMovieDetail(605, "Anatomy of a Fall"));
+
+    await app.request(
+      "/api/movies/605/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ rating: 4 }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const activities = await createDb(env).query.activity.findMany();
+    const rated = activities.filter((item) => item.itemId === "605" && item.type === "rated");
+    expect(rated).toHaveLength(1);
+    expect(rated[0]?.metadata).toEqual({ rating: 4 });
+  });
+
+  it("DELETE remove a marcação", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubTmdbFetchOnce(tmdbMovieDetail(606, "The Zone of Interest"));
+    await app.request(
+      "/api/movies/606/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ rating: 5 }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const deleteRes = await app.request(
+      "/api/movies/606/entry",
+      { method: "DELETE", headers: { cookie } },
+      env,
+    );
+    expect(deleteRes.status).toBe(204);
+
+    stubTmdbFetchOnce(tmdbMovieDetail(606, "The Zone of Interest"));
+    const detailRes = await app.request("/api/movies/606", { headers: { cookie } }, env);
+    await expect(detailRes.json()).resolves.toMatchObject({ entry: null });
+    vi.unstubAllGlobals();
+  });
+
+  it("sem sessão retorna 401", async () => {
+    const res = await app.request(
+      "/api/movies/601/entry",
+      { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rating: 3 }) },
+      env,
+    );
+
+    expect(res.status).toBe(401);
+  });
+});
+
+describe("GET /api/movies/entries", () => {
+  it("lista só as marcações do usuário logado, filtrando por assistido", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+
+    stubTmdbFetchOnce(tmdbMovieDetail(701, "Past Lives"));
+    await app.request(
+      "/api/movies/701/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ watched: true }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    stubTmdbFetchOnce(tmdbMovieDetail(702, "Priscilla"));
+    await app.request(
+      "/api/movies/702/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ rating: 3 }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const res = await app.request("/api/movies/entries?watched=true", { headers: { cookie } }, env);
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { total: number; items: Array<Record<string, unknown>> };
+    expect(body.total).toBe(1);
+    expect(body.items[0]).toMatchObject({ movie: { tmdbId: 701 } });
+  });
+
+  it("sem sessão retorna 401", async () => {
+    const res = await app.request("/api/movies/entries", undefined, env);
+
+    expect(res.status).toBe(401);
+  });
+});
