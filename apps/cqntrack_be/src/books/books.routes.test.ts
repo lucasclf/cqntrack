@@ -383,3 +383,170 @@ describe("GET /api/books/entries", () => {
     expect(res.status).toBe(401);
   });
 });
+
+describe("GET/PUT /api/books/favorites", () => {
+  it("sem sessão retorna 401 tanto pra GET quanto pra PUT", async () => {
+    const getRes = await app.request("/api/books/favorites", undefined, env);
+    expect(getRes.status).toBe(401);
+
+    const putRes = await app.request(
+      "/api/books/favorites/1",
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ googleBooksId: "book-1" }),
+      },
+      env,
+    );
+    expect(putRes.status).toBe(401);
+  });
+
+  it("GET começa com os 4 slots vazios", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+
+    const res = await app.request("/api/books/favorites", { headers: { cookie } }, env);
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { slots: Array<{ slot: number; entry: unknown }> };
+    expect(body.slots).toEqual([
+      { slot: 1, entry: null },
+      { slot: 2, entry: null },
+      { slot: 3, entry: null },
+      { slot: 4, entry: null },
+    ]);
+  });
+
+  it("PUT /favorites/:slot preenche um slot e reflete no GET", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubGoogleBooksFetchOnce(googleBooksVolume("book-801", "Parasita"));
+
+    const putRes = await app.request(
+      "/api/books/favorites/2",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ googleBooksId: "book-801" }),
+      },
+      env,
+    );
+    expect(putRes.status).toBe(200);
+    const putBody = await putRes.json();
+    expect(putBody).toMatchObject({ favoriteSlot: 2 });
+    vi.unstubAllGlobals();
+
+    const getRes = await app.request("/api/books/favorites", { headers: { cookie } }, env);
+    const getBody = (await getRes.json()) as {
+      slots: Array<{ slot: number; entry: { book: { googleBooksId: string } } | null }>;
+    };
+    expect(getBody.slots[1]).toMatchObject({ slot: 2, entry: { book: { googleBooksId: "book-801" } } });
+    expect(getBody.slots[0]).toEqual({ slot: 1, entry: null });
+  });
+
+  it("trocar um slot já ocupado libera o livro que estava nele", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubGoogleBooksFetchOnce(googleBooksVolume("book-802", "Ensaio sobre a Cegueira"));
+    await app.request(
+      "/api/books/favorites/1",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ googleBooksId: "book-802" }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    stubGoogleBooksFetchOnce(googleBooksVolume("book-803", "A Revolução dos Bichos"));
+    await app.request(
+      "/api/books/favorites/1",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ googleBooksId: "book-803" }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const getRes = await app.request("/api/books/favorites", { headers: { cookie } }, env);
+    const getBody = (await getRes.json()) as {
+      slots: Array<{ slot: number; entry: { book: { googleBooksId: string } } | null }>;
+    };
+    expect(getBody.slots[0]).toMatchObject({ slot: 1, entry: { book: { googleBooksId: "book-803" } } });
+
+    const entryRes = await app.request("/api/books/book-802", { headers: { cookie } }, env);
+    const entryBody = (await entryRes.json()) as { entry: { favoriteSlot: number | null } | null };
+    expect(entryBody.entry?.favoriteSlot ?? null).toBeNull();
+  });
+
+  it("escolher o mesmo livro pra outro slot move-o (não duplica em dois slots)", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubGoogleBooksFetchOnce(googleBooksVolume("book-804", "O Nome do Vento"));
+    await app.request(
+      "/api/books/favorites/1",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ googleBooksId: "book-804" }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const throwingFetch = vi
+      .fn()
+      .mockRejectedValue(new Error("já cacheado, não deveria chamar a Google Books de novo"));
+    vi.stubGlobal("fetch", throwingFetch);
+    await app.request(
+      "/api/books/favorites/3",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ googleBooksId: "book-804" }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const getRes = await app.request("/api/books/favorites", { headers: { cookie } }, env);
+    const getBody = (await getRes.json()) as { slots: Array<{ slot: number; entry: unknown }> };
+    expect(getBody.slots[0]).toEqual({ slot: 1, entry: null });
+    expect(getBody.slots[2]?.entry).not.toBeNull();
+  });
+
+  it("slot inválido (fora de 1-4) retorna 400", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+
+    const res = await app.request(
+      "/api/books/favorites/5",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ googleBooksId: "book-1" }),
+      },
+      env,
+    );
+
+    expect(res.status).toBe(400);
+  });
+
+  it("favoritar gera atividade do tipo favorited", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubGoogleBooksFetchOnce(googleBooksVolume("book-805", "A Insustentável Leveza do Ser"));
+
+    await app.request(
+      "/api/books/favorites/1",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ googleBooksId: "book-805" }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const activities = await createDb(env).query.activity.findMany();
+    const favorited = activities.filter((item) => item.itemId === "book-805" && item.type === "favorited");
+    expect(favorited).toHaveLength(1);
+  });
+});
