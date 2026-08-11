@@ -53,6 +53,17 @@ const MOVIE = {
   rating: null,
 };
 
+const BOOK = {
+  googleBooksId: "PCq3AAAAQBAJ",
+  title: "Dom Casmurro",
+  authors: [],
+  coverUrl: null,
+  publishedDate: "1899",
+  categories: [],
+  pageCount: null,
+  rating: null,
+};
+
 const EMPTY_SERIES_FAVORITES = {
   slots: [
     { slot: 1, entry: null },
@@ -63,6 +74,7 @@ const EMPTY_SERIES_FAVORITES = {
 };
 
 const EMPTY_MOVIE_FAVORITES = EMPTY_SERIES_FAVORITES;
+const EMPTY_BOOK_FAVORITES = EMPTY_SERIES_FAVORITES;
 
 function renderProfile(username = "gamer_1") {
   render(
@@ -191,6 +203,41 @@ describe("PublicProfile", () => {
       if (path === "/api/users/gamer_1/movies/favorites") {
         return Promise.resolve(EMPTY_MOVIE_FAVORITES);
       }
+      if (path === "/api/users/gamer_1/books/entries") {
+        return Promise.resolve({
+          items: [
+            {
+              id: "1",
+              status: "read",
+              rating: null,
+              favoriteSlot: null,
+              review: null,
+              updatedAt: "2026-01-01T00:00:00.000Z",
+              book: BOOK,
+            },
+          ],
+          page: 1,
+          pageSize: 24,
+          total: 1,
+        });
+      }
+      if (path === "/api/users/gamer_1/books/lists") {
+        return Promise.resolve({
+          lists: [
+            {
+              id: "bl1",
+              name: "Lidos em 2026",
+              description: null,
+              itemCount: 5,
+              createdAt: "",
+              updatedAt: "",
+            },
+          ],
+        });
+      }
+      if (path === "/api/users/gamer_1/books/favorites") {
+        return Promise.resolve(EMPTY_BOOK_FAVORITES);
+      }
       return Promise.reject(new Error("rota inesperada: " + path));
     });
 
@@ -220,6 +267,13 @@ describe("PublicProfile", () => {
     expect(screen.getByRole("heading", { name: "Listas de filmes" })).toBeInTheDocument();
     expect(screen.getByText("Vistos em 2026")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Vistos em 2026/ })).not.toBeInTheDocument();
+
+    // Seção de livros: mesma forma da de séries/filmes (sem link na lista).
+    expect(screen.getByRole("heading", { name: "Marcações de livros" })).toBeInTheDocument();
+    expect(screen.getByText("Dom Casmurro")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Listas de livros" })).toBeInTheDocument();
+    expect(screen.getByText("Lidos em 2026")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Lidos em 2026/ })).not.toBeInTheDocument();
   });
 
   it("mostra 'usuário não encontrado' em 404", async () => {

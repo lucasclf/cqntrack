@@ -1,6 +1,8 @@
 import type {
+  BookListsResponse,
   GameListsResponse,
   MovieListsResponse,
+  PaginatedBookEntriesResponse,
   PaginatedGameEntriesResponse,
   PaginatedMovieEntriesResponse,
   PaginatedSeriesEntriesResponse,
@@ -9,6 +11,8 @@ import type {
 } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
+import { BookCard } from "../books/BookCard";
+import { BookFavoritesSection } from "../books/BookFavoritesSection";
 import { FavoritesSection } from "../games/FavoritesSection";
 import { GameCard } from "../games/GameCard";
 import { PublicLayout } from "../layouts/PublicLayout";
@@ -33,6 +37,8 @@ export function PublicProfile() {
   const [seriesLists, setSeriesLists] = useState<SeriesListsResponse | null>(null);
   const [movieEntries, setMovieEntries] = useState<PaginatedMovieEntriesResponse | null>(null);
   const [movieLists, setMovieLists] = useState<MovieListsResponse | null>(null);
+  const [bookEntries, setBookEntries] = useState<PaginatedBookEntriesResponse | null>(null);
+  const [bookLists, setBookLists] = useState<BookListsResponse | null>(null);
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
 
   useEffect(() => {
@@ -46,6 +52,8 @@ export function PublicProfile() {
       apiClient.get<SeriesListsResponse>(`/api/users/${username}/series/lists`),
       apiClient.get<PaginatedMovieEntriesResponse>(`/api/users/${username}/movies/entries`),
       apiClient.get<MovieListsResponse>(`/api/users/${username}/movies/lists`),
+      apiClient.get<PaginatedBookEntriesResponse>(`/api/users/${username}/books/entries`),
+      apiClient.get<BookListsResponse>(`/api/users/${username}/books/lists`),
     ])
       .then(
         ([
@@ -56,6 +64,8 @@ export function PublicProfile() {
           seriesListsData,
           movieEntriesData,
           movieListsData,
+          bookEntriesData,
+          bookListsData,
         ]) => {
           if (cancelled) return;
           setProfile(profileData);
@@ -65,6 +75,8 @@ export function PublicProfile() {
           setSeriesLists(seriesListsData);
           setMovieEntries(movieEntriesData);
           setMovieLists(movieListsData);
+          setBookEntries(bookEntriesData);
+          setBookLists(bookListsData);
           setLoadStatus("ready");
         },
       )
@@ -100,7 +112,9 @@ export function PublicProfile() {
     !seriesEntries ||
     !seriesLists ||
     !movieEntries ||
-    !movieLists
+    !movieLists ||
+    !bookEntries ||
+    !bookLists
   ) {
     return (
       <PublicLayout>
@@ -235,6 +249,38 @@ export function PublicProfile() {
             <div className={styles.grid}>
               {movieEntries.items.map((item) => (
                 <MovieCard key={item.movie.tmdbId} movie={item.movie} entry={item} />
+              ))}
+            </div>
+          )}
+        </section>
+
+        <BookFavoritesSection favoritesEndpoint={`/api/users/${username}/books/favorites`} />
+
+        {bookLists.lists.length > 0 && (
+          <section>
+            <h2>Listas de livros</h2>
+            {/* Sem link — não existe (ainda) uma página pública de detalhe de
+                lista de livros, diferente de /u/:username/listas/:listId (jogos). */}
+            <ul className={styles.listNames}>
+              {bookLists.lists.map((list) => (
+                <li key={list.id}>
+                  <span className={styles.listNameStatic}>
+                    {list.name} <span className={styles.listCount}>({list.itemCount})</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        <section>
+          <h2>Marcações de livros</h2>
+          {bookEntries.items.length === 0 ? (
+            <p className={styles.hint}>Nenhuma marcação ainda.</p>
+          ) : (
+            <div className={styles.grid}>
+              {bookEntries.items.map((item) => (
+                <BookCard key={item.book.googleBooksId} book={item.book} entry={item} />
               ))}
             </div>
           )}
