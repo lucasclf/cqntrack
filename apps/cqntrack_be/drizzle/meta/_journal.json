@@ -99,6 +99,13 @@
       "when": 1786457744405,
       "tag": "0013_remove_series_status_add_episode_tracking",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1786469186653,
+      "tag": "0014_add_movies_tables",
+      "breakpoints": true
     }
   ]
 }
