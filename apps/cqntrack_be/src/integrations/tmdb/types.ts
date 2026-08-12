@@ -51,6 +51,22 @@ export interface TmdbSeasonDetail {
   episodes: TmdbEpisode[];
 }
 
+// GET /tv/{id}/season/{s}/episode/{e} — detalhe completo de UM episódio,
+// diferente de TmdbEpisode (resumo dentro da lista da temporada). `crew`
+// aqui é quem trabalhou especificamente nesse episódio — mesmo formato de
+// TmdbCrewMember já usado em elenco/direção de filme/série (ver abaixo).
+export interface TmdbEpisodeDetail {
+  episode_number: number;
+  season_number: number;
+  name: string;
+  overview?: string;
+  air_date: string | null;
+  still_path: string | null;
+  runtime?: number;
+  vote_average?: number;
+  crew: TmdbCrewMember[];
+}
+
 // A busca (search/movie) devolve um subconjunto menor de campos que o
 // detalhe (movie/{id}) — mesmo espírito de TmdbSeriesSearchResult/
 // TmdbSeriesDetail. Filme não tem "seasons": sem substrutura.

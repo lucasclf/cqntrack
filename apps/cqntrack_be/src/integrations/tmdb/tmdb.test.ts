@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it, vi } from "vitest";
 import { getMovieById, searchMovies } from "./movies";
-import { getSeriesById, getSeriesSeason, searchSeries } from "./series";
+import { getSeriesById, getSeriesEpisode, getSeriesSeason, searchSeries } from "./series";
 
 const SERIES_SEARCH_RESULT = {
   id: 1396,
@@ -118,6 +118,60 @@ describe("integrations/tmdb", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const result = await getSeriesSeason(env, 1396, 99);
+
+    expect(result).toBeNull();
+
+    vi.unstubAllGlobals();
+  });
+
+  it("getSeriesEpisode devolve o detalhe completo do episódio, com o crew (formato real capturado no planejamento)", async () => {
+    const episodeDetail = {
+      episode_number: 1,
+      season_number: 1,
+      name: "Pilot",
+      overview: "Walter White, a New Mexico chemistry teacher, is diagnosed with cancer.",
+      air_date: "2008-01-20",
+      still_path: "/still-1.jpg",
+      runtime: 58,
+      vote_average: 8.2,
+      crew: [
+        {
+          id: 66633,
+          name: "Vince Gilligan",
+          job: "Writer",
+          department: "Writing",
+          profile_path: "/gilligan.jpg",
+        },
+        {
+          id: 66633,
+          name: "Vince Gilligan",
+          job: "Director",
+          department: "Directing",
+          profile_path: "/gilligan.jpg",
+        },
+      ],
+    };
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(episodeDetail));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await getSeriesEpisode(env, 1396, 1, 1);
+
+    expect(result).toEqual(episodeDetail);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.themoviedb.org/3/tv/1396/season/1/episode/1",
+      expect.anything(),
+    );
+
+    vi.unstubAllGlobals();
+  });
+
+  it("getSeriesEpisode retorna null quando a TMDB responde 404", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ status_message: "not found" }, 404));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await getSeriesEpisode(env, 1396, 1, 999);
 
     expect(result).toBeNull();
 

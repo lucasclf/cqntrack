@@ -1,5 +1,6 @@
 import { TmdbRequestError, tmdbFetch } from "./client";
 import type {
+  TmdbEpisodeDetail,
   TmdbSearchResponse,
   TmdbSeasonDetail,
   TmdbSeriesDetail,
@@ -40,6 +41,28 @@ export async function getSeriesSeason(
 ): Promise<TmdbSeasonDetail | null> {
   try {
     return await tmdbFetch<TmdbSeasonDetail>(env, `/tv/${tmdbId}/season/${seasonNumber}`);
+  } catch (error) {
+    if (error instanceof TmdbRequestError && error.status === 404) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+// Buscado ao vivo a cada abertura da página do episódio, sem cache local
+// (mesmo motivo de getSeriesSeason) — já traz o `crew` completo do
+// episódio, incluindo quem dirigiu especificamente ele.
+export async function getSeriesEpisode(
+  env: Env,
+  tmdbId: number,
+  seasonNumber: number,
+  episodeNumber: number,
+): Promise<TmdbEpisodeDetail | null> {
+  try {
+    return await tmdbFetch<TmdbEpisodeDetail>(
+      env,
+      `/tv/${tmdbId}/season/${seasonNumber}/episode/${episodeNumber}`,
+    );
   } catch (error) {
     if (error instanceof TmdbRequestError && error.status === 404) {
       return null;
