@@ -3,14 +3,16 @@ import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Signup } from "./Signup";
 
-const { signUpEmailMock, navigateMock } = vi.hoisted(() => ({
+const { signUpEmailMock, navigateMock, refetchSessionMock } = vi.hoisted(() => ({
   signUpEmailMock: vi.fn(),
   navigateMock: vi.fn(),
+  refetchSessionMock: vi.fn(),
 }));
 
 vi.mock("./lib/auth-client", () => ({
   authClient: {
     signUp: { email: signUpEmailMock },
+    useSession: () => ({ refetch: refetchSessionMock }),
   },
 }));
 
@@ -38,6 +40,7 @@ describe("Signup", () => {
   beforeEach(() => {
     signUpEmailMock.mockReset();
     navigateMock.mockReset();
+    refetchSessionMock.mockReset().mockResolvedValue(undefined);
   });
 
   it("renderiza os campos do formulário", () => {
@@ -66,6 +69,7 @@ describe("Signup", () => {
       });
     });
     await waitFor(() => expect(navigateMock).toHaveBeenCalledWith("/"));
+    expect(refetchSessionMock).toHaveBeenCalled();
   });
 
   it("mostra erro quando signUp.email falha", async () => {

@@ -8,6 +8,7 @@ import styles from "./Signup.module.css";
 
 export function Signup() {
   const navigate = useNavigate();
+  const { refetch: refetchSession } = authClient.useSession();
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -41,6 +42,10 @@ export function Signup() {
       return;
     }
 
+    // Mesmo motivo do Login.tsx: espera a sessão compartilhada refletir o
+    // cadastro recém-feito antes de navegar, senão RequireAuth manda de
+    // volta pro login por causa do estado velho.
+    await refetchSession();
     void navigate("/");
   }
 

@@ -8,6 +8,7 @@ import styles from "./Login.module.css";
 
 export function Login() {
   const navigate = useNavigate();
+  const { refetch: refetchSession } = authClient.useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
@@ -37,6 +38,11 @@ export function Login() {
       return;
     }
 
+    // RequireAuth lê a sessão de um estado compartilhado que só se atualiza
+    // sozinho em segundo plano — sem esperar esse refetch aqui, ele ainda
+    // vê "sem sessão" no instante em que navegamos, manda de volta pro
+    // login, e só o próximo clique (já com a sessão atualizada) funciona.
+    await refetchSession();
     void navigate("/");
   }
 

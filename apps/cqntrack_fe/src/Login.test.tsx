@@ -3,14 +3,16 @@ import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Login } from "./Login";
 
-const { signInEmailMock, navigateMock } = vi.hoisted(() => ({
+const { signInEmailMock, navigateMock, refetchSessionMock } = vi.hoisted(() => ({
   signInEmailMock: vi.fn(),
   navigateMock: vi.fn(),
+  refetchSessionMock: vi.fn(),
 }));
 
 vi.mock("./lib/auth-client", () => ({
   authClient: {
     signIn: { email: signInEmailMock },
+    useSession: () => ({ refetch: refetchSessionMock }),
   },
 }));
 
@@ -31,6 +33,7 @@ describe("Login", () => {
   beforeEach(() => {
     signInEmailMock.mockReset();
     navigateMock.mockReset();
+    refetchSessionMock.mockReset().mockResolvedValue(undefined);
   });
 
   it("renderiza os campos do formulário", () => {
@@ -73,6 +76,10 @@ describe("Login", () => {
       });
     });
     await waitFor(() => expect(navigateMock).toHaveBeenCalledWith("/"));
+    // A sessão compartilhada precisa ser atualizada antes de navegar, senão
+    // RequireAuth ainda vê o estado antigo (sem sessão) e manda de volta
+    // pro login — ver comentário em Login.tsx.
+    expect(refetchSessionMock).toHaveBeenCalled();
   });
 
   it("mostra erro quando signIn.email falha", async () => {
