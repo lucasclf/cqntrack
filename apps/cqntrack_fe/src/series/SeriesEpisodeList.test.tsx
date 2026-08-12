@@ -1,7 +1,17 @@
 import type { SeriesSeasonSummary } from "@cqntrack/shared";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { ComponentProps } from "react";
+import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SeriesEpisodeList } from "./SeriesEpisodeList";
+
+function renderList(props: ComponentProps<typeof SeriesEpisodeList>) {
+  return render(
+    <MemoryRouter>
+      <SeriesEpisodeList {...props} />
+    </MemoryRouter>,
+  );
+}
 
 const { getMock, putMock } = vi.hoisted(() => ({ getMock: vi.fn(), putMock: vi.fn() }));
 
@@ -57,7 +67,7 @@ describe("SeriesEpisodeList", () => {
 
   it("abre na Temporada 1 e lista os episódios", async () => {
     getMock.mockResolvedValue(season1Response());
-    render(<SeriesEpisodeList tmdbId={1396} seasons={SEASONS} />);
+    renderList({ tmdbId: 1396, seasons: SEASONS });
 
     expect(await screen.findByText("1. Pilot")).toBeInTheDocument();
     expect(screen.getByText("2. Cat's in the Bag...")).toBeInTheDocument();
@@ -69,9 +79,7 @@ describe("SeriesEpisodeList", () => {
   });
 
   it("com initialSeasonData da Temporada 1, renderiza direto sem buscar nem 'carregando'", () => {
-    render(
-      <SeriesEpisodeList tmdbId={1396} seasons={SEASONS} initialSeasonData={season1Response()} />,
-    );
+    renderList({ tmdbId: 1396, seasons: SEASONS, initialSeasonData: season1Response() });
 
     expect(screen.getByText("1. Pilot")).toBeInTheDocument();
     expect(screen.queryByText("Carregando episódios...")).not.toBeInTheDocument();
@@ -84,7 +92,7 @@ describe("SeriesEpisodeList", () => {
       if (path === "/api/series/1396/seasons/2") return Promise.resolve(season2Response());
       return Promise.reject(new Error("rota inesperada: " + path));
     });
-    render(<SeriesEpisodeList tmdbId={1396} seasons={SEASONS} />);
+    renderList({ tmdbId: 1396, seasons: SEASONS });
     await screen.findByText("1. Pilot");
 
     fireEvent.click(screen.getByRole("tab", { name: "Temporada 2" }));
@@ -99,7 +107,7 @@ describe("SeriesEpisodeList", () => {
       if (path === "/api/series/1396/seasons/2") return Promise.resolve(season2Response());
       return Promise.reject(new Error("rota inesperada: " + path));
     });
-    render(<SeriesEpisodeList tmdbId={1396} seasons={SEASONS} />);
+    renderList({ tmdbId: 1396, seasons: SEASONS });
     await screen.findByText("1. Pilot");
 
     fireEvent.click(screen.getByRole("tab", { name: "Temporada 2" }));
@@ -115,7 +123,7 @@ describe("SeriesEpisodeList", () => {
   it("marca um episódio (otimista) e chama o PUT", async () => {
     getMock.mockResolvedValue(season1Response());
     putMock.mockResolvedValue(undefined);
-    render(<SeriesEpisodeList tmdbId={1396} seasons={SEASONS} />);
+    renderList({ tmdbId: 1396, seasons: SEASONS });
     await screen.findByText("1. Pilot");
 
     fireEvent.click(screen.getAllByLabelText("Assistido")[0]!);
@@ -127,7 +135,7 @@ describe("SeriesEpisodeList", () => {
   it("reverte a marcação e mostra erro quando o PUT falha", async () => {
     getMock.mockResolvedValue(season1Response());
     putMock.mockRejectedValue(new Error("falha de rede"));
-    render(<SeriesEpisodeList tmdbId={1396} seasons={SEASONS} />);
+    renderList({ tmdbId: 1396, seasons: SEASONS });
     await screen.findByText("1. Pilot");
 
     fireEvent.click(screen.getAllByLabelText("Assistido")[0]!);
@@ -140,7 +148,7 @@ describe("SeriesEpisodeList", () => {
     getMock.mockResolvedValue(season1Response());
     putMock.mockResolvedValue(undefined);
     const confirmSpy = vi.spyOn(window, "confirm");
-    render(<SeriesEpisodeList tmdbId={1396} seasons={SEASONS} />);
+    renderList({ tmdbId: 1396, seasons: SEASONS });
     await screen.findByText("1. Pilot");
 
     fireEvent.click(screen.getByRole("button", { name: "Marcar temporada inteira" }));
@@ -159,7 +167,7 @@ describe("SeriesEpisodeList", () => {
     putMock.mockResolvedValue(undefined);
 
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
-    render(<SeriesEpisodeList tmdbId={1396} seasons={SEASONS} />);
+    renderList({ tmdbId: 1396, seasons: SEASONS });
     await screen.findByRole("button", { name: "Desmarcar temporada inteira" });
 
     fireEvent.click(screen.getByRole("button", { name: "Desmarcar temporada inteira" }));
@@ -175,7 +183,7 @@ describe("SeriesEpisodeList", () => {
   });
 
   it("não renderiza nada quando a série não tem temporadas", () => {
-    const { container } = render(<SeriesEpisodeList tmdbId={1396} seasons={[]} />);
+    const { container } = renderList({ tmdbId: 1396, seasons: [] });
 
     expect(container).toBeEmptyDOMElement();
   });

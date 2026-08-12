@@ -23,6 +23,7 @@ import { PublicListDetail } from "./profile/PublicListDetail";
 import { PublicProfile } from "./profile/PublicProfile";
 import { RedirectToJogosListDetail } from "./routes/RedirectToJogosListDetail";
 import { RequireAuth } from "./routes/RequireAuth";
+import { EpisodeDetail } from "./series/EpisodeDetail";
 import { MySeriesEntries } from "./series/MySeriesEntries";
 import { MySeriesLists } from "./series/MySeriesLists";
 import { SeriesDetail } from "./series/SeriesDetail";
@@ -68,6 +69,10 @@ export const routes: RouteObject[] = [
               { path: "marcacoes", element: <MySeriesEntries /> },
               { path: "listas", element: <MySeriesLists /> },
               { path: "listas/:listId", element: <SeriesListDetail /> },
+              {
+                path: ":tmdbId/temporadas/:seasonNumber/episodios/:episodeNumber",
+                element: <EpisodeDetail />,
+              },
             ],
           },
           {

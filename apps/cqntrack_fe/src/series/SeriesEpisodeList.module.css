@@ -86,6 +86,16 @@
   flex-shrink: 0;
 }
 
+.episodeLink {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+}
+
 .episodeInfo {
   flex: 1;
   min-width: 0;

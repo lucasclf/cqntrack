@@ -1,5 +1,6 @@
 import type { SeriesSeasonEpisodesResponse, SeriesSeasonSummary } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
+import { Link } from "react-router";
 import { apiClient } from "../lib/api-client";
 import styles from "./SeriesEpisodeList.module.css";
 
@@ -191,17 +192,22 @@ export function SeriesEpisodeList({ tmdbId, seasons, initialSeasonData }: Series
           <ul className={styles.episodeList}>
             {data.episodes.map((episode) => (
               <li key={episode.episodeNumber} className={styles.episode}>
-                {episode.stillUrl ? (
-                  <img className={styles.still} src={episode.stillUrl} alt="" loading="lazy" />
-                ) : (
-                  <div className={styles.stillPlaceholder} aria-hidden="true" />
-                )}
-                <div className={styles.episodeInfo}>
-                  <p className={styles.episodeName}>
-                    {episode.episodeNumber}. {episode.name}
-                  </p>
-                  {episode.airDate && <p className={styles.episodeDate}>{episode.airDate}</p>}
-                </div>
+                <Link
+                  to={`/series/${tmdbId}/temporadas/${selectedSeason}/episodios/${episode.episodeNumber}`}
+                  className={styles.episodeLink}
+                >
+                  {episode.stillUrl ? (
+                    <img className={styles.still} src={episode.stillUrl} alt="" loading="lazy" />
+                  ) : (
+                    <div className={styles.stillPlaceholder} aria-hidden="true" />
+                  )}
+                  <div className={styles.episodeInfo}>
+                    <p className={styles.episodeName}>
+                      {episode.episodeNumber}. {episode.name}
+                    </p>
+                    {episode.airDate && <p className={styles.episodeDate}>{episode.airDate}</p>}
+                  </div>
+                </Link>
                 <label className={styles.watchedToggle}>
                   <input
                     type="checkbox"
