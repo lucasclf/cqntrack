@@ -76,19 +76,25 @@
   flex-wrap: wrap;
 }
 
-.watchedBtn {
-  padding: 8px 14px;
-  border-radius: var(--radius);
+.favoriteBtn {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
   border: 1px solid var(--input-border);
   background: var(--input-bg);
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: 16px;
+  line-height: 1;
   cursor: pointer;
 }
 
-.watchedBtn[aria-pressed="true"] {
-  border-color: var(--accent);
-  color: var(--accent);
+.favoriteBtn[aria-pressed="true"] {
+  border-color: var(--error);
+  color: var(--error);
 }
 
 .watchedDate {

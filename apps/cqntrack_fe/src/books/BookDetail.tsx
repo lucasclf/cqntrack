@@ -79,6 +79,7 @@ export function BookDetail() {
 
   const { book, entry } = detail;
   const year = book.publishedDate ? book.publishedDate.slice(0, 4) : null;
+  const favorited = entry?.favoritedAt != null;
 
   return (
     <div className={styles.page}>
@@ -130,7 +131,18 @@ export function BookDetail() {
 
         <AddToBookListMenu googleBooksId={book.googleBooksId} />
 
-        <StarRating value={entry?.rating ?? null} onChange={(rating) => savePatch({ rating })} />
+        <div className={styles.favoriteRow}>
+          <button
+            type="button"
+            className={styles.favoriteBtn}
+            aria-pressed={favorited}
+            aria-label={favorited ? "Desfavoritar" : "Favoritar"}
+            onClick={() => savePatch({ favorited: !favorited })}
+          >
+            {favorited ? "♥" : "♡"}
+          </button>
+          <StarRating value={entry?.rating ?? null} onChange={(rating) => savePatch({ rating })} />
+        </div>
 
         <label className={styles.field}>
           <span>Review</span>

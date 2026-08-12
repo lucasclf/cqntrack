@@ -1,22 +1,22 @@
-import { BookFavoriteSlots } from "./books/BookFavoriteSlots";
+import { BookFavoritesGrid } from "./books/BookFavoritesGrid";
 import { ActivityFeed } from "./games/ActivityFeed";
-import { FavoriteSlots } from "./games/FavoriteSlots";
+import { FavoritesGrid } from "./games/FavoritesGrid";
 import styles from "./Home.module.css";
-import { MovieFavoriteSlots } from "./movies/MovieFavoriteSlots";
-import { SeriesFavoriteSlots } from "./series/SeriesFavoriteSlots";
+import { MovieFavoritesGrid } from "./movies/MovieFavoritesGrid";
+import { SeriesFavoritesGrid } from "./series/SeriesFavoritesGrid";
 
 export function Home() {
   return (
     <div className={styles.page}>
       <h1>cqntrack</h1>
       <h2>Jogos favoritos</h2>
-      <FavoriteSlots />
+      <FavoritesGrid />
       <h2>Séries favoritas</h2>
-      <SeriesFavoriteSlots />
+      <SeriesFavoritesGrid />
       <h2>Filmes favoritos</h2>
-      <MovieFavoriteSlots />
+      <MovieFavoritesGrid />
       <h2>Livros favoritos</h2>
-      <BookFavoriteSlots />
+      <BookFavoritesGrid />
       <h2>Atividade recente</h2>
       <ActivityFeed />
     </div>

@@ -9,11 +9,28 @@ import styles from "./PublicListDetail.module.css";
 type LoadStatus = "loading" | "ready" | "not-found" | "error";
 
 export function PublicListDetail() {
-  const { username, listId } = useParams<{ username: string; listId: string }>();
+  // Mesmo motivo de PublicProfile: a rota é "/:handle/listas/:listId", não
+  // "/@:username/...", porque react-router não casa texto literal +
+  // parâmetro no mesmo segmento — separa o "@" aqui.
+  const { handle, listId } = useParams<{ handle: string; listId: string }>();
+  const username = handle?.startsWith("@") ? handle.slice(1) : null;
   const [detail, setDetail] = useState<GameListDetail | null>(null);
-  const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
+  const [loadStatus, setLoadStatus] = useState<LoadStatus>(username ? "loading" : "not-found");
+
+  // Reseta assim que o :handle/:listId da rota muda — feito durante o
+  // render (mesmo padrão de PublicProfile), não dentro do efeito abaixo.
+  const [trackedKey, setTrackedKey] = useState(`${username}/${listId}`);
+  const currentKey = `${username}/${listId}`;
+  if (currentKey !== trackedKey) {
+    setTrackedKey(currentKey);
+    setLoadStatus(username ? "loading" : "not-found");
+  }
 
   useEffect(() => {
+    if (!username) {
+      return;
+    }
+
     let cancelled = false;
 
     apiClient
@@ -61,7 +78,7 @@ export function PublicListDetail() {
     <PublicLayout>
       <div className={styles.page}>
         <header className={styles.header}>
-          <Link to={`/u/${username}`} className={styles.backLink}>
+          <Link to={`/@${username}`} className={styles.backLink}>
             ← Voltar pro perfil de @{username}
           </Link>
           <h1>{detail.name}</h1>

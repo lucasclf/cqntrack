@@ -26,7 +26,7 @@ export function SeriesCard({ series, entry }: SeriesCardProps) {
         {series.rating !== null && (
           <span className={styles.ratingBadge}>{series.rating.toFixed(1)}</span>
         )}
-        {entry?.favoriteSlot != null && (
+        {entry?.favoritedAt != null && (
           <span className={styles.favoriteBadge} aria-label="Favoritado">
             ♥
           </span>

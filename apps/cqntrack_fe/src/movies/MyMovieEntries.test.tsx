@@ -11,9 +11,10 @@ vi.mock("../lib/api-client", () => ({
 
 const ENTRY = {
   id: "1",
+  status: "watched",
   rating: 4,
   watchedAt: "2026-01-01T00:00:00.000Z",
-  favoriteSlot: null,
+  favoritedAt: null,
   review: null,
   updatedAt: "2026-01-01T00:00:00.000Z",
   movie: {
@@ -54,7 +55,7 @@ describe("MyMovieEntries", () => {
     expect(query.get("sortBy")).toBe("updatedAt");
     expect(query.get("order")).toBe("desc");
     expect(query.get("page")).toBe("1");
-    expect(query.get("watched")).toBeNull();
+    expect(query.get("status")).toBeNull();
   });
 
   it("mostra mensagem quando não há filmes com os filtros atuais", async () => {
@@ -84,15 +85,15 @@ describe("MyMovieEntries", () => {
     expect(lastQuery().get("favorite")).toBe("true");
   });
 
-  it("refaz a busca com o filtro de assistido ao trocar o select", async () => {
+  it("refaz a busca com o filtro de status ao trocar o select", async () => {
     getMock.mockResolvedValue({ items: [ENTRY], page: 1, pageSize: 24, total: 1 });
     renderPage();
     await screen.findByText("Inception");
 
-    fireEvent.change(screen.getByLabelText("Assistido"), { target: { value: "true" } });
+    fireEvent.change(screen.getByLabelText("Status"), { target: { value: "watched" } });
 
     await screen.findByText("Inception");
-    expect(lastQuery().get("watched")).toBe("true");
+    expect(lastQuery().get("status")).toBe("watched");
   });
 
   it("navega entre páginas e reseta pra página 1 ao mudar um filtro", async () => {

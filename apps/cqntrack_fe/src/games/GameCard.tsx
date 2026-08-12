@@ -24,7 +24,7 @@ export function GameCard({ game, entry }: GameCardProps) {
           <div className={styles.coverPlaceholder} aria-hidden="true" />
         )}
         {game.rating !== null && <span className={styles.ratingBadge}>{Math.round(game.rating)}</span>}
-        {entry?.favoriteSlot != null && (
+        {entry?.favoritedAt != null && (
           <span className={styles.favoriteBadge} aria-label="Favoritado">
             ♥
           </span>

@@ -33,10 +33,10 @@ const DETAIL = {
 
 function renderPage() {
   render(
-    <MemoryRouter initialEntries={["/u/gamer_1/listas/l1"]}>
+    <MemoryRouter initialEntries={["/@gamer_1/listas/l1"]}>
       <Routes>
-        <Route path="/u/:username" element={<p>tela de perfil</p>} />
-        <Route path="/u/:username/listas/:listId" element={<PublicListDetail />} />
+        <Route path="/:handle" element={<p>tela de perfil</p>} />
+        <Route path="/:handle/listas/:listId" element={<PublicListDetail />} />
       </Routes>
     </MemoryRouter>,
   );
@@ -51,6 +51,10 @@ describe("PublicListDetail", () => {
     expect(screen.getByText("Jogos pra jogar")).toBeInTheDocument();
     expect(screen.getByText("The Witcher 3: Wild Hunt")).toBeInTheDocument();
     expect(getMock).toHaveBeenCalledWith("/api/users/gamer_1/games/lists/l1");
+    expect(screen.getByRole("link", { name: /Voltar pro perfil/ })).toHaveAttribute(
+      "href",
+      "/@gamer_1",
+    );
   });
 
   it("mostra 'lista não encontrada' em 404", async () => {

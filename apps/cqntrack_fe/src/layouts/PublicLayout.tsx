@@ -9,7 +9,7 @@ interface PublicLayoutProps {
 }
 
 // Casca mínima pra visitante anônimo (ou dono, por ora — ver nota de escopo
-// no PublicProfile) em /u/:username: só logo + toggle de tema, sem nav.
+// no PublicProfile) em /@:username: só logo + toggle de tema, sem nav.
 export function PublicLayout({ children }: PublicLayoutProps) {
   return (
     <div className={styles.page}>

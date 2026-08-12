@@ -6,14 +6,12 @@ import styles from "./BookFavoritesSection.module.css";
 
 interface BookFavoritesSectionProps {
   // "/api/users/:username/books/favorites" — leitura pública, sem interação
-  // (a edição dos slots só existe na própria home, via BookFavoriteSlots).
+  // (favoritar só acontece na própria tela de detalhe do livro, logado).
   favoritesEndpoint: string;
 }
 
 type LoadStatus = "loading" | "ready" | "error";
 
-// Só mostra os slots preenchidos — diferente de BookFavoriteSlots (home,
-// interativo), aqui não faz sentido mostrar slot vazio pro visitante.
 export function BookFavoritesSection({ favoritesEndpoint }: BookFavoritesSectionProps) {
   const [data, setData] = useState<BookFavoritesResponse | null>(null);
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
@@ -44,8 +42,7 @@ export function BookFavoritesSection({ favoritesEndpoint }: BookFavoritesSection
     return null;
   }
 
-  const filled = data.slots.filter((slot) => slot.entry !== null);
-  if (filled.length === 0) {
+  if (data.items.length === 0) {
     return null;
   }
 
@@ -53,8 +50,8 @@ export function BookFavoritesSection({ favoritesEndpoint }: BookFavoritesSection
     <section className={styles.section}>
       <h2>Livros favoritos</h2>
       <div className={styles.grid}>
-        {filled.map(({ slot, entry }) => (
-          <BookCard key={slot} book={entry!.book} entry={entry!} />
+        {data.items.map((entry) => (
+          <BookCard key={entry.book.googleBooksId} book={entry.book} entry={entry} />
         ))}
       </div>
     </section>

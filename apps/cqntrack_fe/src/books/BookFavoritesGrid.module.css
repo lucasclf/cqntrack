@@ -1,9 +1,9 @@
-.section {
-  margin-bottom: 24px;
-}
-
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 16px;
+}
+
+.hint {
+  color: var(--text-secondary);
 }

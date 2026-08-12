@@ -6,8 +6,8 @@ function renderFilters(overrides: Partial<Parameters<typeof MovieEntryFilters>[0
   const props = {
     favoriteOnly: false,
     onFavoriteOnlyChange: vi.fn(),
-    watched: "" as const,
-    onWatchedChange: vi.fn(),
+    status: "" as const,
+    onStatusChange: vi.fn(),
     sortBy: "updatedAt" as const,
     onSortByChange: vi.fn(),
     order: "desc" as const,
@@ -19,12 +19,12 @@ function renderFilters(overrides: Partial<Parameters<typeof MovieEntryFilters>[0
 }
 
 describe("MovieEntryFilters", () => {
-  it("dispara onWatchedChange ao trocar o filtro de assistido", () => {
+  it("dispara onStatusChange ao trocar o filtro de status", () => {
     const props = renderFilters();
 
-    fireEvent.change(screen.getByLabelText("Assistido"), { target: { value: "true" } });
+    fireEvent.change(screen.getByLabelText("Status"), { target: { value: "watched" } });
 
-    expect(props.onWatchedChange).toHaveBeenCalledWith("true");
+    expect(props.onStatusChange).toHaveBeenCalledWith("watched");
   });
 
   it("dispara onSortByChange ao trocar a ordenação", () => {

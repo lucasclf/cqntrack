@@ -98,6 +98,7 @@ export function SeriesDetail() {
 
   const { series, entry } = detail;
   const year = series.firstAirDate ? series.firstAirDate.slice(0, 4) : null;
+  const favorited = entry?.favoritedAt != null;
 
   return (
     <div className={styles.page}>
@@ -142,7 +143,18 @@ export function SeriesDetail() {
 
         <AddToSeriesListMenu tmdbId={series.tmdbId} />
 
-        <StarRating value={entry?.rating ?? null} onChange={(rating) => savePatch({ rating })} />
+        <div className={styles.favoriteRow}>
+          <button
+            type="button"
+            className={styles.favoriteBtn}
+            aria-pressed={favorited}
+            aria-label={favorited ? "Desfavoritar" : "Favoritar"}
+            onClick={() => savePatch({ favorited: !favorited })}
+          >
+            {favorited ? "♥" : "♡"}
+          </button>
+          <StarRating value={entry?.rating ?? null} onChange={(rating) => savePatch({ rating })} />
+        </div>
 
         {entry && (
           <button type="button" className={styles.removeBtn} onClick={removeEntry}>

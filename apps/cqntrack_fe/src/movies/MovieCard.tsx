@@ -1,4 +1,4 @@
-import type { MovieEntry, MovieSummary } from "@cqntrack/shared";
+import { MOVIE_STATUS_LABELS, type MovieEntry, type MovieSummary } from "@cqntrack/shared";
 import { Link } from "react-router";
 import styles from "./MovieCard.module.css";
 
@@ -26,7 +26,7 @@ export function MovieCard({ movie, entry }: MovieCardProps) {
         {movie.rating !== null && (
           <span className={styles.ratingBadge}>{movie.rating.toFixed(1)}</span>
         )}
-        {entry?.favoriteSlot != null && (
+        {entry?.favoritedAt != null && (
           <span className={styles.favoriteBadge} aria-label="Favoritado">
             ♥
           </span>
@@ -39,12 +39,12 @@ export function MovieCard({ movie, entry }: MovieCardProps) {
           {movie.genres.length > 0 &&
             ` · ${movie.genres[0]}${extraGenres > 0 ? ` +${extraGenres}` : ""}`}
         </p>
-        {/* Sempre reserva a linha quando há entry, com assistido/nota ou
-            vazia — senão os cards sem nenhum dos dois ficam mais baixos que
-            os vizinhos que têm, quebrando o alinhamento da fileira no grid. */}
+        {/* Sempre reserva a linha quando há entry, com status/nota ou vazia
+            — senão os cards sem nenhum dos dois ficam mais baixos que os
+            vizinhos que têm, quebrando o alinhamento da fileira no grid. */}
         {entry && (
           <p className={styles.entryMeta}>
-            {entry.watchedAt !== null && <span className={styles.watchedPill}>✓ Assistido</span>}
+            {entry.status && <span className={styles.statusPill}>{MOVIE_STATUS_LABELS[entry.status]}</span>}
             {entry.rating !== null && (
               <span className={styles.personalRating}>★ {entry.rating.toFixed(1)}</span>
             )}

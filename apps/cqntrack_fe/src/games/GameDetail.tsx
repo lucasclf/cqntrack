@@ -90,6 +90,7 @@ export function GameDetail() {
 
   const { game, entry } = detail;
   const year = game.firstReleaseDate ? game.firstReleaseDate.slice(0, 4) : null;
+  const favorited = entry?.favoritedAt != null;
 
   return (
     <div className={styles.page}>
@@ -137,7 +138,18 @@ export function GameDetail() {
 
         <AddToListMenu igdbId={game.igdbId} />
 
-        <StarRating value={entry?.rating ?? null} onChange={(rating) => savePatch({ rating })} />
+        <div className={styles.favoriteRow}>
+          <button
+            type="button"
+            className={styles.favoriteBtn}
+            aria-pressed={favorited}
+            aria-label={favorited ? "Desfavoritar" : "Favoritar"}
+            onClick={() => savePatch({ favorited: !favorited })}
+          >
+            {favorited ? "♥" : "♡"}
+          </button>
+          <StarRating value={entry?.rating ?? null} onChange={(rating) => savePatch({ rating })} />
+        </div>
 
         <fieldset className={styles.field}>
           <legend>Plataformas jogadas</legend>

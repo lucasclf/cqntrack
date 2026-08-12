@@ -47,30 +47,32 @@ describe("MovieCard", () => {
     expect(screen.getByText("Data desconhecida")).toBeInTheDocument();
   });
 
-  it("mostra selo de assistido, nota pessoal e selo de favorito quando há entry", () => {
+  it("mostra selo de status, nota pessoal e selo de favorito quando há entry", () => {
     renderCard(BASE_MOVIE, {
       id: "1",
+      status: "watched",
       rating: 4.5,
       watchedAt: "2026-01-01T00:00:00.000Z",
-      favoriteSlot: 2,
+      favoritedAt: "2026-01-01T00:00:00.000Z",
       review: null,
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
 
-    expect(screen.getByText("✓ Assistido")).toBeInTheDocument();
+    expect(screen.getByText("Já vi")).toBeInTheDocument();
     expect(screen.getByText("★ 4.5")).toBeInTheDocument();
     expect(screen.getByLabelText("Favoritado")).toBeInTheDocument();
   });
 
-  it("reserva a linha de assistido/nota mesmo quando a entry não tem nenhum dos dois", () => {
-    // Favoritar não marca assistido nem nota — sem isso, esse card fica mais
-    // baixo que os vizinhos que têm assistido/nota, quebrando o grid (bug
-    // real, já corrigido pra jogos e série e replicado aqui de propósito).
+  it("reserva a linha de status/nota mesmo quando a entry não tem nenhum dos dois", () => {
+    // Favoritar não marca status nem nota — sem isso, esse card fica mais
+    // baixo que os vizinhos que têm status/nota, quebrando o grid (bug real,
+    // já corrigido pra jogos e série e replicado aqui de propósito).
     const { container } = renderCard(BASE_MOVIE, {
       id: "1",
+      status: null,
       rating: null,
       watchedAt: null,
-      favoriteSlot: 1,
+      favoritedAt: "2026-01-01T00:00:00.000Z",
       review: null,
       updatedAt: "2026-01-01T00:00:00.000Z",
     });

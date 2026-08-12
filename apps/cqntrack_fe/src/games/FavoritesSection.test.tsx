@@ -23,14 +23,14 @@ const ENTRY = {
   id: "1",
   status: null,
   rating: null,
-  favoriteSlot: 1,
+  favoritedAt: "2026-01-01T00:00:00.000Z",
   platforms: null,
   review: null,
   updatedAt: "2026-01-01T00:00:00.000Z",
   game: GAME,
 };
 
-function renderSection(favoritesEndpoint = "/api/users/gamer_1/favorites") {
+function renderSection(favoritesEndpoint = "/api/users/gamer_1/games/favorites") {
   return render(
     <MemoryRouter>
       <FavoritesSection favoritesEndpoint={favoritesEndpoint} />
@@ -43,31 +43,17 @@ describe("FavoritesSection", () => {
     getMock.mockReset();
   });
 
-  it("busca no endpoint informado e mostra só os slots preenchidos", async () => {
-    getMock.mockResolvedValue({
-      slots: [
-        { slot: 1, entry: ENTRY },
-        { slot: 2, entry: null },
-        { slot: 3, entry: null },
-        { slot: 4, entry: null },
-      ],
-    });
+  it("busca no endpoint informado e mostra os favoritos", async () => {
+    getMock.mockResolvedValue({ items: [ENTRY] });
     renderSection();
 
-    expect(await screen.findByRole("heading", { name: "Favoritos" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Jogos favoritos" })).toBeInTheDocument();
     expect(screen.getByText("The Witcher 3: Wild Hunt")).toBeInTheDocument();
-    expect(getMock).toHaveBeenCalledWith("/api/users/gamer_1/favorites");
+    expect(getMock).toHaveBeenCalledWith("/api/users/gamer_1/games/favorites");
   });
 
-  it("não renderiza nada quando todos os slots estão vazios", async () => {
-    getMock.mockResolvedValue({
-      slots: [
-        { slot: 1, entry: null },
-        { slot: 2, entry: null },
-        { slot: 3, entry: null },
-        { slot: 4, entry: null },
-      ],
-    });
+  it("não renderiza nada quando não há favoritos", async () => {
+    getMock.mockResolvedValue({ items: [] });
     const { container } = renderSection();
 
     await waitFor(() => expect(getMock).toHaveBeenCalled());

@@ -113,3 +113,31 @@
   font-size: 13px;
   cursor: pointer;
 }
+
+.favoriteRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.favoriteBtn {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text-secondary);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.favoriteBtn[aria-pressed="true"] {
+  border-color: var(--error);
+  color: var(--error);
+}

@@ -47,14 +47,14 @@ function renderDetail() {
 }
 
 describe("SeriesDetail", () => {
-  it("mostra os dados da série e a marcação existente, sem ação de favoritar", async () => {
+  it("mostra os dados da série e a marcação existente, incluindo favorito", async () => {
     getMock.mockResolvedValue({
       series: SERIES,
       entry: {
         id: "1",
         rating: 4.5,
         watchedEpisodeCount: 12,
-        favoriteSlot: 1,
+        favoritedAt: "2026-01-01T00:00:00.000Z",
         review: "Muito bom",
         updatedAt: "2026-01-01T00:00:00.000Z",
       },
@@ -65,8 +65,7 @@ describe("SeriesDetail", () => {
     expect(screen.getByText("4.5")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Muito bom")).toBeInTheDocument();
     expect(getMock).toHaveBeenCalledWith("/api/series/1396");
-    // Favoritar não acontece nesta página (só pelos slots da home).
-    expect(screen.queryByRole("button", { name: /favorit/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Desfavoritar" })).toHaveAttribute("aria-pressed", "true");
 
     // Criado por, Direção (com contagem de episódios) e Elenco, cada um
     // linkando pra página da pessoa.
@@ -85,13 +84,35 @@ describe("SeriesDetail", () => {
     );
   });
 
+  it("favorita ao clicar no coração", async () => {
+    getMock.mockResolvedValue({ series: SERIES, entry: null });
+    putMock.mockResolvedValue({
+      id: "2",
+      rating: null,
+      watchedEpisodeCount: 0,
+      favoritedAt: "2026-01-01T00:00:00.000Z",
+      review: null,
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    renderDetail();
+
+    await screen.findByRole("heading", { name: "Breaking Bad" });
+    fireEvent.click(screen.getByRole("button", { name: "Favoritar" }));
+
+    expect(putMock).toHaveBeenCalledWith("/api/series/1396/entry", { favorited: true });
+    expect(await screen.findByRole("button", { name: "Desfavoritar" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
   it("salva a nota ao clicar numa estrela, criando a marcação quando ainda não existe entry", async () => {
     getMock.mockResolvedValue({ series: SERIES, entry: null });
     putMock.mockResolvedValue({
       id: "2",
       rating: 5,
       watchedEpisodeCount: 0,
-      favoriteSlot: null,
+      favoritedAt: null,
       review: null,
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
@@ -111,7 +132,7 @@ describe("SeriesDetail", () => {
         id: "1",
         rating: null,
         watchedEpisodeCount: 0,
-        favoriteSlot: null,
+        favoritedAt: null,
         review: null,
         updatedAt: "2026-01-01T00:00:00.000Z",
       },
@@ -120,7 +141,7 @@ describe("SeriesDetail", () => {
       id: "1",
       rating: null,
       watchedEpisodeCount: 0,
-      favoriteSlot: null,
+      favoritedAt: null,
       review: "Ótima série",
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
@@ -140,7 +161,7 @@ describe("SeriesDetail", () => {
         id: "1",
         rating: 4,
         watchedEpisodeCount: 3,
-        favoriteSlot: null,
+        favoritedAt: null,
         review: null,
         updatedAt: "2026-01-01T00:00:00.000Z",
       },

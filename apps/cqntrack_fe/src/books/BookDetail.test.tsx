@@ -41,14 +41,14 @@ function renderDetail() {
 }
 
 describe("BookDetail", () => {
-  it("mostra os dados do livro e a marcação existente, sem ação de favoritar", async () => {
+  it("mostra os dados do livro e a marcação existente, incluindo favorito", async () => {
     getMock.mockResolvedValue({
       book: BOOK,
       entry: {
         id: "1",
         status: "reading",
         rating: 4.5,
-        favoriteSlot: 1,
+        favoritedAt: "2026-01-01T00:00:00.000Z",
         review: "Muito bom",
         updatedAt: "2026-01-01T00:00:00.000Z",
       },
@@ -59,12 +59,33 @@ describe("BookDetail", () => {
     expect(screen.getByRole("button", { name: "Lendo" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByDisplayValue("Muito bom")).toBeInTheDocument();
     expect(getMock).toHaveBeenCalledWith("/api/books/PCq3AAAAQBAJ");
-    // Favoritar não acontece mais nesta página (só pelos slots da home).
-    expect(screen.queryByRole("button", { name: /favorit/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Desfavoritar" })).toHaveAttribute("aria-pressed", "true");
     // Autor linka pra própria página do autor (livros/autores/:name).
     expect(screen.getByRole("link", { name: "Machado de Assis" })).toHaveAttribute(
       "href",
       "/livros/autores/Machado%20de%20Assis",
+    );
+  });
+
+  it("favorita ao clicar no coração", async () => {
+    getMock.mockResolvedValue({ book: BOOK, entry: null });
+    putMock.mockResolvedValue({
+      id: "2",
+      status: null,
+      rating: null,
+      favoritedAt: "2026-01-01T00:00:00.000Z",
+      review: null,
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    renderDetail();
+
+    await screen.findByRole("heading", { name: "Dom Casmurro" });
+    fireEvent.click(screen.getByRole("button", { name: "Favoritar" }));
+
+    expect(putMock).toHaveBeenCalledWith("/api/books/PCq3AAAAQBAJ/entry", { favorited: true });
+    expect(await screen.findByRole("button", { name: "Desfavoritar" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
     );
   });
 
@@ -74,7 +95,7 @@ describe("BookDetail", () => {
       id: "2",
       status: "reading",
       rating: null,
-      favoriteSlot: null,
+      favoritedAt: null,
       review: null,
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
@@ -94,7 +115,7 @@ describe("BookDetail", () => {
         id: "1",
         status: "reading",
         rating: null,
-        favoriteSlot: null,
+        favoritedAt: null,
         review: null,
         updatedAt: "2026-01-01T00:00:00.000Z",
       },

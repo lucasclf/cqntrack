@@ -40,14 +40,14 @@ function renderDetail() {
 }
 
 describe("GameDetail", () => {
-  it("mostra os dados do jogo e a marcação existente, sem ação de favoritar", async () => {
+  it("mostra os dados do jogo e a marcação existente, incluindo favorito", async () => {
     getMock.mockResolvedValue({
       game: GAME,
       entry: {
         id: "1",
         status: "playing",
         rating: 4.5,
-        favoriteSlot: 1,
+        favoritedAt: "2026-01-01T00:00:00.000Z",
         platforms: ["PS5"],
         review: "Muito bom",
         updatedAt: "2026-01-01T00:00:00.000Z",
@@ -61,18 +61,17 @@ describe("GameDetail", () => {
     expect(screen.getByRole("checkbox", { name: "PC (Microsoft Windows)" })).not.toBeChecked();
     expect(screen.getByDisplayValue("Muito bom")).toBeInTheDocument();
     expect(getMock).toHaveBeenCalledWith("/api/games/1942");
-    // Favoritar não acontece mais nesta página (só pelos slots da home).
-    expect(screen.queryByRole("button", { name: /favorit/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Desfavoritar" })).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("marca uma plataforma e salva imediatamente", async () => {
+  it("favorita ao clicar no coração", async () => {
     getMock.mockResolvedValue({
       game: GAME,
       entry: {
         id: "1",
         status: null,
         rating: null,
-        favoriteSlot: null,
+        favoritedAt: null,
         platforms: null,
         review: null,
         updatedAt: "2026-01-01T00:00:00.000Z",
@@ -82,7 +81,41 @@ describe("GameDetail", () => {
       id: "1",
       status: null,
       rating: null,
-      favoriteSlot: null,
+      favoritedAt: "2026-01-01T00:00:00.000Z",
+      platforms: null,
+      review: null,
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    renderDetail();
+
+    await screen.findByRole("heading", { name: "The Witcher 3: Wild Hunt" });
+    fireEvent.click(screen.getByRole("button", { name: "Favoritar" }));
+
+    expect(putMock).toHaveBeenCalledWith("/api/games/1942/entry", { favorited: true });
+    expect(await screen.findByRole("button", { name: "Desfavoritar" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  it("marca uma plataforma e salva imediatamente", async () => {
+    getMock.mockResolvedValue({
+      game: GAME,
+      entry: {
+        id: "1",
+        status: null,
+        rating: null,
+        favoritedAt: null,
+        platforms: null,
+        review: null,
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    });
+    putMock.mockResolvedValue({
+      id: "1",
+      status: null,
+      rating: null,
+      favoritedAt: null,
       platforms: ["PS5"],
       review: null,
       updatedAt: "2026-01-01T00:00:00.000Z",
@@ -102,7 +135,7 @@ describe("GameDetail", () => {
         id: "1",
         status: null,
         rating: null,
-        favoriteSlot: null,
+        favoritedAt: null,
         platforms: ["PS5"],
         review: null,
         updatedAt: "2026-01-01T00:00:00.000Z",
@@ -112,7 +145,7 @@ describe("GameDetail", () => {
       id: "1",
       status: null,
       rating: null,
-      favoriteSlot: null,
+      favoritedAt: null,
       platforms: null,
       review: null,
       updatedAt: "2026-01-01T00:00:00.000Z",
@@ -131,7 +164,7 @@ describe("GameDetail", () => {
       id: "2",
       status: "playing",
       rating: null,
-      favoriteSlot: null,
+      favoritedAt: null,
       platforms: null,
       review: null,
       updatedAt: "2026-01-01T00:00:00.000Z",
@@ -155,7 +188,7 @@ describe("GameDetail", () => {
         id: "1",
         status: "playing",
         rating: null,
-        favoriteSlot: null,
+        favoritedAt: null,
         platforms: null,
         review: null,
         updatedAt: "2026-01-01T00:00:00.000Z",

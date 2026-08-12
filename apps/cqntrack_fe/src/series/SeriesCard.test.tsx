@@ -54,7 +54,7 @@ describe("SeriesCard", () => {
       id: "1",
       rating: 4.5,
       watchedEpisodeCount: 40,
-      favoriteSlot: 2,
+      favoritedAt: "2026-01-01T00:00:00.000Z",
       review: null,
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
@@ -72,7 +72,7 @@ describe("SeriesCard", () => {
       id: "1",
       rating: null,
       watchedEpisodeCount: 0,
-      favoriteSlot: 1,
+      favoritedAt: "2026-01-01T00:00:00.000Z",
       review: null,
       updatedAt: "2026-01-01T00:00:00.000Z",
     });

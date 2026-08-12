@@ -53,7 +53,7 @@ describe("BookCard", () => {
       id: "1",
       status: "read",
       rating: 4.5,
-      favoriteSlot: 2,
+      favoritedAt: "2026-01-01T00:00:00.000Z",
       review: null,
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
@@ -70,7 +70,7 @@ describe("BookCard", () => {
       id: "1",
       status: null,
       rating: null,
-      favoriteSlot: 1,
+      favoritedAt: "2026-01-01T00:00:00.000Z",
       review: null,
       updatedAt: "2026-01-01T00:00:00.000Z",
     });

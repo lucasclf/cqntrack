@@ -6,6 +6,7 @@ import { BookSearch } from "./books/BookSearch";
 import { MyBookEntries } from "./books/MyBookEntries";
 import { MyBookLists } from "./books/MyBookLists";
 import { GameDetail } from "./games/GameDetail";
+import { GameDiscover } from "./games/GameDiscover";
 import { GameSearch } from "./games/GameSearch";
 import { ListDetail } from "./games/ListDetail";
 import { MyEntries } from "./games/MyEntries";
@@ -15,6 +16,7 @@ import { Account } from "./Account";
 import { Home } from "./Home";
 import { Login } from "./Login";
 import { MovieDetail } from "./movies/MovieDetail";
+import { MovieDiscover } from "./movies/MovieDiscover";
 import { MovieListDetail } from "./movies/MovieListDetail";
 import { MovieSearch } from "./movies/MovieSearch";
 import { MyMovieEntries } from "./movies/MyMovieEntries";
@@ -28,6 +30,7 @@ import { EpisodeDetail } from "./series/EpisodeDetail";
 import { MySeriesEntries } from "./series/MySeriesEntries";
 import { MySeriesLists } from "./series/MySeriesLists";
 import { SeriesDetail } from "./series/SeriesDetail";
+import { SeriesDiscover } from "./series/SeriesDiscover";
 import { SeriesListDetail } from "./series/SeriesListDetail";
 import { SeriesSearch } from "./series/SeriesSearch";
 import { Signup } from "./Signup";
@@ -37,8 +40,11 @@ export const routes: RouteObject[] = [
   { path: "/login", element: <Login /> },
   { path: "/cadastro", element: <Signup /> },
   { path: "/esqueci-senha", element: <Unavailable /> },
-  { path: "/u/:username", element: <PublicProfile /> },
-  { path: "/u/:username/listas/:listId", element: <PublicListDetail /> },
+  // react-router não casa texto literal + parâmetro no mesmo segmento
+  // (confirmado: "/@:username" nunca dá match) — captura o segmento inteiro
+  // ("@lucas") como :handle e separa o "@" dentro do componente.
+  { path: "/:handle", element: <PublicProfile /> },
+  { path: "/:handle/listas/:listId", element: <PublicListDetail /> },
   { path: "/buscar", element: <Navigate to="/jogos/buscar" replace /> },
   { path: "/marcacoes", element: <Navigate to="/jogos/marcacoes" replace /> },
   { path: "/listas", element: <Navigate to="/jogos/listas" replace /> },
@@ -55,6 +61,7 @@ export const routes: RouteObject[] = [
           {
             path: "jogos",
             children: [
+              { index: true, element: <GameDiscover /> },
               { path: "buscar", element: <GameSearch /> },
               { path: ":igdbId", element: <GameDetail /> },
               { path: "marcacoes", element: <MyEntries /> },
@@ -65,6 +72,7 @@ export const routes: RouteObject[] = [
           {
             path: "series",
             children: [
+              { index: true, element: <SeriesDiscover /> },
               { path: "buscar", element: <SeriesSearch /> },
               { path: ":tmdbId", element: <SeriesDetail /> },
               { path: "marcacoes", element: <MySeriesEntries /> },
@@ -79,6 +87,7 @@ export const routes: RouteObject[] = [
           {
             path: "filmes",
             children: [
+              { index: true, element: <MovieDiscover /> },
               { path: "buscar", element: <MovieSearch /> },
               { path: ":tmdbId", element: <MovieDetail /> },
               { path: "marcacoes", element: <MyMovieEntries /> },

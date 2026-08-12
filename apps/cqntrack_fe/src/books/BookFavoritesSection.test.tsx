@@ -24,7 +24,7 @@ const ENTRY = {
   id: "1",
   status: null,
   rating: null,
-  favoriteSlot: 1,
+  favoritedAt: "2026-01-01T00:00:00.000Z",
   review: null,
   updatedAt: "2026-01-01T00:00:00.000Z",
   book: BOOK,
@@ -43,15 +43,8 @@ describe("BookFavoritesSection", () => {
     getMock.mockReset();
   });
 
-  it("busca no endpoint informado e mostra só os slots preenchidos", async () => {
-    getMock.mockResolvedValue({
-      slots: [
-        { slot: 1, entry: ENTRY },
-        { slot: 2, entry: null },
-        { slot: 3, entry: null },
-        { slot: 4, entry: null },
-      ],
-    });
+  it("busca no endpoint informado e mostra os favoritos", async () => {
+    getMock.mockResolvedValue({ items: [ENTRY] });
     renderSection();
 
     expect(await screen.findByRole("heading", { name: "Livros favoritos" })).toBeInTheDocument();
@@ -59,15 +52,8 @@ describe("BookFavoritesSection", () => {
     expect(getMock).toHaveBeenCalledWith("/api/users/gamer_1/books/favorites");
   });
 
-  it("não renderiza nada quando todos os slots estão vazios", async () => {
-    getMock.mockResolvedValue({
-      slots: [
-        { slot: 1, entry: null },
-        { slot: 2, entry: null },
-        { slot: 3, entry: null },
-        { slot: 4, entry: null },
-      ],
-    });
+  it("não renderiza nada quando não há favoritos", async () => {
+    getMock.mockResolvedValue({ items: [] });
     const { container } = renderSection();
 
     await waitFor(() => expect(getMock).toHaveBeenCalled());

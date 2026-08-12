@@ -1,85 +1,61 @@
-import type {
-  BookListsResponse,
-  GameListsResponse,
-  MovieListsResponse,
-  PaginatedBookEntriesResponse,
-  PaginatedGameEntriesResponse,
-  PaginatedMovieEntriesResponse,
-  PaginatedSeriesEntriesResponse,
-  PublicProfile as PublicProfileDto,
-  SeriesListsResponse,
-} from "@cqntrack/shared";
+import type { PublicProfile as PublicProfileDto } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router";
-import { BookCard } from "../books/BookCard";
+import { useParams } from "react-router";
 import { BookFavoritesSection } from "../books/BookFavoritesSection";
 import { FavoritesSection } from "../games/FavoritesSection";
-import { GameCard } from "../games/GameCard";
 import { PublicLayout } from "../layouts/PublicLayout";
 import { ApiError, apiClient } from "../lib/api-client";
-import { MovieCard } from "../movies/MovieCard";
-import { MovieFavoritesSection } from "../movies/MovieFavoritesSection";
-import { SeriesCard } from "../series/SeriesCard";
-import { SeriesFavoritesSection } from "../series/SeriesFavoritesSection";
+import { FavoriteMoviesAndSeries } from "./FavoriteMoviesAndSeries";
 import styles from "./PublicProfile.module.css";
+import { RecentlyPlayedGames } from "./RecentlyPlayedGames";
+import { RecentlyReadBooks } from "./RecentlyReadBooks";
+import { RecentlyWatchedMoviesAndSeries } from "./RecentlyWatchedMoviesAndSeries";
 
 type LoadStatus = "loading" | "ready" | "not-found" | "error";
 
 // Sempre renderiza dentro de PublicLayout, mesmo quando o visitante é o
-// próprio dono do perfil — AppShell não tem aba "Perfil" ainda, então essa
-// distinção (prevista no plano original) fica pra quando essa aba existir.
+// próprio dono do perfil — AppShell não tem aba "Perfil" ainda (só o
+// dropdown de conta linka pra cá), essa distinção fica pra quando existir.
+//
+// 7 seções fixas: favoritos (filme+série juntos, livro, jogo) seguidos de
+// recente (assistido, lido, jogado) — substitui a versão anterior, que
+// mostrava (repetido 4x) favoritos + listas + marcações completas por
+// domínio. Listas e marcações completas continuam existindo como rotas,
+// só que agora só acessíveis pelo próprio usuário logado.
 export function PublicProfile() {
-  const { username } = useParams<{ username: string }>();
+  // A rota é "/:handle" (não "/@:username") — react-router não casa texto
+  // literal + parâmetro no mesmo segmento, então o "@" vem junto no valor
+  // capturado ("@lucas") e é separado aqui. Sem "@" não é um link de
+  // perfil válido — trata como não encontrado, mesmo destino de um handle
+  // que não existe.
+  const { handle } = useParams<{ handle: string }>();
+  const username = handle?.startsWith("@") ? handle.slice(1) : null;
   const [profile, setProfile] = useState<PublicProfileDto | null>(null);
-  const [entries, setEntries] = useState<PaginatedGameEntriesResponse | null>(null);
-  const [lists, setLists] = useState<GameListsResponse | null>(null);
-  const [seriesEntries, setSeriesEntries] = useState<PaginatedSeriesEntriesResponse | null>(null);
-  const [seriesLists, setSeriesLists] = useState<SeriesListsResponse | null>(null);
-  const [movieEntries, setMovieEntries] = useState<PaginatedMovieEntriesResponse | null>(null);
-  const [movieLists, setMovieLists] = useState<MovieListsResponse | null>(null);
-  const [bookEntries, setBookEntries] = useState<PaginatedBookEntriesResponse | null>(null);
-  const [bookLists, setBookLists] = useState<BookListsResponse | null>(null);
-  const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
+  const [loadStatus, setLoadStatus] = useState<LoadStatus>(username ? "loading" : "not-found");
+
+  // Reseta assim que o :handle da rota muda — feito durante o render (mesmo
+  // padrão já usado em MovieDetail/SeriesDetail/etc. pra "adjusting state
+  // when props change"), não dentro do efeito abaixo.
+  const [trackedUsername, setTrackedUsername] = useState(username);
+  if (username !== trackedUsername) {
+    setTrackedUsername(username);
+    setLoadStatus(username ? "loading" : "not-found");
+  }
 
   useEffect(() => {
+    if (!username) {
+      return;
+    }
+
     let cancelled = false;
 
-    Promise.all([
-      apiClient.get<PublicProfileDto>(`/api/users/${username}`),
-      apiClient.get<PaginatedGameEntriesResponse>(`/api/users/${username}/games/entries`),
-      apiClient.get<GameListsResponse>(`/api/users/${username}/games/lists`),
-      apiClient.get<PaginatedSeriesEntriesResponse>(`/api/users/${username}/series/entries`),
-      apiClient.get<SeriesListsResponse>(`/api/users/${username}/series/lists`),
-      apiClient.get<PaginatedMovieEntriesResponse>(`/api/users/${username}/movies/entries`),
-      apiClient.get<MovieListsResponse>(`/api/users/${username}/movies/lists`),
-      apiClient.get<PaginatedBookEntriesResponse>(`/api/users/${username}/books/entries`),
-      apiClient.get<BookListsResponse>(`/api/users/${username}/books/lists`),
-    ])
-      .then(
-        ([
-          profileData,
-          entriesData,
-          listsData,
-          seriesEntriesData,
-          seriesListsData,
-          movieEntriesData,
-          movieListsData,
-          bookEntriesData,
-          bookListsData,
-        ]) => {
-          if (cancelled) return;
-          setProfile(profileData);
-          setEntries(entriesData);
-          setLists(listsData);
-          setSeriesEntries(seriesEntriesData);
-          setSeriesLists(seriesListsData);
-          setMovieEntries(movieEntriesData);
-          setMovieLists(movieListsData);
-          setBookEntries(bookEntriesData);
-          setBookLists(bookListsData);
-          setLoadStatus("ready");
-        },
-      )
+    apiClient
+      .get<PublicProfileDto>(`/api/users/${username}`)
+      .then((data) => {
+        if (cancelled) return;
+        setProfile(data);
+        setLoadStatus("ready");
+      })
       .catch((error: unknown) => {
         if (cancelled) return;
         setLoadStatus(error instanceof ApiError && error.status === 404 ? "not-found" : "error");
@@ -104,18 +80,7 @@ export function PublicProfile() {
       </PublicLayout>
     );
   }
-  if (
-    loadStatus === "error" ||
-    !profile ||
-    !entries ||
-    !lists ||
-    !seriesEntries ||
-    !seriesLists ||
-    !movieEntries ||
-    !movieLists ||
-    !bookEntries ||
-    !bookLists
-  ) {
+  if (loadStatus === "error" || !profile || !username) {
     return (
       <PublicLayout>
         <p role="alert">Falha ao carregar o perfil. Tente novamente.</p>
@@ -137,154 +102,12 @@ export function PublicProfile() {
           <p className={styles.memberSince}>Desde {memberSince}</p>
         </header>
 
-        <dl className={styles.stats}>
-          <div className={styles.stat}>
-            <dt>Total</dt>
-            <dd>{profile.stats.total}</dd>
-          </div>
-          <div className={styles.stat}>
-            <dt>Jogando</dt>
-            <dd>{profile.stats.playing}</dd>
-          </div>
-          <div className={styles.stat}>
-            <dt>Finalizados</dt>
-            <dd>{profile.stats.completed}</dd>
-          </div>
-          <div className={styles.stat}>
-            <dt>Platinados</dt>
-            <dd>{profile.stats.platinum}</dd>
-          </div>
-          <div className={styles.stat}>
-            <dt>Favoritos</dt>
-            <dd>{profile.stats.favorites}</dd>
-          </div>
-        </dl>
-
-        <FavoritesSection favoritesEndpoint={`/api/users/${username}/games/favorites`} />
-
-        {lists.lists.length > 0 && (
-          <section>
-            <h2>Listas</h2>
-            <ul className={styles.listNames}>
-              {lists.lists.map((list) => (
-                <li key={list.id}>
-                  <Link to={`/u/${username}/listas/${list.id}`}>
-                    {list.name} <span className={styles.listCount}>({list.itemCount})</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
-        <section>
-          <h2>Marcações</h2>
-          {entries.items.length === 0 ? (
-            <p className={styles.hint}>Nenhuma marcação ainda.</p>
-          ) : (
-            <div className={styles.grid}>
-              {entries.items.map((item) => (
-                <GameCard key={item.game.igdbId} game={item.game} entry={item} />
-              ))}
-            </div>
-          )}
-        </section>
-
-        <SeriesFavoritesSection favoritesEndpoint={`/api/users/${username}/series/favorites`} />
-
-        {seriesLists.lists.length > 0 && (
-          <section>
-            <h2>Listas de séries</h2>
-            {/* Sem link — não existe (ainda) uma página pública de detalhe de
-                lista de séries, diferente de /u/:username/listas/:listId (jogos). */}
-            <ul className={styles.listNames}>
-              {seriesLists.lists.map((list) => (
-                <li key={list.id}>
-                  <span className={styles.listNameStatic}>
-                    {list.name} <span className={styles.listCount}>({list.itemCount})</span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
-        <section>
-          <h2>Marcações de séries</h2>
-          {seriesEntries.items.length === 0 ? (
-            <p className={styles.hint}>Nenhuma marcação ainda.</p>
-          ) : (
-            <div className={styles.grid}>
-              {seriesEntries.items.map((item) => (
-                <SeriesCard key={item.series.tmdbId} series={item.series} entry={item} />
-              ))}
-            </div>
-          )}
-        </section>
-
-        <MovieFavoritesSection favoritesEndpoint={`/api/users/${username}/movies/favorites`} />
-
-        {movieLists.lists.length > 0 && (
-          <section>
-            <h2>Listas de filmes</h2>
-            {/* Sem link — não existe (ainda) uma página pública de detalhe de
-                lista de filmes, diferente de /u/:username/listas/:listId (jogos). */}
-            <ul className={styles.listNames}>
-              {movieLists.lists.map((list) => (
-                <li key={list.id}>
-                  <span className={styles.listNameStatic}>
-                    {list.name} <span className={styles.listCount}>({list.itemCount})</span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
-        <section>
-          <h2>Marcações de filmes</h2>
-          {movieEntries.items.length === 0 ? (
-            <p className={styles.hint}>Nenhuma marcação ainda.</p>
-          ) : (
-            <div className={styles.grid}>
-              {movieEntries.items.map((item) => (
-                <MovieCard key={item.movie.tmdbId} movie={item.movie} entry={item} />
-              ))}
-            </div>
-          )}
-        </section>
-
+        <FavoriteMoviesAndSeries username={username} />
         <BookFavoritesSection favoritesEndpoint={`/api/users/${username}/books/favorites`} />
-
-        {bookLists.lists.length > 0 && (
-          <section>
-            <h2>Listas de livros</h2>
-            {/* Sem link — não existe (ainda) uma página pública de detalhe de
-                lista de livros, diferente de /u/:username/listas/:listId (jogos). */}
-            <ul className={styles.listNames}>
-              {bookLists.lists.map((list) => (
-                <li key={list.id}>
-                  <span className={styles.listNameStatic}>
-                    {list.name} <span className={styles.listCount}>({list.itemCount})</span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
-        <section>
-          <h2>Marcações de livros</h2>
-          {bookEntries.items.length === 0 ? (
-            <p className={styles.hint}>Nenhuma marcação ainda.</p>
-          ) : (
-            <div className={styles.grid}>
-              {bookEntries.items.map((item) => (
-                <BookCard key={item.book.googleBooksId} book={item.book} entry={item} />
-              ))}
-            </div>
-          )}
-        </section>
+        <FavoritesSection favoritesEndpoint={`/api/users/${username}/games/favorites`} />
+        <RecentlyWatchedMoviesAndSeries username={username} />
+        <RecentlyReadBooks username={username} />
+        <RecentlyPlayedGames username={username} />
       </div>
     </PublicLayout>
   );

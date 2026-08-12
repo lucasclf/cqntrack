@@ -1,36 +1,31 @@
-import { MOVIE_ENTRY_SORT_FIELDS } from "@cqntrack/shared";
+import { MOVIE_ENTRY_SORT_FIELDS, MOVIE_STATUSES, MOVIE_STATUS_LABELS, type MovieStatus } from "@cqntrack/shared";
 import styles from "./MovieEntryFilters.module.css";
 
 export type MovieEntrySortField = (typeof MOVIE_ENTRY_SORT_FIELDS)[number];
 
 const SORT_FIELD_LABELS: Record<MovieEntrySortField, string> = {
+  status: "Status",
   rating: "Nota",
   favorite: "Favorito",
   updatedAt: "Atualizado em",
 };
 
-// "" = todos, sem filtrar por assistido — diferente de favoriteOnly (que é
-// só um checkbox), esse filtro tem 3 estados, então vira <select>.
-export type WatchedFilter = "" | "true" | "false";
-
 interface MovieEntryFiltersProps {
+  status: MovieStatus | "";
+  onStatusChange: (status: MovieStatus | "") => void;
   favoriteOnly: boolean;
   onFavoriteOnlyChange: (value: boolean) => void;
-  watched: WatchedFilter;
-  onWatchedChange: (value: WatchedFilter) => void;
   sortBy: MovieEntrySortField;
   onSortByChange: (value: MovieEntrySortField) => void;
   order: "asc" | "desc";
   onOrderChange: (value: "asc" | "desc") => void;
 }
 
-// Sem campo de plataforma — sem equivalente pra filme (diferente de
-// EntryFilters de jogos).
 export function MovieEntryFilters({
+  status,
+  onStatusChange,
   favoriteOnly,
   onFavoriteOnlyChange,
-  watched,
-  onWatchedChange,
   sortBy,
   onSortByChange,
   order,
@@ -39,11 +34,14 @@ export function MovieEntryFilters({
   return (
     <div className={styles.filters}>
       <label className={styles.field}>
-        <span>Assistido</span>
-        <select value={watched} onChange={(event) => onWatchedChange(event.target.value as WatchedFilter)}>
+        <span>Status</span>
+        <select value={status} onChange={(event) => onStatusChange(event.target.value as MovieStatus | "")}>
           <option value="">Todos</option>
-          <option value="true">Assistidos</option>
-          <option value="false">Não assistidos</option>
+          {MOVIE_STATUSES.map((option) => (
+            <option key={option} value={option}>
+              {MOVIE_STATUS_LABELS[option]}
+            </option>
+          ))}
         </select>
       </label>
 

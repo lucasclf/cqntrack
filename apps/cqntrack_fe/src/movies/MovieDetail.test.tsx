@@ -44,14 +44,15 @@ function renderDetail() {
 }
 
 describe("MovieDetail", () => {
-  it("mostra os dados do filme e a marcação existente, sem ação de favoritar", async () => {
+  it("mostra os dados do filme e a marcação existente (status, favorito, nota)", async () => {
     getMock.mockResolvedValue({
       movie: MOVIE,
       entry: {
         id: "1",
+        status: "watched",
         rating: 4.5,
         watchedAt: "2026-01-01T00:00:00.000Z",
-        favoriteSlot: 1,
+        favoritedAt: "2026-01-01T00:00:00.000Z",
         review: "Muito bom",
         updatedAt: "2026-01-01T00:00:00.000Z",
       },
@@ -62,14 +63,11 @@ describe("MovieDetail", () => {
     expect(screen.getByText("4.5")).toBeInTheDocument();
     expect(screen.getByText("2h 28min")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Muito bom")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Desmarcar assistido" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    expect(screen.getByRole("button", { name: "Já vi" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Quero ver" })).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByText(/Assistido em/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Desfavoritar" })).toHaveAttribute("aria-pressed", "true");
     expect(getMock).toHaveBeenCalledWith("/api/movies/27205");
-    // Favoritar não acontece nesta página (só pelos slots da home).
-    expect(screen.queryByRole("button", { name: /favorit/i })).not.toBeInTheDocument();
 
     // Direção e elenco, com link pra página da pessoa.
     expect(screen.getByRole("heading", { name: "Direção" })).toBeInTheDocument();
@@ -84,23 +82,44 @@ describe("MovieDetail", () => {
     );
   });
 
-  it("marca como assistido ao clicar no botão, criando a marcação quando ainda não existe entry", async () => {
+  it("marca status ao clicar num botão, criando a marcação quando ainda não existe entry", async () => {
     getMock.mockResolvedValue({ movie: MOVIE, entry: null });
     putMock.mockResolvedValue({
       id: "2",
+      status: "watched",
       rating: null,
       watchedAt: "2026-01-01T00:00:00.000Z",
-      favoriteSlot: null,
+      favoritedAt: null,
       review: null,
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
     renderDetail();
 
     await screen.findByRole("heading", { name: "Inception" });
-    fireEvent.click(screen.getByRole("button", { name: "Marcar como assistido" }));
+    fireEvent.click(screen.getByRole("button", { name: "Já vi" }));
 
-    expect(putMock).toHaveBeenCalledWith("/api/movies/27205/entry", { watched: true });
-    expect(await screen.findByRole("button", { name: "Desmarcar assistido" })).toHaveAttribute(
+    expect(putMock).toHaveBeenCalledWith("/api/movies/27205/entry", { status: "watched" });
+    expect(await screen.findByRole("button", { name: "Já vi" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("favorita ao clicar no coração", async () => {
+    getMock.mockResolvedValue({ movie: MOVIE, entry: null });
+    putMock.mockResolvedValue({
+      id: "2",
+      status: null,
+      rating: null,
+      watchedAt: null,
+      favoritedAt: "2026-01-01T00:00:00.000Z",
+      review: null,
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    renderDetail();
+
+    await screen.findByRole("heading", { name: "Inception" });
+    fireEvent.click(screen.getByRole("button", { name: "Favoritar" }));
+
+    expect(putMock).toHaveBeenCalledWith("/api/movies/27205/entry", { favorited: true });
+    expect(await screen.findByRole("button", { name: "Desfavoritar" })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
@@ -110,9 +129,10 @@ describe("MovieDetail", () => {
     getMock.mockResolvedValue({ movie: MOVIE, entry: null });
     putMock.mockResolvedValue({
       id: "2",
+      status: null,
       rating: 5,
       watchedAt: null,
-      favoriteSlot: null,
+      favoritedAt: null,
       review: null,
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
@@ -130,18 +150,20 @@ describe("MovieDetail", () => {
       movie: MOVIE,
       entry: {
         id: "1",
+        status: null,
         rating: null,
         watchedAt: null,
-        favoriteSlot: null,
+        favoritedAt: null,
         review: null,
         updatedAt: "2026-01-01T00:00:00.000Z",
       },
     });
     putMock.mockResolvedValue({
       id: "1",
+      status: null,
       rating: null,
       watchedAt: null,
-      favoriteSlot: null,
+      favoritedAt: null,
       review: "Ótimo filme",
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
@@ -159,9 +181,10 @@ describe("MovieDetail", () => {
       movie: MOVIE,
       entry: {
         id: "1",
+        status: null,
         rating: 4,
         watchedAt: null,
-        favoriteSlot: null,
+        favoritedAt: null,
         review: null,
         updatedAt: "2026-01-01T00:00:00.000Z",
       },

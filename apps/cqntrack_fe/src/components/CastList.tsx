@@ -11,8 +11,7 @@ interface CastListProps {
 // colunas varia com a largura da tela, sem rolagem horizontal mesmo com
 // elenco grande), cada cartão linkando pra página da pessoa
 // (/pessoas/:personId). Reutilizado por MovieDetail e SeriesDetail (mesmo
-// formato nos dois). Não renderiza nada quando a lista está vazia, mesmo
-// padrão de MovieFavoritesSection.
+// formato nos dois). Não renderiza nada quando a lista está vazia.
 export function CastList({ title, cast }: CastListProps) {
   if (cast.length === 0) {
     return null;

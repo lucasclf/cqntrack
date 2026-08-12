@@ -5,15 +5,13 @@ import { GameCard } from "./GameCard";
 import styles from "./FavoritesSection.module.css";
 
 interface FavoritesSectionProps {
-  // "/api/users/:username/favorites" — leitura pública, sem interação (a
-  // edição dos slots só existe na própria home, via FavoriteSlots).
+  // "/api/users/:username/games/favorites" — leitura pública, sem interação
+  // (favoritar só acontece na própria tela de detalhe do jogo, logado).
   favoritesEndpoint: string;
 }
 
 type LoadStatus = "loading" | "ready" | "error";
 
-// Só mostra os slots preenchidos — diferente de FavoriteSlots (home,
-// interativo), aqui não faz sentido mostrar slot vazio pro visitante.
 export function FavoritesSection({ favoritesEndpoint }: FavoritesSectionProps) {
   const [data, setData] = useState<FavoritesResponse | null>(null);
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
@@ -44,17 +42,16 @@ export function FavoritesSection({ favoritesEndpoint }: FavoritesSectionProps) {
     return null;
   }
 
-  const filled = data.slots.filter((slot) => slot.entry !== null);
-  if (filled.length === 0) {
+  if (data.items.length === 0) {
     return null;
   }
 
   return (
     <section className={styles.section}>
-      <h2>Favoritos</h2>
+      <h2>Jogos favoritos</h2>
       <div className={styles.grid}>
-        {filled.map(({ slot, entry }) => (
-          <GameCard key={slot} game={entry!.game} entry={entry!} />
+        {data.items.map((entry) => (
+          <GameCard key={entry.game.igdbId} game={entry.game} entry={entry} />
         ))}
       </div>
     </section>

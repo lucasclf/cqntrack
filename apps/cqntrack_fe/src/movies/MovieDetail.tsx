@@ -7,6 +7,7 @@ import { StarRating } from "../components/StarRating";
 import { ApiError, apiClient } from "../lib/api-client";
 import { AddToMovieListMenu } from "./AddToMovieListMenu";
 import styles from "./MovieDetail.module.css";
+import { MovieStatusBadge } from "./MovieStatusBadge";
 
 type LoadStatus = "loading" | "ready" | "not-found" | "error";
 
@@ -93,7 +94,7 @@ export function MovieDetail() {
 
   const { movie, entry } = detail;
   const year = movie.releaseDate ? movie.releaseDate.slice(0, 4) : null;
-  const watched = entry?.watchedAt != null;
+  const favorited = entry?.favoritedAt != null;
 
   return (
     <div className={styles.page}>
@@ -135,17 +136,21 @@ export function MovieDetail() {
 
         <AddToMovieListMenu tmdbId={movie.tmdbId} />
 
-        <StarRating value={entry?.rating ?? null} onChange={(rating) => savePatch({ rating })} />
-
         <div className={styles.watchedRow}>
           <button
             type="button"
-            className={styles.watchedBtn}
-            aria-pressed={watched}
-            onClick={() => savePatch({ watched: !watched })}
+            className={styles.favoriteBtn}
+            aria-pressed={favorited}
+            aria-label={favorited ? "Desfavoritar" : "Favoritar"}
+            onClick={() => savePatch({ favorited: !favorited })}
           >
-            {watched ? "Desmarcar assistido" : "Marcar como assistido"}
+            {favorited ? "♥" : "♡"}
           </button>
+          <StarRating value={entry?.rating ?? null} onChange={(rating) => savePatch({ rating })} />
+        </div>
+
+        <div className={styles.watchedRow}>
+          <MovieStatusBadge status={entry?.status ?? null} onChange={(status) => savePatch({ status })} />
           {entry?.watchedAt && (
             <span className={styles.watchedDate}>Assistido em {formatWatchedDate(entry.watchedAt)}</span>
           )}

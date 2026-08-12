@@ -1,22 +1,22 @@
-import type { PaginatedMovieEntriesResponse } from "@cqntrack/shared";
+import type { MovieStatus, PaginatedMovieEntriesResponse } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { apiClient } from "../lib/api-client";
 import { MovieCard } from "./MovieCard";
-import { MovieEntryFilters, type MovieEntrySortField, type WatchedFilter } from "./MovieEntryFilters";
+import { MovieEntryFilters, type MovieEntrySortField } from "./MovieEntryFilters";
 import styles from "./MyMovieEntries.module.css";
 
 type LoadStatus = "loading" | "ready" | "error";
 
 export function MyMovieEntries() {
   const [favoriteOnly, setFavoriteOnly] = useState(false);
-  const [watched, setWatched] = useState<WatchedFilter>("");
+  const [status, setStatus] = useState<MovieStatus | "">("");
   const [sortBy, setSortBy] = useState<MovieEntrySortField>("updatedAt");
   const [order, setOrder] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
 
   // Volta pra página 1 sempre que um filtro/ordenação muda — ajustado durante
   // o render (mesmo padrão de MySeriesEntries), não dentro do efeito.
-  const filtersKey = JSON.stringify({ favoriteOnly, watched, sortBy, order });
+  const filtersKey = JSON.stringify({ favoriteOnly, status, sortBy, order });
   const [trackedFiltersKey, setTrackedFiltersKey] = useState(filtersKey);
   if (filtersKey !== trackedFiltersKey) {
     setTrackedFiltersKey(filtersKey);
@@ -30,7 +30,7 @@ export function MyMovieEntries() {
     let cancelled = false;
     const params = new URLSearchParams();
     if (favoriteOnly) params.set("favorite", "true");
-    if (watched) params.set("watched", watched);
+    if (status) params.set("status", status);
     params.set("sortBy", sortBy);
     params.set("order", order);
     params.set("page", String(page));
@@ -52,7 +52,7 @@ export function MyMovieEntries() {
     return () => {
       cancelled = true;
     };
-  }, [favoriteOnly, watched, sortBy, order, page]);
+  }, [favoriteOnly, status, sortBy, order, page]);
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
 
@@ -62,8 +62,8 @@ export function MyMovieEntries() {
       <MovieEntryFilters
         favoriteOnly={favoriteOnly}
         onFavoriteOnlyChange={setFavoriteOnly}
-        watched={watched}
-        onWatchedChange={setWatched}
+        status={status}
+        onStatusChange={setStatus}
         sortBy={sortBy}
         onSortByChange={setSortBy}
         order={order}

@@ -24,7 +24,7 @@ export function BookCard({ book, entry }: BookCardProps) {
           <div className={styles.coverPlaceholder} aria-hidden="true" />
         )}
         {book.rating !== null && <span className={styles.ratingBadge}>{book.rating.toFixed(1)}</span>}
-        {entry?.favoriteSlot != null && (
+        {entry?.favoritedAt != null && (
           <span className={styles.favoriteBadge} aria-label="Favoritado">
             ♥
           </span>
