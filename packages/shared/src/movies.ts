@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CastMemberSchema, CrewMemberSchema } from "./credits";
 import { FavoriteSlotNumberSchema } from "./favorites";
 
 // DTO enxuto de um filme — nunca a entity Drizzle crua. `rating` aqui é a
@@ -33,6 +34,8 @@ export type SearchMoviesResponse = z.infer<typeof SearchMoviesResponseSchema>;
 
 export const MovieDetailSchema = MovieSummarySchema.extend({
   overview: z.string().nullable(),
+  cast: z.array(CastMemberSchema),
+  directors: z.array(CrewMemberSchema),
 });
 
 export type MovieDetail = z.infer<typeof MovieDetailSchema>;

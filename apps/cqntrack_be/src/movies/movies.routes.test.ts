@@ -35,6 +35,12 @@ function tmdbMovieDetail(id: number, title: string) {
   };
 }
 
+// getOrCacheMovie busca detalhe + créditos em paralelo — vazio por padrão
+// nos testes que não se importam com elenco/direção especificamente.
+function tmdbMovieCredits(): { cast: unknown[]; crew: unknown[] } {
+  return { cast: [], crew: [] };
+}
+
 // A TMDB não tem etapa de token (diferente da IGDB) — um fetch mockado por
 // chamada é suficiente.
 function stubTmdbFetchOnce(...responses: unknown[]): void {
@@ -43,6 +49,12 @@ function stubTmdbFetchOnce(...responses: unknown[]): void {
     fetchMock.mockResolvedValueOnce(jsonResponse(body));
   }
   vi.stubGlobal("fetch", fetchMock);
+}
+
+// Helper pra quando o cache ainda não existe (ou está sendo revalidado) —
+// getOrCacheMovie sempre faz os dois requests (detalhe + créditos) nesse caso.
+function stubMovieCacheFetch(id: number, title: string, voteAverage = 8.4): void {
+  stubTmdbFetchOnce({ ...tmdbMovieDetail(id, title), vote_average: voteAverage }, tmdbMovieCredits());
 }
 
 describe("GET /api/movies/search", () => {
@@ -110,7 +122,7 @@ describe("GET /api/movies/:tmdbId", () => {
 
   it("cacheia o filme na primeira consulta; entry vem null (marcação ainda não existe)", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
-    stubTmdbFetchOnce(tmdbMovieDetail(501, "The Matrix"));
+    stubMovieCacheFetch(501, "The Matrix");
 
     const res = await app.request("/api/movies/501", { headers: { cookie } }, env);
 
@@ -125,15 +137,112 @@ describe("GET /api/movies/:tmdbId", () => {
         runtime: 148,
         rating: 8.4,
         overview: "Resumo do filme 501",
+        cast: [],
+        directors: [],
       },
       entry: null,
     });
     vi.unstubAllGlobals();
   });
 
+  it("cacheia elenco (top billed, por ordem) e direção (dedupe por pessoa)", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubTmdbFetchOnce(tmdbMovieDetail(507, "Inception"), {
+      cast: [
+        {
+          id: 24045,
+          name: "Joseph Gordon-Levitt",
+          character: "Arthur",
+          profile_path: "/jgl.jpg",
+          order: 1,
+        },
+        {
+          id: 6193,
+          name: "Leonardo DiCaprio",
+          character: "Dom Cobb",
+          profile_path: "/dicaprio.jpg",
+          order: 0,
+        },
+      ],
+      crew: [
+        {
+          id: 559,
+          name: "Wally Pfister",
+          job: "Director of Photography",
+          department: "Camera",
+          profile_path: null,
+        },
+        {
+          id: 525,
+          name: "Christopher Nolan",
+          job: "Director",
+          department: "Directing",
+          profile_path: "/nolan.jpg",
+        },
+        // Crédito duplicado do próprio Nolan (acontece na TMDB) — não pode
+        // aparecer duas vezes na lista de diretores.
+        {
+          id: 525,
+          name: "Christopher Nolan",
+          job: "Director",
+          department: "Directing",
+          profile_path: "/nolan.jpg",
+        },
+      ],
+    });
+
+    const res = await app.request("/api/movies/507", { headers: { cookie } }, env);
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      movie: {
+        cast: { personId: number; name: string; character: string; profileUrl: string | null }[];
+        directors: { personId: number; name: string; profileUrl: string | null }[];
+      };
+    };
+    // Reordenado por `order` (DiCaprio, order 0, vem antes de Gordon-Levitt, order 1).
+    expect(body.movie.cast).toEqual([
+      {
+        personId: 6193,
+        name: "Leonardo DiCaprio",
+        character: "Dom Cobb",
+        profileUrl: "https://image.tmdb.org/t/p/w185/dicaprio.jpg",
+      },
+      {
+        personId: 24045,
+        name: "Joseph Gordon-Levitt",
+        character: "Arthur",
+        profileUrl: "https://image.tmdb.org/t/p/w185/jgl.jpg",
+      },
+    ]);
+    // Só o job "Director" entra (Director of Photography fica de fora), sem duplicar Nolan.
+    expect(body.movie.directors).toEqual([
+      { personId: 525, name: "Christopher Nolan", profileUrl: "https://image.tmdb.org/t/p/w185/nolan.jpg" },
+    ]);
+    vi.unstubAllGlobals();
+  });
+
+  it("se o request de créditos falhar, o filme ainda é cacheado (cast/directors vazios)", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(tmdbMovieDetail(508, "Tenet")))
+      .mockRejectedValueOnce(new Error("TMDB fora do ar"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await app.request("/api/movies/508", { headers: { cookie } }, env);
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { movie: { name: string; cast: unknown[]; directors: unknown[] } };
+    expect(body.movie.name).toBe("Tenet");
+    expect(body.movie.cast).toEqual([]);
+    expect(body.movie.directors).toEqual([]);
+    vi.unstubAllGlobals();
+  });
+
   it("não consulta a TMDB de novo quando o filme já está cacheado", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
-    stubTmdbFetchOnce(tmdbMovieDetail(502, "Interstellar"));
+    stubMovieCacheFetch(502, "Interstellar");
     await app.request("/api/movies/502", { headers: { cookie } }, env);
     vi.unstubAllGlobals();
 
@@ -149,7 +258,7 @@ describe("GET /api/movies/:tmdbId", () => {
 
   it("revalida o cache depois de 24h", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
-    stubTmdbFetchOnce(tmdbMovieDetail(503, "Dunkirk"));
+    stubMovieCacheFetch(503, "Dunkirk");
     await app.request("/api/movies/503", { headers: { cookie } }, env);
     vi.unstubAllGlobals();
 
@@ -159,12 +268,12 @@ describe("GET /api/movies/:tmdbId", () => {
       .set({ updatedAt: new Date(Date.now() - 25 * 60 * 60 * 1000) })
       .where(eq(movie.tmdbId, 503));
 
-    stubTmdbFetchOnce({ ...tmdbMovieDetail(503, "Dunkirk"), vote_average: 9.1 });
+    stubMovieCacheFetch(503, "Dunkirk", 9.1);
 
     const res = await app.request("/api/movies/503", { headers: { cookie } }, env);
 
     expect(res.status).toBe(200);
-    expect(fetch).toHaveBeenCalledTimes(1); // revalidou de verdade, não usou o cache velho
+    expect(fetch).toHaveBeenCalledTimes(2); // detalhe + créditos — revalidou de verdade, não usou o cache velho
     const body = (await res.json()) as { movie: { rating: number } };
     expect(body.movie.rating).toBe(9.1);
     vi.unstubAllGlobals();
@@ -172,7 +281,7 @@ describe("GET /api/movies/:tmdbId", () => {
 
   it("mantém o cache velho se a TMDB estiver indisponível ao revalidar", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
-    stubTmdbFetchOnce(tmdbMovieDetail(504, "Tenet"));
+    stubMovieCacheFetch(504, "Tenet");
     await app.request("/api/movies/504", { headers: { cookie } }, env);
     vi.unstubAllGlobals();
 
@@ -198,7 +307,7 @@ describe("GET /api/movies/:tmdbId", () => {
 describe("CRUD de marcação (/api/movies/:tmdbId/entry)", () => {
   it("PUT cria uma marcação nova, com nota e review, sem marcar assistido", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
-    stubTmdbFetchOnce(tmdbMovieDetail(601, "Oppenheimer"));
+    stubMovieCacheFetch(601, "Oppenheimer");
 
     const res = await app.request(
       "/api/movies/601/entry",
@@ -223,7 +332,7 @@ describe("CRUD de marcação (/api/movies/:tmdbId/entry)", () => {
 
   it("PUT com watched: true marca como assistido; watched: false desmarca", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
-    stubTmdbFetchOnce(tmdbMovieDetail(602, "Barbie"));
+    stubMovieCacheFetch(602, "Barbie");
 
     const markRes = await app.request(
       "/api/movies/602/entry",
@@ -255,7 +364,7 @@ describe("CRUD de marcação (/api/movies/:tmdbId/entry)", () => {
 
   it("PUT com payload parcial não apaga campos já preenchidos", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
-    stubTmdbFetchOnce(tmdbMovieDetail(603, "Poor Things"));
+    stubMovieCacheFetch(603, "Poor Things");
     await app.request(
       "/api/movies/603/entry",
       {
@@ -286,7 +395,7 @@ describe("CRUD de marcação (/api/movies/:tmdbId/entry)", () => {
 
   it("marcar como assistido gera atividade watched; desmarcar não gera atividade extra", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
-    stubTmdbFetchOnce(tmdbMovieDetail(604, "Killers of the Flower Moon"));
+    stubMovieCacheFetch(604, "Killers of the Flower Moon");
 
     await app.request(
       "/api/movies/604/entry",
@@ -316,7 +425,7 @@ describe("CRUD de marcação (/api/movies/:tmdbId/entry)", () => {
 
   it("PUT com nota gera atividade rated", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
-    stubTmdbFetchOnce(tmdbMovieDetail(605, "Anatomy of a Fall"));
+    stubMovieCacheFetch(605, "Anatomy of a Fall");
 
     await app.request(
       "/api/movies/605/entry",
@@ -337,7 +446,7 @@ describe("CRUD de marcação (/api/movies/:tmdbId/entry)", () => {
 
   it("DELETE remove a marcação", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
-    stubTmdbFetchOnce(tmdbMovieDetail(606, "The Zone of Interest"));
+    stubMovieCacheFetch(606, "The Zone of Interest");
     await app.request(
       "/api/movies/606/entry",
       {
@@ -356,7 +465,7 @@ describe("CRUD de marcação (/api/movies/:tmdbId/entry)", () => {
     );
     expect(deleteRes.status).toBe(204);
 
-    stubTmdbFetchOnce(tmdbMovieDetail(606, "The Zone of Interest"));
+    stubMovieCacheFetch(606, "The Zone of Interest");
     const detailRes = await app.request("/api/movies/606", { headers: { cookie } }, env);
     await expect(detailRes.json()).resolves.toMatchObject({ entry: null });
     vi.unstubAllGlobals();
@@ -377,7 +486,7 @@ describe("GET /api/movies/entries", () => {
   it("lista só as marcações do usuário logado, filtrando por assistido", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
 
-    stubTmdbFetchOnce(tmdbMovieDetail(701, "Past Lives"));
+    stubMovieCacheFetch(701, "Past Lives");
     await app.request(
       "/api/movies/701/entry",
       {
@@ -389,7 +498,7 @@ describe("GET /api/movies/entries", () => {
     );
     vi.unstubAllGlobals();
 
-    stubTmdbFetchOnce(tmdbMovieDetail(702, "Priscilla"));
+    stubMovieCacheFetch(702, "Priscilla");
     await app.request(
       "/api/movies/702/entry",
       {
@@ -450,7 +559,7 @@ describe("GET/PUT /api/movies/favorites", () => {
 
   it("PUT /favorites/:slot preenche um slot e reflete no GET", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
-    stubTmdbFetchOnce(tmdbMovieDetail(801, "Parasite"));
+    stubMovieCacheFetch(801, "Parasite");
 
     const putRes = await app.request(
       "/api/movies/favorites/2",
@@ -476,7 +585,7 @@ describe("GET/PUT /api/movies/favorites", () => {
 
   it("trocar um slot já ocupado libera o filme que estava nele", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
-    stubTmdbFetchOnce(tmdbMovieDetail(802, "Everything Everywhere All at Once"));
+    stubMovieCacheFetch(802, "Everything Everywhere All at Once");
     await app.request(
       "/api/movies/favorites/1",
       {
@@ -488,7 +597,7 @@ describe("GET/PUT /api/movies/favorites", () => {
     );
     vi.unstubAllGlobals();
 
-    stubTmdbFetchOnce(tmdbMovieDetail(803, "The Whale"));
+    stubMovieCacheFetch(803, "The Whale");
     await app.request(
       "/api/movies/favorites/1",
       {
@@ -513,7 +622,7 @@ describe("GET/PUT /api/movies/favorites", () => {
 
   it("escolher o mesmo filme pra outro slot move-o (não duplica em dois slots)", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
-    stubTmdbFetchOnce(tmdbMovieDetail(804, "Nomadland"));
+    stubMovieCacheFetch(804, "Nomadland");
     await app.request(
       "/api/movies/favorites/1",
       {
@@ -564,7 +673,7 @@ describe("GET/PUT /api/movies/favorites", () => {
 
   it("favoritar gera atividade do tipo favorited", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
-    stubTmdbFetchOnce(tmdbMovieDetail(805, "CODA"));
+    stubMovieCacheFetch(805, "CODA");
 
     await app.request(
       "/api/movies/favorites/1",

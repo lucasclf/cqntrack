@@ -1,9 +1,15 @@
-import type { MovieSummary } from "@cqntrack/shared";
+import type { CastMember, CrewMember, MovieSummary } from "@cqntrack/shared";
 import { eq } from "drizzle-orm";
 import type { createDb } from "../db/client";
 import { movie } from "../db/schema";
+import { getMovieCredits } from "../integrations/tmdb/credits";
 import { getMovieById, searchMovies as tmdbSearchMovies } from "../integrations/tmdb/movies";
-import { buildPosterUrl, MOVIE_GENRE_NAMES, type TmdbMovieSearchResult } from "../integrations/tmdb/types";
+import {
+  buildPosterUrl,
+  MOVIE_GENRE_NAMES,
+  type TmdbCredits,
+  type TmdbMovieSearchResult,
+} from "../integrations/tmdb/types";
 
 type Db = ReturnType<typeof createDb>;
 export type CachedMovie = typeof movie.$inferSelect;
@@ -61,6 +67,33 @@ export function mapCachedMovieToSummary(row: CachedMovie): MovieSummary {
   };
 }
 
+// Mesma foto usada em pôster/still — w185 é o tamanho que a TMDB recomenda
+// pra profile_path de pessoa (menor que o w342 de pôster de filme).
+function mapCastRowToDto(entry: NonNullable<CachedMovie["cast"]>[number]): CastMember {
+  return {
+    personId: entry.personId,
+    name: entry.name,
+    character: entry.character,
+    profileUrl: entry.profilePath ? buildPosterUrl(entry.profilePath, "w185") : null,
+  };
+}
+
+function mapDirectorRowToDto(entry: NonNullable<CachedMovie["directors"]>[number]): CrewMember {
+  return {
+    personId: entry.personId,
+    name: entry.name,
+    profileUrl: entry.profilePath ? buildPosterUrl(entry.profilePath, "w185") : null,
+  };
+}
+
+export function mapCachedMovieCast(row: CachedMovie): CastMember[] {
+  return (row.cast ?? []).map(mapCastRowToDto);
+}
+
+export function mapCachedMovieDirectors(row: CachedMovie): CrewMember[] {
+  return (row.directors ?? []).map(mapDirectorRowToDto);
+}
+
 export async function searchMoviesForUser(
   env: Env,
   query: string,
@@ -80,7 +113,42 @@ function isStale(row: CachedMovie): boolean {
   return Date.now() - row.updatedAt.getTime() > CACHE_TTL_MS;
 }
 
-function mapMovieDetailToRow(detail: NonNullable<Awaited<ReturnType<typeof getMovieById>>>) {
+// Top billed cast, mesmo espírito de qualquer site de filme — não a lista
+// completa (evita payload gigante pra elenco extenso, e a página de pessoa
+// já cobre "toda a carreira" de quem quiser ir mais fundo).
+const MAX_CAST_MEMBERS = 10;
+
+function mapCreditsToCastRows(credits: TmdbCredits | null) {
+  if (!credits) return [];
+  return [...credits.cast]
+    .sort((a, b) => a.order - b.order)
+    .slice(0, MAX_CAST_MEMBERS)
+    .map((member) => ({
+      personId: member.id,
+      name: member.name,
+      character: member.character,
+      profilePath: member.profile_path,
+    }));
+}
+
+// Quase sempre 1 pessoa, mas o crew pode listar o mesmo diretor mais de uma
+// vez (créditos duplicados da própria TMDB) — dedupe por id.
+function mapCreditsToDirectorRows(credits: TmdbCredits | null) {
+  if (!credits) return [];
+  const seen = new Set<number>();
+  const directors: { personId: number; name: string; profilePath: string | null }[] = [];
+  for (const member of credits.crew) {
+    if (member.job !== "Director" || seen.has(member.id)) continue;
+    seen.add(member.id);
+    directors.push({ personId: member.id, name: member.name, profilePath: member.profile_path });
+  }
+  return directors;
+}
+
+function mapMovieDetailToRow(
+  detail: NonNullable<Awaited<ReturnType<typeof getMovieById>>>,
+  credits: TmdbCredits | null,
+) {
   return {
     name: detail.title,
     posterPath: detail.poster_path ?? null,
@@ -90,6 +158,8 @@ function mapMovieDetailToRow(detail: NonNullable<Awaited<ReturnType<typeof getMo
     genres: detail.genres?.map((genre) => genre.name) ?? [],
     runtime: detail.runtime ?? null,
     rating: detail.vote_average ?? null,
+    cast: mapCreditsToCastRows(credits),
+    directors: mapCreditsToDirectorRows(credits),
   };
 }
 
@@ -113,7 +183,12 @@ export async function getOrCacheMovie(env: Env, db: Db, tmdbId: number): Promise
     throw new MovieNotFoundError(tmdbId);
   }
 
-  const values = mapMovieDetailToRow(detail);
+  // Elenco/direção vêm de um request separado — se falhar, não derruba a
+  // revalidação do filme em si, só fica sem cast/directors até a próxima
+  // janela de 24h.
+  const credits = await getMovieCredits(env, tmdbId).catch(() => null);
+
+  const values = mapMovieDetailToRow(detail, credits);
 
   if (cached) {
     await db.update(movie).set(values).where(eq(movie.tmdbId, tmdbId));

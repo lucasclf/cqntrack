@@ -22,7 +22,14 @@ import {
   setFavoriteSlot,
   upsertMovieEntry,
 } from "./entries.service";
-import { getOrCacheMovie, mapCachedMovieToSummary, MovieNotFoundError, searchMoviesForUser } from "./movies.service";
+import {
+  getOrCacheMovie,
+  mapCachedMovieCast,
+  mapCachedMovieDirectors,
+  mapCachedMovieToSummary,
+  MovieNotFoundError,
+  searchMoviesForUser,
+} from "./movies.service";
 
 export const moviesRouter = new Hono<AuthedEnv>();
 
@@ -118,7 +125,12 @@ moviesRouter.get("/:tmdbId", async (c) => {
     const entry = await getMovieEntryForUser(db, c.get("userId"), tmdbId);
 
     const body = MovieDetailResponseSchema.parse({
-      movie: { ...mapCachedMovieToSummary(cachedMovie), overview: cachedMovie.overview },
+      movie: {
+        ...mapCachedMovieToSummary(cachedMovie),
+        overview: cachedMovie.overview,
+        cast: mapCachedMovieCast(cachedMovie),
+        directors: mapCachedMovieDirectors(cachedMovie),
+      },
       entry,
     });
     return c.json(body);
