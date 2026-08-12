@@ -57,8 +57,11 @@ export function RecentlyPlayedGames({ username }: RecentlyPlayedGamesProps) {
   }
 
   return (
-    <section>
-      <h2>Jogado recentemente</h2>
+    <section className={styles.section}>
+      <div className={styles.sectionHeader}>
+        <h2>Jogado recentemente</h2>
+        <span className={styles.count}>{played.length}</span>
+      </div>
       <div className={styles.grid}>
         {played.map((entry) => (
           <GameCard key={entry.game.igdbId} game={entry.game} entry={entry} />

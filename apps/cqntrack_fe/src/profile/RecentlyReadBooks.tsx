@@ -43,8 +43,11 @@ export function RecentlyReadBooks({ username }: RecentlyReadBooksProps) {
   }
 
   return (
-    <section>
-      <h2>Lido recentemente</h2>
+    <section className={styles.section}>
+      <div className={styles.sectionHeader}>
+        <h2>Lido recentemente</h2>
+        <span className={styles.count}>{data.items.length}</span>
+      </div>
       <div className={styles.grid}>
         {data.items.map((entry) => (
           <BookCard key={entry.book.googleBooksId} book={entry.book} entry={entry} />

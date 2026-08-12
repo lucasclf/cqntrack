@@ -48,7 +48,10 @@ export function BookFavoritesSection({ favoritesEndpoint }: BookFavoritesSection
 
   return (
     <section className={styles.section}>
-      <h2>Livros favoritos</h2>
+      <div className={styles.sectionHeader}>
+        <h2>Livros favoritos</h2>
+        <span className={styles.count}>{data.items.length}</span>
+      </div>
       <div className={styles.grid}>
         {data.items.map((entry) => (
           <BookCard key={entry.book.googleBooksId} book={entry.book} entry={entry} />

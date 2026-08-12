@@ -97,9 +97,18 @@ export function PublicProfile() {
     <PublicLayout>
       <div className={styles.page}>
         <header className={styles.header}>
-          <h1>{profile.displayUsername}</h1>
-          <p className={styles.handle}>@{profile.username}</p>
-          <p className={styles.memberSince}>Desde {memberSince}</p>
+          {profile.image ? (
+            <img className={styles.avatar} src={profile.image} alt="" />
+          ) : (
+            <div className={styles.avatarPlaceholder} aria-hidden="true">
+              {profile.displayUsername.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <div className={styles.headerInfo}>
+            <h1>{profile.displayUsername}</h1>
+            <p className={styles.handle}>@{profile.username}</p>
+            <p className={styles.memberSince}>Membro desde {memberSince}</p>
+          </div>
         </header>
 
         <FavoriteMoviesAndSeries username={username} />

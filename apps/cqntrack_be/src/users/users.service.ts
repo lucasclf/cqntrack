@@ -29,6 +29,7 @@ export async function getPublicProfile(db: Db, username: string): Promise<Public
       username: user.username,
       displayUsername: user.displayUsername,
       createdAt: user.createdAt,
+      image: user.image,
     })
     .from(user)
     .where(eq(user.username, username));
@@ -40,5 +41,6 @@ export async function getPublicProfile(db: Db, username: string): Promise<Public
     username: row.username,
     displayUsername: row.displayUsername ?? row.username,
     memberSince: row.createdAt.toISOString(),
+    image: row.image ?? null,
   };
 }

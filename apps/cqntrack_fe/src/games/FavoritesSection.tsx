@@ -48,7 +48,10 @@ export function FavoritesSection({ favoritesEndpoint }: FavoritesSectionProps) {
 
   return (
     <section className={styles.section}>
-      <h2>Jogos favoritos</h2>
+      <div className={styles.sectionHeader}>
+        <h2>Jogos favoritos</h2>
+        <span className={styles.count}>{data.items.length}</span>
+      </div>
       <div className={styles.grid}>
         {data.items.map((entry) => (
           <GameCard key={entry.game.igdbId} game={entry.game} entry={entry} />

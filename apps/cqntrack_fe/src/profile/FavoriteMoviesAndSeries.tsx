@@ -60,8 +60,11 @@ export function FavoriteMoviesAndSeries({ username }: FavoriteMoviesAndSeriesPro
   }
 
   return (
-    <section>
-      <h2>Filmes e séries favoritos</h2>
+    <section className={styles.section}>
+      <div className={styles.sectionHeader}>
+        <h2>Filmes e séries favoritos</h2>
+        <span className={styles.count}>{items.length}</span>
+      </div>
       <div className={styles.grid}>
         {items.map((item) =>
           item.mediaType === "movies" ? (

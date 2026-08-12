@@ -18,6 +18,7 @@ const PROFILE = {
   username: "gamer_1",
   displayUsername: "Gamer_1",
   memberSince: "2026-01-01T00:00:00.000Z",
+  image: null,
 };
 
 const GAME = {

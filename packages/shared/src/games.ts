@@ -188,6 +188,7 @@ export const PublicProfileSchema = z.object({
   username: z.string(),
   displayUsername: z.string(),
   memberSince: z.iso.datetime(),
+  image: z.url().nullable(),
 });
 
 export type PublicProfile = z.infer<typeof PublicProfileSchema>;
