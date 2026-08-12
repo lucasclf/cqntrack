@@ -6,6 +6,8 @@ import type {
 } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router";
+import { CastList } from "../components/CastList";
+import { CrewList } from "../components/CrewList";
 import { StarRating } from "../components/StarRating";
 import { ApiError, apiClient } from "../lib/api-client";
 import { AddToSeriesListMenu } from "./AddToSeriesListMenu";
@@ -129,6 +131,10 @@ export function SeriesDetail() {
           {series.overview && <p className={styles.summary}>{series.overview}</p>}
         </div>
       </div>
+
+      <CrewList title="Criado por" crew={series.creators} />
+      <CrewList title="Direção" crew={series.directors} />
+      <CastList title="Elenco" cast={series.cast} />
 
       <section className={styles.entrySection}>
         <h2>Sua marcação</h2>

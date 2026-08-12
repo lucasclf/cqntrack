@@ -29,6 +29,11 @@ const SERIES = {
   seasons: null,
   rating: 8.9,
   overview: "Um professor de química vira fabricante de metanfetamina.",
+  cast: [{ personId: 17419, name: "Bryan Cranston", character: "Walter White", profileUrl: null }],
+  creators: [{ personId: 66633, name: "Vince Gilligan", profileUrl: null }],
+  directors: [
+    { personId: 29779, name: "Michelle MacLaren", profileUrl: null, episodeCount: 11 },
+  ],
 };
 
 function renderDetail() {
@@ -62,6 +67,22 @@ describe("SeriesDetail", () => {
     expect(getMock).toHaveBeenCalledWith("/api/series/1396");
     // Favoritar não acontece nesta página (só pelos slots da home).
     expect(screen.queryByRole("button", { name: /favorit/i })).not.toBeInTheDocument();
+
+    // Criado por, Direção (com contagem de episódios) e Elenco, cada um
+    // linkando pra página da pessoa.
+    expect(screen.getByRole("heading", { name: "Criado por" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Vince Gilligan/ })).toHaveAttribute(
+      "href",
+      "/pessoas/66633",
+    );
+    expect(screen.getByRole("heading", { name: "Direção" })).toBeInTheDocument();
+    expect(screen.getByText(/Michelle MacLaren/)).toBeInTheDocument();
+    expect(screen.getByText("(11 episódios)")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Elenco" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Bryan Cranston/ })).toHaveAttribute(
+      "href",
+      "/pessoas/17419",
+    );
   });
 
   it("salva a nota ao clicar numa estrela, criando a marcação quando ainda não existe entry", async () => {
