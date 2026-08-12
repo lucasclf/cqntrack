@@ -16,12 +16,28 @@ export async function searchMovies(
 }
 
 export async function getMovieById(env: Env, tmdbId: number): Promise<TmdbMovieDetail | null> {
+  let detail: TmdbMovieDetail;
   try {
-    return await tmdbFetch<TmdbMovieDetail>(env, `/movie/${tmdbId}`);
+    detail = await tmdbFetch<TmdbMovieDetail>(env, `/movie/${tmdbId}`);
   } catch (error) {
     if (error instanceof TmdbRequestError && error.status === 404) {
       return null;
     }
     throw error;
   }
+
+  if (!detail.overview) {
+    // Sem tradução pt-BR cadastrada pra esse filme — refaz em inglês só
+    // pra sinopse. Se esse segundo request falhar, segue com sinopse
+    // vazia mesmo: não derruba um detalhe que já veio certo por causa
+    // disso.
+    try {
+      const fallback = await tmdbFetch<TmdbMovieDetail>(env, `/movie/${tmdbId}`, "en-US");
+      detail.overview = fallback.overview;
+    } catch {
+      // segue sem sinopse
+    }
+  }
+
+  return detail;
 }

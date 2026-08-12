@@ -36,14 +36,27 @@ export async function getSeriesAggregateCredits(
 }
 
 export async function getPersonById(env: Env, personId: number): Promise<TmdbPerson | null> {
+  let detail: TmdbPerson;
   try {
-    return await tmdbFetch<TmdbPerson>(env, `/person/${personId}`);
+    detail = await tmdbFetch<TmdbPerson>(env, `/person/${personId}`);
   } catch (error) {
     if (error instanceof TmdbRequestError && error.status === 404) {
       return null;
     }
     throw error;
   }
+
+  if (!detail.biography) {
+    // Mesmo fallback de getMovieById, aplicado à biografia.
+    try {
+      const fallback = await tmdbFetch<TmdbPerson>(env, `/person/${personId}`, "en-US");
+      detail.biography = fallback.biography;
+    } catch {
+      // segue sem biografia
+    }
+  }
+
+  return detail;
 }
 
 export async function getPersonMovieCredits(

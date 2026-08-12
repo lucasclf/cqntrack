@@ -47,7 +47,7 @@ describe("integrations/tmdb", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0]!;
     expect(url.toString()).toBe(
-      "https://api.themoviedb.org/3/search/tv?query=breaking%20bad&include_adult=false",
+      "https://api.themoviedb.org/3/search/tv?query=breaking%20bad&include_adult=false&language=pt-BR",
     );
     expect((init as RequestInit).headers).toMatchObject({
       Authorization: expect.stringContaining("Bearer "),
@@ -64,7 +64,7 @@ describe("integrations/tmdb", () => {
 
     expect(result).toEqual(SERIES_DETAIL);
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.themoviedb.org/3/tv/1396",
+      "https://api.themoviedb.org/3/tv/1396?language=pt-BR",
       expect.anything(),
     );
 
@@ -80,6 +80,28 @@ describe("integrations/tmdb", () => {
     const result = await getSeriesById(env, 999999999);
 
     expect(result).toBeNull();
+
+    vi.unstubAllGlobals();
+  });
+
+  it("getSeriesById busca a sinopse em inglês quando não há tradução pt-BR (overview vazio)", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ ...SERIES_DETAIL, overview: "" }))
+      .mockResolvedValueOnce(
+        jsonResponse({ ...SERIES_DETAIL, overview: "A high school chemistry teacher..." }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await getSeriesById(env, 1396);
+
+    expect(result?.overview).toBe("A high school chemistry teacher...");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "https://api.themoviedb.org/3/tv/1396?language=en-US",
+      expect.anything(),
+    );
 
     vi.unstubAllGlobals();
   });
@@ -104,7 +126,7 @@ describe("integrations/tmdb", () => {
 
     expect(result).toEqual(seasonDetail);
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.themoviedb.org/3/tv/1396/season/1",
+      "https://api.themoviedb.org/3/tv/1396/season/1?language=pt-BR",
       expect.anything(),
     );
 
@@ -158,7 +180,7 @@ describe("integrations/tmdb", () => {
 
     expect(result).toEqual(episodeDetail);
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.themoviedb.org/3/tv/1396/season/1/episode/1",
+      "https://api.themoviedb.org/3/tv/1396/season/1/episode/1?language=pt-BR",
       expect.anything(),
     );
 
@@ -174,6 +196,39 @@ describe("integrations/tmdb", () => {
     const result = await getSeriesEpisode(env, 1396, 1, 999);
 
     expect(result).toBeNull();
+
+    vi.unstubAllGlobals();
+  });
+
+  it("getSeriesEpisode busca a sinopse em inglês quando não há tradução pt-BR (overview vazio)", async () => {
+    const episodeDetail = {
+      episode_number: 1,
+      season_number: 1,
+      name: "Piloto",
+      overview: "",
+      air_date: "2008-01-20",
+      still_path: "/still-1.jpg",
+      runtime: 58,
+      vote_average: 8.2,
+      crew: [],
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(episodeDetail))
+      .mockResolvedValueOnce(
+        jsonResponse({ ...episodeDetail, overview: "A chemistry teacher is diagnosed with cancer." }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await getSeriesEpisode(env, 1396, 1, 1);
+
+    expect(result?.overview).toBe("A chemistry teacher is diagnosed with cancer.");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "https://api.themoviedb.org/3/tv/1396/season/1/episode/1?language=en-US",
+      expect.anything(),
+    );
 
     vi.unstubAllGlobals();
   });
@@ -196,7 +251,7 @@ describe("integrations/tmdb", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0]!;
     expect(url.toString()).toBe(
-      "https://api.themoviedb.org/3/search/movie?query=inception&include_adult=false",
+      "https://api.themoviedb.org/3/search/movie?query=inception&include_adult=false&language=pt-BR",
     );
     expect((init as RequestInit).headers).toMatchObject({
       Authorization: expect.stringContaining("Bearer "),
@@ -226,7 +281,7 @@ describe("integrations/tmdb", () => {
 
     expect(result).toEqual(movieDetail);
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.themoviedb.org/3/movie/27205",
+      "https://api.themoviedb.org/3/movie/27205?language=pt-BR",
       expect.anything(),
     );
 
@@ -242,6 +297,63 @@ describe("integrations/tmdb", () => {
     const result = await getMovieById(env, 999999999);
 
     expect(result).toBeNull();
+
+    vi.unstubAllGlobals();
+  });
+
+  it("getMovieById busca a sinopse em inglês quando não há tradução pt-BR (overview vazio)", async () => {
+    const movieDetail = {
+      id: 352114,
+      title: "Quay",
+      poster_path: null,
+      release_date: "2015-09-01",
+      overview: "",
+      genres: [],
+      runtime: 15,
+      vote_average: 6.5,
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(movieDetail))
+      .mockResolvedValueOnce(
+        jsonResponse({ ...movieDetail, overview: "A short documentary about the Quay Brothers." }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await getMovieById(env, 352114);
+
+    expect(result?.overview).toBe("A short documentary about the Quay Brothers.");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "https://api.themoviedb.org/3/movie/352114?language=en-US",
+      expect.anything(),
+    );
+
+    vi.unstubAllGlobals();
+  });
+
+  it("getMovieById não quebra se o fallback em inglês também falhar", async () => {
+    const movieDetail = {
+      id: 352114,
+      title: "Quay",
+      poster_path: null,
+      release_date: "2015-09-01",
+      overview: "",
+      genres: [],
+      runtime: 15,
+      vote_average: 6.5,
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(movieDetail))
+      .mockResolvedValueOnce(jsonResponse({ status_message: "server error" }, 500));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await getMovieById(env, 352114);
+
+    expect(result?.overview).toBe("");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
 
     vi.unstubAllGlobals();
   });

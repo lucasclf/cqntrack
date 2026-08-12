@@ -90,7 +90,7 @@ describe("integrations/tmdb/credits", () => {
 
     expect(result).toEqual(MOVIE_CREDITS);
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.themoviedb.org/3/movie/27205/credits",
+      "https://api.themoviedb.org/3/movie/27205/credits?language=pt-BR",
       expect.anything(),
     );
 
@@ -115,7 +115,7 @@ describe("integrations/tmdb/credits", () => {
 
     expect(result).toEqual(SERIES_AGGREGATE_CREDITS);
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.themoviedb.org/3/tv/1396/aggregate_credits",
+      "https://api.themoviedb.org/3/tv/1396/aggregate_credits?language=pt-BR",
       expect.anything(),
     );
 
@@ -139,7 +139,10 @@ describe("integrations/tmdb/credits", () => {
     const result = await getPersonById(env, 525);
 
     expect(result).toEqual(PERSON_DETAIL);
-    expect(fetchMock).toHaveBeenCalledWith("https://api.themoviedb.org/3/person/525", expect.anything());
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.themoviedb.org/3/person/525?language=pt-BR",
+      expect.anything(),
+    );
 
     vi.unstubAllGlobals();
   });
@@ -151,6 +154,26 @@ describe("integrations/tmdb/credits", () => {
     const result = await getPersonById(env, 999999999);
 
     expect(result).toBeNull();
+    vi.unstubAllGlobals();
+  });
+
+  it("getPersonById busca a biografia em inglês quando não há tradução pt-BR (biography vazia)", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ ...PERSON_DETAIL, biography: "" }))
+      .mockResolvedValueOnce(jsonResponse(PERSON_DETAIL));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await getPersonById(env, 525);
+
+    expect(result?.biography).toBe(PERSON_DETAIL.biography);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "https://api.themoviedb.org/3/person/525?language=en-US",
+      expect.anything(),
+    );
+
     vi.unstubAllGlobals();
   });
 
@@ -175,7 +198,7 @@ describe("integrations/tmdb/credits", () => {
 
     expect(result).toEqual(personMovieCredits);
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.themoviedb.org/3/person/525/movie_credits",
+      "https://api.themoviedb.org/3/person/525/movie_credits?language=pt-BR",
       expect.anything(),
     );
 
@@ -211,7 +234,7 @@ describe("integrations/tmdb/credits", () => {
 
     expect(result).toEqual(personTvCredits);
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.themoviedb.org/3/person/66633/tv_credits",
+      "https://api.themoviedb.org/3/person/66633/tv_credits?language=pt-BR",
       expect.anything(),
     );
 

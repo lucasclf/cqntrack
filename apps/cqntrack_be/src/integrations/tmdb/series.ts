@@ -22,14 +22,29 @@ export async function searchSeries(
 }
 
 export async function getSeriesById(env: Env, tmdbId: number): Promise<TmdbSeriesDetail | null> {
+  let detail: TmdbSeriesDetail;
   try {
-    return await tmdbFetch<TmdbSeriesDetail>(env, `/tv/${tmdbId}`);
+    detail = await tmdbFetch<TmdbSeriesDetail>(env, `/tv/${tmdbId}`);
   } catch (error) {
     if (error instanceof TmdbRequestError && error.status === 404) {
       return null;
     }
     throw error;
   }
+
+  if (!detail.overview) {
+    // Mesmo fallback de getMovieById — sem tradução pt-BR, refaz só a
+    // sinopse em inglês; falha nesse segundo request não derruba o
+    // detalhe que já veio certo.
+    try {
+      const fallback = await tmdbFetch<TmdbSeriesDetail>(env, `/tv/${tmdbId}`, "en-US");
+      detail.overview = fallback.overview;
+    } catch {
+      // segue sem sinopse
+    }
+  }
+
+  return detail;
 }
 
 // Buscado ao vivo a cada abertura de temporada, sem cache local (ver
@@ -58,15 +73,26 @@ export async function getSeriesEpisode(
   seasonNumber: number,
   episodeNumber: number,
 ): Promise<TmdbEpisodeDetail | null> {
+  const path = `/tv/${tmdbId}/season/${seasonNumber}/episode/${episodeNumber}`;
+  let detail: TmdbEpisodeDetail;
   try {
-    return await tmdbFetch<TmdbEpisodeDetail>(
-      env,
-      `/tv/${tmdbId}/season/${seasonNumber}/episode/${episodeNumber}`,
-    );
+    detail = await tmdbFetch<TmdbEpisodeDetail>(env, path);
   } catch (error) {
     if (error instanceof TmdbRequestError && error.status === 404) {
       return null;
     }
     throw error;
   }
+
+  if (!detail.overview) {
+    // Mesmo fallback de getMovieById.
+    try {
+      const fallback = await tmdbFetch<TmdbEpisodeDetail>(env, path, "en-US");
+      detail.overview = fallback.overview;
+    } catch {
+      // segue sem sinopse
+    }
+  }
+
+  return detail;
 }
