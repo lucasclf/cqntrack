@@ -1,15 +1,13 @@
-import {
-  FAVORITE_SLOTS,
-  type FavoriteSlotNumber,
-  type ListSeriesEntriesQuery,
-  type SeriesEntry,
-  type SeriesEntryWithSeries,
-  type SeriesFavoriteSlot,
-  type UpsertSeriesEntryRequest,
+import type {
+  ListSeriesEntriesQuery,
+  RecentlyWatchedSeriesItem,
+  SeriesEntry,
+  SeriesEntryWithSeries,
+  UpsertSeriesEntryRequest,
 } from "@cqntrack/shared";
 import { and, asc, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import type { createDb } from "../db/client";
-import { activity, seriesEntry, seriesEpisodeWatch } from "../db/schema";
+import { activity, series, seriesEntry, seriesEpisodeWatch } from "../db/schema";
 import { withoutUndefined } from "../lib/without-undefined";
 import {
   type CachedSeries,
@@ -23,7 +21,7 @@ type SeriesEntryRow = typeof seriesEntry.$inferSelect;
 
 const SORT_COLUMNS = {
   rating: seriesEntry.rating,
-  favorite: seriesEntry.favoriteSlot,
+  favorite: seriesEntry.favoritedAt,
   updatedAt: seriesEntry.updatedAt,
 } as const;
 
@@ -60,7 +58,7 @@ function toSeriesEntry(row: SeriesEntryRow, watchedEpisodeCount: number): Series
     id: row.id,
     rating: row.rating,
     watchedEpisodeCount,
-    favoriteSlot: row.favoriteSlot as SeriesEntry["favoriteSlot"],
+    favoritedAt: row.favoritedAt?.toISOString() ?? null,
     review: row.review,
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -80,6 +78,10 @@ async function logSeriesEntryActivities(
   }
   if (input.review !== undefined && input.review !== null && input.review.trim() !== "") {
     activities.push({ userId, ...snapshot, type: "reviewed" });
+  }
+  // Só ao favoritar — desfavoritar não vira atividade.
+  if (input.favorited === true) {
+    activities.push({ userId, ...snapshot, type: "favorited" });
   }
 
   if (activities.length > 0) {
@@ -142,6 +144,7 @@ export async function upsertSeriesEntry(
   const patch = withoutUndefined({
     rating: input.rating,
     review: input.review,
+    favoritedAt: input.favorited === undefined ? undefined : input.favorited ? new Date() : null,
   });
 
   const [row] = existing
@@ -161,61 +164,12 @@ export async function upsertSeriesEntry(
   return toSeriesEntry(row, watchedEpisodeCount);
 }
 
-// Define qual série ocupa um dos 4 slots fixos de favorito do usuário — a
-// única forma de favoritar (mesmo padrão de setFavoriteSlot de jogos).
-// Sempre sobrescreve: libera quem estava nesse slot e qualquer outro slot
-// que essa mesma série já ocupasse, já que uma série só fica em um slot por
-// vez.
-export async function setFavoriteSlot(
-  env: Env,
-  db: Db,
-  userId: string,
-  slot: FavoriteSlotNumber,
-  tmdbId: number,
-): Promise<SeriesEntry> {
-  const cachedSeries = await getOrCacheSeries(env, db, tmdbId);
-
-  await db
-    .update(seriesEntry)
-    .set({ favoriteSlot: null })
-    .where(and(eq(seriesEntry.userId, userId), eq(seriesEntry.favoriteSlot, slot)));
-  await db
-    .update(seriesEntry)
-    .set({ favoriteSlot: null })
-    .where(and(eq(seriesEntry.userId, userId), eq(seriesEntry.seriesId, tmdbId)));
-
-  const existing = await db.query.seriesEntry.findFirst({
-    where: and(eq(seriesEntry.userId, userId), eq(seriesEntry.seriesId, tmdbId)),
-  });
-
-  const [row] = existing
-    ? await db
-        .update(seriesEntry)
-        .set({ favoriteSlot: slot })
-        .where(eq(seriesEntry.id, existing.id))
-        .returning()
-    : await db
-        .insert(seriesEntry)
-        .values({ userId, seriesId: tmdbId, favoriteSlot: slot })
-        .returning();
-
-  if (!row) {
-    throw new Error("Falha ao definir o favorito");
-  }
-
-  await db
-    .insert(activity)
-    .values({ userId, ...toActivitySnapshot(cachedSeries), type: "favorited" });
-
-  const watchedEpisodeCount = await getWatchedCount(db, userId, tmdbId);
-  return toSeriesEntry(row, watchedEpisodeCount);
-}
-
-// Sempre os 4 slots, preenchidos ou não — quem chama decide o que fazer com
-// os vazios (ex.: mostrar um placeholder "+" só na própria home).
-export async function getFavoriteSlots(db: Db, userId: string): Promise<SeriesFavoriteSlot[]> {
+// Sem limite de quantidade — toda série com favoritedAt preenchido, mais
+// recente primeiro.
+export async function getFavorites(db: Db, userId: string): Promise<SeriesEntryWithSeries[]> {
   const rows = await db.query.seriesEntry.findMany({
-    where: and(eq(seriesEntry.userId, userId), isNotNull(seriesEntry.favoriteSlot)),
+    where: and(eq(seriesEntry.userId, userId), isNotNull(seriesEntry.favoritedAt)),
+    orderBy: desc(seriesEntry.favoritedAt),
     with: { series: true },
   });
   const watchedCounts = await getWatchedCounts(
@@ -223,19 +177,56 @@ export async function getFavoriteSlots(db: Db, userId: string): Promise<SeriesFa
     userId,
     rows.map((row) => row.seriesId),
   );
-  const bySlot = new Map(rows.map((row) => [row.favoriteSlot, row]));
 
-  return FAVORITE_SLOTS.map((slot) => {
-    const row = bySlot.get(slot);
-    return {
-      slot,
-      entry: row
-        ? {
-            ...toSeriesEntry(row, watchedCounts.get(row.seriesId) ?? 0),
-            series: mapCachedSeriesToSummary(row.series),
-          }
-        : null,
-    };
+  return rows.map((row) => ({
+    ...toSeriesEntry(row, watchedCounts.get(row.seriesId) ?? 0),
+    series: mapCachedSeriesToSummary(row.series),
+  }));
+}
+
+// Série não tem status pra filtrar "recente" (diferente de filme/livro/
+// jogo) — usa o episódio assistido mais recentemente como sinal, agregando
+// MAX(watchedAt) por série em series_episode_watch. Só pra seção "Assistido
+// recentemente" do perfil público.
+export async function getRecentlyWatchedSeries(
+  db: Db,
+  userId: string,
+  limit: number,
+): Promise<RecentlyWatchedSeriesItem[]> {
+  const rows = await db
+    .select({
+      seriesId: seriesEpisodeWatch.seriesId,
+      lastWatchedAt: sql<number>`max(${seriesEpisodeWatch.watchedAt})`,
+    })
+    .from(seriesEpisodeWatch)
+    .where(eq(seriesEpisodeWatch.userId, userId))
+    .groupBy(seriesEpisodeWatch.seriesId)
+    .orderBy(desc(sql`max(${seriesEpisodeWatch.watchedAt})`))
+    .limit(limit);
+
+  if (rows.length === 0) {
+    return [];
+  }
+
+  const seriesRows = await db.query.series.findMany({
+    where: inArray(
+      series.tmdbId,
+      rows.map((row) => row.seriesId),
+    ),
+  });
+  const byId = new Map(seriesRows.map((row) => [row.tmdbId, row]));
+
+  return rows.flatMap((row) => {
+    const cachedSeries = byId.get(row.seriesId);
+    if (!cachedSeries) {
+      return [];
+    }
+    return [
+      {
+        series: mapCachedSeriesToSummary(cachedSeries),
+        lastWatchedAt: new Date(row.lastWatchedAt).toISOString(),
+      },
+    ];
   });
 }
 
@@ -252,9 +243,7 @@ export async function listSeriesEntries(
 ): Promise<{ items: SeriesEntryWithSeries[]; total: number }> {
   const conditions = [eq(seriesEntry.userId, userId)];
   if (query.favorite !== undefined) {
-    conditions.push(
-      query.favorite ? isNotNull(seriesEntry.favoriteSlot) : isNull(seriesEntry.favoriteSlot),
-    );
+    conditions.push(query.favorite ? isNotNull(seriesEntry.favoritedAt) : isNull(seriesEntry.favoritedAt));
   }
   const where = and(...conditions);
 

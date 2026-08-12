@@ -15,6 +15,12 @@ export async function searchMovies(
   return response.results.slice(0, safeLimit);
 }
 
+// Confirmado contra a API real durante o planejamento: devolve o mesmo
+// formato de item da busca (TmdbMovieSearchResult), sem request extra.
+export async function getPopularMovies(env: Env, page = 1): Promise<TmdbSearchResponse<TmdbMovieSearchResult>> {
+  return tmdbFetch<TmdbSearchResponse<TmdbMovieSearchResult>>(env, `/movie/popular?page=${page}`);
+}
+
 export async function getMovieById(env: Env, tmdbId: number): Promise<TmdbMovieDetail | null> {
   let detail: TmdbMovieDetail;
   try {

@@ -92,6 +92,11 @@ export interface TmdbMovieDetail {
 
 export interface TmdbSearchResponse<T> {
   results: T[];
+  // Só populares (GET /movie|tv/popular) usam page/total_pages hoje — busca
+  // por texto ignora os dois. Opcionais pra não forçar todo mock de teste
+  // existente a passar esses campos.
+  page?: number;
+  total_pages?: number;
 }
 
 // GET /movie/{id}/credits — cast/crew "simples", só o elenco/equipe

@@ -1,3 +1,4 @@
+import { MOVIE_STATUSES } from "@cqntrack/shared";
 import { relations, sql } from "drizzle-orm";
 import { index, integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { user } from "./auth.schema";
@@ -36,10 +37,11 @@ export const movie = sqliteTable("movie", {
 });
 
 // Marcação do usuário para um filme: nota pessoal, favorito, review e
-// "assistido" (watchedAt — null = não assistido, existência = assistido,
-// sem coluna boolean redundante). Sem status: filme não tem substrutura
-// (diferente de série), então não há progresso pra rastrear além disso. Um
-// usuário só pode ter uma marcação por filme (upsert).
+// status ("watched"/"want_to_watch", null = sem status). watchedAt é
+// derivado do status (preenchido só quando status vira "watched", limpo
+// quando sai desse valor) — não é mais um toggle independente, mas
+// continua existindo pra mostrar "Assistido em DD/MM/AAAA". Um usuário só
+// pode ter uma marcação por filme (upsert).
 export const movieEntry = sqliteTable(
   "movie_entry",
   {
@@ -52,11 +54,12 @@ export const movieEntry = sqliteTable(
     movieId: integer("movie_id")
       .notNull()
       .references(() => movie.tmdbId, { onDelete: "cascade" }),
+    status: text("status", { enum: MOVIE_STATUSES }),
     rating: real("rating"),
     watchedAt: integer("watched_at", { mode: "timestamp_ms" }),
-    // 1-4, null = não é favorito. Favoritar só acontece pelos 4 slots fixos
-    // da home (PUT /api/movies/favorites/:slot), mesmo padrão de gameEntry.
-    favoriteSlot: integer("favorite_slot"),
+    // Existência = favoritado, sem limite de quantidade (não é mais um
+    // slot 1-4) — mesmo padrão de watchedAt, ordenado por data na listagem.
+    favoritedAt: integer("favorited_at", { mode: "timestamp_ms" }),
     review: text("review"),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
@@ -68,11 +71,7 @@ export const movieEntry = sqliteTable(
   },
   (table) => [
     uniqueIndex("movie_entry_user_movie_unique").on(table.userId, table.movieId),
-    // Parcial: só entra no índice quem tem um slot — garante no banco que um
-    // usuário nunca tem dois filmes no mesmo slot (1-4) ao mesmo tempo.
-    uniqueIndex("movie_entry_user_favorite_slot_unique")
-      .on(table.userId, table.favoriteSlot)
-      .where(sql`${table.favoriteSlot} is not null`),
+    index("movie_entry_user_status_idx").on(table.userId, table.status),
   ],
 );
 

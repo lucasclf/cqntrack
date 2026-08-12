@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import type { createDb } from "../db/client";
 import { movie } from "../db/schema";
 import { getMovieCredits } from "../integrations/tmdb/credits";
-import { getMovieById, searchMovies as tmdbSearchMovies } from "../integrations/tmdb/movies";
+import { getMovieById, getPopularMovies, searchMovies as tmdbSearchMovies } from "../integrations/tmdb/movies";
 import {
   buildPosterUrl,
   MOVIE_GENRE_NAMES,
@@ -101,6 +101,19 @@ export async function searchMoviesForUser(
 ): Promise<MovieSummary[]> {
   const results = await tmdbSearchMovies(env, query, limit);
   return results.map(mapTmdbSearchResultToSummary);
+}
+
+// Tela "Descobrir" — populares da própria TMDB. hasMore é aproximado (true
+// quando a página ainda não chegou no total_pages informado pela TMDB).
+export async function getPopularMoviesForUser(
+  env: Env,
+  page: number,
+): Promise<{ results: MovieSummary[]; hasMore: boolean }> {
+  const response = await getPopularMovies(env, page);
+  return {
+    results: response.results.map(mapTmdbSearchResultToSummary),
+    hasMore: response.total_pages !== undefined && (response.page ?? page) < response.total_pages,
+  };
 }
 
 // Filme já lançado não ganha "temporada nova" como série, mas a nota

@@ -26,11 +26,12 @@ describe("schema de jogos", () => {
     const userId = await createTestUser(db);
     await createTestGame(db, 1);
 
-    await db.insert(gameEntry).values({ userId, gameId: 1, status: "playing", favoriteSlot: 1 });
+    const favoritedAt = new Date();
+    await db.insert(gameEntry).values({ userId, gameId: 1, status: "playing", favoritedAt });
 
     const [entry] = await db.select().from(gameEntry).where(eq(gameEntry.userId, userId));
     expect(entry?.status).toBe("playing");
-    expect(entry?.favoriteSlot).toBe(1);
+    expect(entry?.favoritedAt).toEqual(favoritedAt);
   });
 
   it("impede duas marcações do mesmo jogo pelo mesmo usuário", async () => {

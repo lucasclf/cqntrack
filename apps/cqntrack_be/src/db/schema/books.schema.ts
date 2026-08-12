@@ -49,9 +49,9 @@ export const bookEntry = sqliteTable(
     // Opcional: null = livro sem status marcado (usuário pode desmarcar).
     status: text("status", { enum: BOOK_STATUSES }),
     rating: real("rating"),
-    // 1-4, null = não é favorito. Favoritar só acontece pelos 4 slots fixos
-    // da home (PUT /api/books/favorites/:slot), mesmo padrão de gameEntry.
-    favoriteSlot: integer("favorite_slot"),
+    // Existência = favoritado, sem limite de quantidade (não é mais um
+    // slot 1-4) — mesmo padrão de watchedAt de filme, ordenado por data.
+    favoritedAt: integer("favorited_at", { mode: "timestamp_ms" }),
     review: text("review"),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
@@ -64,11 +64,6 @@ export const bookEntry = sqliteTable(
   (table) => [
     uniqueIndex("book_entry_user_book_unique").on(table.userId, table.bookId),
     index("book_entry_user_status_idx").on(table.userId, table.status),
-    // Parcial: só entra no índice quem tem um slot — garante no banco que um
-    // usuário nunca tem dois livros no mesmo slot (1-4) ao mesmo tempo.
-    uniqueIndex("book_entry_user_favorite_slot_unique")
-      .on(table.userId, table.favoriteSlot)
-      .where(sql`${table.favoriteSlot} is not null`),
   ],
 );
 

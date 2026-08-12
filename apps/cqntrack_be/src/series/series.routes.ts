@@ -1,5 +1,6 @@
 import {
-  FAVORITE_SLOTS,
+  DiscoverSeriesQuerySchema,
+  DiscoverSeriesResponseSchema,
   ListSeriesEntriesQuerySchema,
   PaginatedSeriesEntriesResponseSchema,
   SearchSeriesQuerySchema,
@@ -9,25 +10,17 @@ import {
   SeriesEpisodeDetailSchema,
   SeriesFavoritesResponseSchema,
   SeriesSeasonEpisodesResponseSchema,
-  SetSeriesFavoriteSlotRequestSchema,
   SetWatchedRequestSchema,
   UpsertSeriesEntryRequestSchema,
-  type FavoriteSlotNumber,
 } from "@cqntrack/shared";
 import { Hono } from "hono";
 import { type AuthedEnv, requireSession } from "../auth/require-session";
 import { createDb } from "../db/client";
-import {
-  deleteSeriesEntry,
-  getFavoriteSlots,
-  getSeriesEntryForUser,
-  listSeriesEntries,
-  setFavoriteSlot,
-  upsertSeriesEntry,
-} from "./entries.service";
+import { deleteSeriesEntry, getFavorites, getSeriesEntryForUser, listSeriesEntries, upsertSeriesEntry } from "./entries.service";
 import { getEpisodeDetail, getSeasonEpisodes, setEpisodeWatched, setSeasonWatched } from "./episodes.service";
 import {
   getOrCacheSeries,
+  getPopularSeriesForUser,
   mapCachedSeriesCast,
   mapCachedSeriesCreators,
   mapCachedSeriesDirectors,
@@ -43,13 +36,6 @@ seriesRouter.use("*", requireSession);
 function parseTmdbId(c: { req: { param: (name: string) => string } }): number | null {
   const tmdbId = Number(c.req.param("tmdbId"));
   return Number.isInteger(tmdbId) ? tmdbId : null;
-}
-
-function parseFavoriteSlot(c: {
-  req: { param: (name: string) => string };
-}): FavoriteSlotNumber | null {
-  const slot = Number(c.req.param("slot"));
-  return FAVORITE_SLOTS.includes(slot as FavoriteSlotNumber) ? (slot as FavoriteSlotNumber) : null;
 }
 
 function parseIntParam(
@@ -98,32 +84,18 @@ seriesRouter.get("/entries", async (c) => {
 
 seriesRouter.get("/favorites", async (c) => {
   const db = createDb(c.env);
-  const slots = await getFavoriteSlots(db, c.get("userId"));
-  return c.json(SeriesFavoritesResponseSchema.parse({ slots }));
+  const items = await getFavorites(db, c.get("userId"));
+  return c.json(SeriesFavoritesResponseSchema.parse({ items }));
 });
 
-seriesRouter.put("/favorites/:slot", async (c) => {
-  const slot = parseFavoriteSlot(c);
-  if (slot === null) {
-    return c.json({ error: "invalid_slot" }, 400);
-  }
-
-  const json = await c.req.json().catch(() => null);
-  const parsed = SetSeriesFavoriteSlotRequestSchema.safeParse(json);
+seriesRouter.get("/discover", async (c) => {
+  const parsed = DiscoverSeriesQuerySchema.safeParse({ page: c.req.query("page") });
   if (!parsed.success) {
-    return c.json({ error: "invalid_body" }, 400);
+    return c.json({ error: "invalid_query" }, 400);
   }
 
-  const db = createDb(c.env);
-  try {
-    const entry = await setFavoriteSlot(c.env, db, c.get("userId"), slot, parsed.data.tmdbId);
-    return c.json(SeriesEntrySchema.parse(entry));
-  } catch (error) {
-    if (error instanceof SeriesNotFoundError) {
-      return c.json({ error: "series_not_found" }, 404);
-    }
-    throw error;
-  }
+  const { results, hasMore } = await getPopularSeriesForUser(c.env, parsed.data.page);
+  return c.json(DiscoverSeriesResponseSchema.parse({ results, page: parsed.data.page, hasMore }));
 });
 
 seriesRouter.get("/:tmdbId", async (c) => {

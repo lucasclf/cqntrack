@@ -74,14 +74,14 @@ describe("/api/users", () => {
     expect(bookListsRes.status).toBe(404);
   });
 
-  it("devolve o perfil e as estatísticas zeradas sem exigir sessão", async () => {
+  it("devolve o perfil sem exigir sessão", async () => {
     const { username } = await createAuthenticatedUser(app, env);
 
     const res = await app.request(`/api/users/${username}`, undefined, env);
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { username: string; stats: Record<string, number> };
+    const body = (await res.json()) as { username: string; displayUsername: string; memberSince: string };
     expect(body.username).toBe(username);
-    expect(body.stats).toEqual({ total: 0, completed: 0, playing: 0, platinum: 0, favorites: 0 });
+    expect(body.memberSince).toEqual(expect.any(String));
   });
 
   it("lista as marcações e as listas públicas de jogos do usuário", async () => {
@@ -98,11 +98,11 @@ describe("/api/users", () => {
       env,
     );
     await app.request(
-      "/api/games/favorites/1",
+      "/api/games/701/entry",
       {
         method: "PUT",
         headers: { cookie, "Content-Type": "application/json" },
-        body: JSON.stringify({ igdbId: 701 }),
+        body: JSON.stringify({ favorited: true }),
       },
       env,
     );
@@ -118,10 +118,6 @@ describe("/api/users", () => {
       env,
     );
     const { id: listId } = (await createListRes.json()) as { id: string };
-
-    const profileRes = await app.request(`/api/users/${username}`, undefined, env);
-    const profile = (await profileRes.json()) as { stats: Record<string, number> };
-    expect(profile.stats).toEqual({ total: 1, completed: 1, playing: 0, platinum: 0, favorites: 1 });
 
     const entriesRes = await app.request(`/api/users/${username}/games/entries`, undefined, env);
     expect(entriesRes.status).toBe(200);
@@ -144,15 +140,15 @@ describe("/api/users", () => {
     expect(otherUserListDetailRes.status).toBe(404);
   });
 
-  it("devolve os 4 slots de favoritos de jogos, sem exigir sessão", async () => {
+  it("devolve os favoritos de jogos, sem exigir sessão", async () => {
     const { cookie, username } = await createAuthenticatedUser(app, env);
     stubIgdbFetchOnce([igdbGame(702, "Celeste")]);
     await app.request(
-      "/api/games/favorites/1",
+      "/api/games/702/entry",
       {
         method: "PUT",
         headers: { cookie, "Content-Type": "application/json" },
-        body: JSON.stringify({ igdbId: 702 }),
+        body: JSON.stringify({ favorited: true }),
       },
       env,
     );
@@ -160,10 +156,8 @@ describe("/api/users", () => {
 
     const res = await app.request(`/api/users/${username}/games/favorites`, undefined, env);
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { slots: Array<{ slot: number; entry: unknown }> };
-    expect(body.slots).toHaveLength(4);
-    expect(body.slots[0]).toMatchObject({ slot: 1, entry: { game: { igdbId: 702 } } });
-    expect(body.slots[1]).toEqual({ slot: 2, entry: null });
+    const body = (await res.json()) as { items: Array<{ game: { igdbId: number } }> };
+    expect(body.items).toEqual([expect.objectContaining({ game: expect.objectContaining({ igdbId: 702 }) })]);
   });
 
   it("lista as marcações, favoritos e listas públicas de séries do usuário", async () => {
@@ -195,11 +189,11 @@ describe("/api/users", () => {
 
     vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(jsonResponse(tmdbDetail(1396, "Breaking Bad"))));
     await app.request(
-      "/api/series/favorites/1",
+      "/api/series/1396/entry",
       {
         method: "PUT",
         headers: { cookie, "Content-Type": "application/json" },
-        body: JSON.stringify({ tmdbId: 1396 }),
+        body: JSON.stringify({ favorited: true }),
       },
       env,
     );
@@ -225,8 +219,10 @@ describe("/api/users", () => {
 
     const favoritesRes = await app.request(`/api/users/${username}/series/favorites`, undefined, env);
     expect(favoritesRes.status).toBe(200);
-    const favoritesBody = (await favoritesRes.json()) as { slots: Array<{ slot: number; entry: unknown }> };
-    expect(favoritesBody.slots[0]).toMatchObject({ slot: 1, entry: { series: { tmdbId: 1396 } } });
+    const favoritesBody = (await favoritesRes.json()) as { items: Array<{ series: { tmdbId: number } }> };
+    expect(favoritesBody.items).toEqual([
+      expect.objectContaining({ series: expect.objectContaining({ tmdbId: 1396 }) }),
+    ]);
 
     const listsRes = await app.request(`/api/users/${username}/series/lists`, undefined, env);
     expect(listsRes.status).toBe(200);
@@ -260,7 +256,7 @@ describe("/api/users", () => {
       {
         method: "PUT",
         headers: { cookie, "Content-Type": "application/json" },
-        body: JSON.stringify({ watched: true }),
+        body: JSON.stringify({ status: "watched" }),
       },
       env,
     );
@@ -271,11 +267,11 @@ describe("/api/users", () => {
       vi.fn().mockResolvedValueOnce(jsonResponse(tmdbMovieDetail(27205, "Inception"))),
     );
     await app.request(
-      "/api/movies/favorites/1",
+      "/api/movies/27205/entry",
       {
         method: "PUT",
         headers: { cookie, "Content-Type": "application/json" },
-        body: JSON.stringify({ tmdbId: 27205 }),
+        body: JSON.stringify({ favorited: true }),
       },
       env,
     );
@@ -301,8 +297,10 @@ describe("/api/users", () => {
 
     const favoritesRes = await app.request(`/api/users/${username}/movies/favorites`, undefined, env);
     expect(favoritesRes.status).toBe(200);
-    const favoritesBody = (await favoritesRes.json()) as { slots: Array<{ slot: number; entry: unknown }> };
-    expect(favoritesBody.slots[0]).toMatchObject({ slot: 1, entry: { movie: { tmdbId: 27205 } } });
+    const favoritesBody = (await favoritesRes.json()) as { items: Array<{ movie: { tmdbId: number } }> };
+    expect(favoritesBody.items).toEqual([
+      expect.objectContaining({ movie: expect.objectContaining({ tmdbId: 27205 }) }),
+    ]);
 
     const listsRes = await app.request(`/api/users/${username}/movies/lists`, undefined, env);
     expect(listsRes.status).toBe(200);
@@ -350,11 +348,11 @@ describe("/api/users", () => {
       vi.fn().mockResolvedValueOnce(jsonResponse(googleBooksVolume("book-901", "Duna"))),
     );
     await app.request(
-      "/api/books/favorites/1",
+      "/api/books/book-901/entry",
       {
         method: "PUT",
         headers: { cookie, "Content-Type": "application/json" },
-        body: JSON.stringify({ googleBooksId: "book-901" }),
+        body: JSON.stringify({ favorited: true }),
       },
       env,
     );
@@ -380,8 +378,10 @@ describe("/api/users", () => {
 
     const favoritesRes = await app.request(`/api/users/${username}/books/favorites`, undefined, env);
     expect(favoritesRes.status).toBe(200);
-    const favoritesBody = (await favoritesRes.json()) as { slots: Array<{ slot: number; entry: unknown }> };
-    expect(favoritesBody.slots[0]).toMatchObject({ slot: 1, entry: { book: { googleBooksId: "book-901" } } });
+    const favoritesBody = (await favoritesRes.json()) as { items: Array<{ book: { googleBooksId: string } }> };
+    expect(favoritesBody.items).toEqual([
+      expect.objectContaining({ book: expect.objectContaining({ googleBooksId: "book-901" }) }),
+    ]);
 
     const listsRes = await app.request(`/api/users/${username}/books/lists`, undefined, env);
     expect(listsRes.status).toBe(200);

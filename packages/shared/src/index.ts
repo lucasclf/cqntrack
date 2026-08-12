@@ -2,7 +2,6 @@ export * from "./activity";
 export * from "./auth";
 export * from "./books";
 export * from "./credits";
-export * from "./favorites";
 export * from "./games";
 export * from "./health";
 export * from "./media-type";

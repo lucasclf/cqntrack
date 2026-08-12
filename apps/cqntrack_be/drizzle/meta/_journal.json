@@ -120,6 +120,13 @@
       "when": 1786532045533,
       "tag": "0016_add_cast_and_crew",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1786559812731,
+      "tag": "0017_redesign_status_favoritos",
+      "breakpoints": true
     }
   ]
 }

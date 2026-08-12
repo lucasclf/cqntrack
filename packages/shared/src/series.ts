@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { CastMemberSchema, CrewMemberSchema, SeriesDirectorSchema } from "./credits";
-import { FavoriteSlotNumberSchema } from "./favorites";
 
 // Resumo de uma temporada — vem de graça no mesmo GET /tv/{id} que já
 // cacheia a série, sem chamada extra à TMDB. A lista de episódios em si
@@ -48,6 +47,22 @@ export const SearchSeriesResponseSchema = z.object({
 
 export type SearchSeriesResponse = z.infer<typeof SearchSeriesResponseSchema>;
 
+// Mesmo espírito de DiscoverMoviesResponseSchema (filme) — populares da
+// própria TMDB (GET /tv/popular), índice da seção de séries no menu superior.
+export const DiscoverSeriesQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).max(500).default(1),
+});
+
+export type DiscoverSeriesQuery = z.infer<typeof DiscoverSeriesQuerySchema>;
+
+export const DiscoverSeriesResponseSchema = z.object({
+  results: z.array(SeriesSummarySchema),
+  page: z.number().int(),
+  hasMore: z.boolean(),
+});
+
+export type DiscoverSeriesResponse = z.infer<typeof DiscoverSeriesResponseSchema>;
+
 export const SeriesDetailSchema = SeriesSummarySchema.extend({
   overview: z.string().nullable(),
   cast: z.array(CastMemberSchema),
@@ -71,9 +86,9 @@ export const SeriesEntrySchema = z.object({
   id: z.string(),
   rating: z.number().nullable(),
   watchedEpisodeCount: z.number().int(),
-  // Favoritar só acontece pelos 4 slots fixos da home (ver SeriesFavoritesResponseSchema)
-  // — null = essa série não está em nenhum dos 4 favoritos do usuário.
-  favoriteSlot: FavoriteSlotNumberSchema.nullable(),
+  // Favoritar não tem mais limite de quantidade (ver SeriesFavoritesResponseSchema)
+  // — null = essa série não está favoritada.
+  favoritedAt: z.iso.datetime().nullable(),
   review: z.string().nullable(),
   updatedAt: z.iso.datetime(),
 });
@@ -96,32 +111,21 @@ export type SeriesDetailResponse = z.infer<typeof SeriesDetailResponseSchema>;
 export const UpsertSeriesEntryRequestSchema = z.object({
   rating: z.number().min(0).max(5).multipleOf(0.5).nullable().optional(),
   review: z.string().max(2000).nullable().optional(),
+  favorited: z.boolean().optional(),
 });
 
 export type UpsertSeriesEntryRequest = z.infer<typeof UpsertSeriesEntryRequestSchema>;
 
-// Corpo de PUT /api/series/favorites/:slot — o slot vai na URL, aqui só a
-// série escolhida.
-export const SetSeriesFavoriteSlotRequestSchema = z.object({
-  tmdbId: z.number().int(),
-});
-
-export type SetSeriesFavoriteSlotRequest = z.infer<typeof SetSeriesFavoriteSlotRequestSchema>;
-
-export const SeriesFavoriteSlotSchema = z.object({
-  slot: FavoriteSlotNumberSchema,
-  entry: SeriesEntryWithSeriesSchema.nullable(),
-});
-
-export type SeriesFavoriteSlot = z.infer<typeof SeriesFavoriteSlotSchema>;
-
+// Sem limite de quantidade (não é mais um pool de 4 slots) — lista dos
+// favoritos do usuário, já ordenada por favoritedAt decrescente (mais
+// recente primeiro) pelo service, não pelo cliente.
 export const SeriesFavoritesResponseSchema = z.object({
-  slots: z.array(SeriesFavoriteSlotSchema).length(4),
+  items: z.array(SeriesEntryWithSeriesSchema),
 });
 
 export type SeriesFavoritesResponse = z.infer<typeof SeriesFavoritesResponseSchema>;
 
-// "favorite" ordena/filtra por favoriteSlot (null = não favoritado). Sem
+// "favorite" ordena/filtra por favoritedAt (null = não favoritado). Sem
 // "status" (não existe mais) nem "platform" (nunca existiu pra série).
 export const SERIES_ENTRY_SORT_FIELDS = ["rating", "favorite", "updatedAt"] as const;
 
@@ -225,3 +229,20 @@ export const SeriesEpisodeDetailSchema = z.object({
 });
 
 export type SeriesEpisodeDetail = z.infer<typeof SeriesEpisodeDetailSchema>;
+
+// Série não tem status pra filtrar "recente" (diferente de filme/livro/
+// jogo) — o sinal mais próximo é o episódio assistido mais recentemente
+// (MAX(watchedAt) em series_episode_watch, agregado por série). Usado só
+// pela seção "Assistido recentemente" do perfil público.
+export const RecentlyWatchedSeriesItemSchema = z.object({
+  series: SeriesSummarySchema,
+  lastWatchedAt: z.iso.datetime(),
+});
+
+export type RecentlyWatchedSeriesItem = z.infer<typeof RecentlyWatchedSeriesItemSchema>;
+
+export const RecentlyWatchedSeriesResponseSchema = z.object({
+  items: z.array(RecentlyWatchedSeriesItemSchema),
+});
+
+export type RecentlyWatchedSeriesResponse = z.infer<typeof RecentlyWatchedSeriesResponseSchema>;

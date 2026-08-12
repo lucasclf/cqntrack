@@ -17,26 +17,33 @@ import {
   PaginatedMovieEntriesResponseSchema,
   PaginatedSeriesEntriesResponseSchema,
   PublicProfileSchema,
+  RecentlyWatchedSeriesResponseSchema,
   SeriesFavoritesResponseSchema,
   SeriesListDetailSchema,
   SeriesListsResponseSchema,
 } from "@cqntrack/shared";
 import { Hono } from "hono";
-import { getFavoriteSlots as getBookFavoriteSlots, listBookEntries } from "../books/entries.service";
+import { getFavorites as getBookFavorites, listBookEntries } from "../books/entries.service";
 import { BookListNotFoundError, getBookListDetail, listBookLists } from "../books/lists.service";
 import { createDb } from "../db/client";
-import { getFavoriteSlots as getGameFavoriteSlots, listGameEntries } from "../games/entries.service";
+import { getFavorites as getGameFavorites, listGameEntries } from "../games/entries.service";
 import { GameListNotFoundError, getGameListDetail, listGameLists } from "../games/lists.service";
-import { getFavoriteSlots as getMovieFavoriteSlots, listMovieEntries } from "../movies/entries.service";
+import { getFavorites as getMovieFavorites, listMovieEntries } from "../movies/entries.service";
 import { getMovieListDetail, listMovieLists, MovieListNotFoundError } from "../movies/lists.service";
-import { getFavoriteSlots as getSeriesFavoriteSlots, listSeriesEntries } from "../series/entries.service";
+import {
+  getFavorites as getSeriesFavorites,
+  getRecentlyWatchedSeries,
+  listSeriesEntries,
+} from "../series/entries.service";
 import { getSeriesListDetail, listSeriesLists, SeriesListNotFoundError } from "../series/lists.service";
 import { getPublicProfile, resolveUserIdByUsername, UserNotFoundError } from "./users.service";
 
-// Rotas públicas do perfil (/u/:username) — sem requireSession de propósito:
+// Rotas públicas do perfil (/@:username) — sem requireSession de propósito:
 // nenhum dado aqui é privado (decisão de produto já fechada). Entries/
 // favorites/lists ficam prefixadas por seção (/games/*, /series/*, /movies/*).
 export const usersRouter = new Hono<{ Bindings: Env }>();
+
+const RECENT_ITEMS_LIMIT = 12;
 
 usersRouter.get("/:username", async (c) => {
   const db = createDb(c.env);
@@ -81,8 +88,8 @@ usersRouter.get("/:username/games/favorites", async (c) => {
   const db = createDb(c.env);
   try {
     const userId = await resolveUserIdByUsername(db, c.req.param("username"));
-    const slots = await getGameFavoriteSlots(db, userId);
-    return c.json(FavoritesResponseSchema.parse({ slots }));
+    const items = await getGameFavorites(db, userId);
+    return c.json(FavoritesResponseSchema.parse({ items }));
   } catch (error) {
     if (error instanceof UserNotFoundError) {
       return c.json({ error: "user_not_found" }, 404);
@@ -152,8 +159,25 @@ usersRouter.get("/:username/series/favorites", async (c) => {
   const db = createDb(c.env);
   try {
     const userId = await resolveUserIdByUsername(db, c.req.param("username"));
-    const slots = await getSeriesFavoriteSlots(db, userId);
-    return c.json(SeriesFavoritesResponseSchema.parse({ slots }));
+    const items = await getSeriesFavorites(db, userId);
+    return c.json(SeriesFavoritesResponseSchema.parse({ items }));
+  } catch (error) {
+    if (error instanceof UserNotFoundError) {
+      return c.json({ error: "user_not_found" }, 404);
+    }
+    throw error;
+  }
+});
+
+// Só série precisa desse endpoint dedicado — ela não tem status pra
+// reaproveitar o filtro de /entries como filme/livro/jogo (ver
+// getRecentlyWatchedSeries).
+usersRouter.get("/:username/series/recently-watched", async (c) => {
+  const db = createDb(c.env);
+  try {
+    const userId = await resolveUserIdByUsername(db, c.req.param("username"));
+    const items = await getRecentlyWatchedSeries(db, userId, RECENT_ITEMS_LIMIT);
+    return c.json(RecentlyWatchedSeriesResponseSchema.parse({ items }));
   } catch (error) {
     if (error instanceof UserNotFoundError) {
       return c.json({ error: "user_not_found" }, 404);
@@ -223,8 +247,8 @@ usersRouter.get("/:username/movies/favorites", async (c) => {
   const db = createDb(c.env);
   try {
     const userId = await resolveUserIdByUsername(db, c.req.param("username"));
-    const slots = await getMovieFavoriteSlots(db, userId);
-    return c.json(MovieFavoritesResponseSchema.parse({ slots }));
+    const items = await getMovieFavorites(db, userId);
+    return c.json(MovieFavoritesResponseSchema.parse({ items }));
   } catch (error) {
     if (error instanceof UserNotFoundError) {
       return c.json({ error: "user_not_found" }, 404);
@@ -294,8 +318,8 @@ usersRouter.get("/:username/books/favorites", async (c) => {
   const db = createDb(c.env);
   try {
     const userId = await resolveUserIdByUsername(db, c.req.param("username"));
-    const slots = await getBookFavoriteSlots(db, userId);
-    return c.json(BookFavoritesResponseSchema.parse({ slots }));
+    const items = await getBookFavorites(db, userId);
+    return c.json(BookFavoritesResponseSchema.parse({ items }));
   } catch (error) {
     if (error instanceof UserNotFoundError) {
       return c.json({ error: "user_not_found" }, 404);

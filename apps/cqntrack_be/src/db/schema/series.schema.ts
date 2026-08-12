@@ -69,9 +69,9 @@ export const seriesEntry = sqliteTable(
       .notNull()
       .references(() => series.tmdbId, { onDelete: "cascade" }),
     rating: real("rating"),
-    // 1-4, null = não é favorito. Favoritar só acontece pelos 4 slots fixos
-    // da home (PUT /api/series/favorites/:slot), mesmo padrão de gameEntry.
-    favoriteSlot: integer("favorite_slot"),
+    // Existência = favoritado, sem limite de quantidade (não é mais um
+    // slot 1-4) — mesmo padrão de watchedAt de filme, ordenado por data.
+    favoritedAt: integer("favorited_at", { mode: "timestamp_ms" }),
     review: text("review"),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
@@ -81,14 +81,7 @@ export const seriesEntry = sqliteTable(
       .$onUpdate(() => new Date())
       .notNull(),
   },
-  (table) => [
-    uniqueIndex("series_entry_user_series_unique").on(table.userId, table.seriesId),
-    // Parcial: só entra no índice quem tem um slot — garante no banco que um
-    // usuário nunca tem duas séries no mesmo slot (1-4) ao mesmo tempo.
-    uniqueIndex("series_entry_user_favorite_slot_unique")
-      .on(table.userId, table.favoriteSlot)
-      .where(sql`${table.favoriteSlot} is not null`),
-  ],
+  (table) => [uniqueIndex("series_entry_user_series_unique").on(table.userId, table.seriesId)],
 );
 
 // Uma linha por episódio assistido — existência = assistido, sem coluna

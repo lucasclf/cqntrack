@@ -1,5 +1,6 @@
 import {
-  FAVORITE_SLOTS,
+  DiscoverGamesQuerySchema,
+  DiscoverGamesResponseSchema,
   FavoritesResponseSchema,
   GameDetailResponseSchema,
   GameEntrySchema,
@@ -7,22 +8,19 @@ import {
   PaginatedGameEntriesResponseSchema,
   SearchGamesQuerySchema,
   SearchGamesResponseSchema,
-  SetFavoriteSlotRequestSchema,
   UpsertGameEntryRequestSchema,
-  type FavoriteSlotNumber,
 } from "@cqntrack/shared";
 import { Hono } from "hono";
 import { type AuthedEnv, requireSession } from "../auth/require-session";
 import { createDb } from "../db/client";
+import { deleteGameEntry, getFavorites, getGameEntryForUser, listGameEntries, upsertGameEntry } from "./entries.service";
 import {
-  deleteGameEntry,
-  getFavoriteSlots,
-  getGameEntryForUser,
-  listGameEntries,
-  setFavoriteSlot,
-  upsertGameEntry,
-} from "./entries.service";
-import { GameNotFoundError, getOrCacheGame, mapCachedGameToSummary, searchGamesForUser } from "./games.service";
+  GameNotFoundError,
+  getOrCacheGame,
+  getPopularGamesForUser,
+  mapCachedGameToSummary,
+  searchGamesForUser,
+} from "./games.service";
 
 export const gamesRouter = new Hono<AuthedEnv>();
 
@@ -31,11 +29,6 @@ gamesRouter.use("*", requireSession);
 function parseIgdbId(c: { req: { param: (name: string) => string } }): number | null {
   const igdbId = Number(c.req.param("igdbId"));
   return Number.isInteger(igdbId) ? igdbId : null;
-}
-
-function parseFavoriteSlot(c: { req: { param: (name: string) => string } }): FavoriteSlotNumber | null {
-  const slot = Number(c.req.param("slot"));
-  return FAVORITE_SLOTS.includes(slot as FavoriteSlotNumber) ? (slot as FavoriteSlotNumber) : null;
 }
 
 // Rotas estáticas (/search, /entries, /favorites) precisam vir ANTES de
@@ -76,32 +69,19 @@ gamesRouter.get("/entries", async (c) => {
 
 gamesRouter.get("/favorites", async (c) => {
   const db = createDb(c.env);
-  const slots = await getFavoriteSlots(db, c.get("userId"));
-  return c.json(FavoritesResponseSchema.parse({ slots }));
+  const items = await getFavorites(db, c.get("userId"));
+  return c.json(FavoritesResponseSchema.parse({ items }));
 });
 
-gamesRouter.put("/favorites/:slot", async (c) => {
-  const slot = parseFavoriteSlot(c);
-  if (slot === null) {
-    return c.json({ error: "invalid_slot" }, 400);
-  }
-
-  const json = await c.req.json().catch(() => null);
-  const parsed = SetFavoriteSlotRequestSchema.safeParse(json);
+gamesRouter.get("/discover", async (c) => {
+  const parsed = DiscoverGamesQuerySchema.safeParse({ page: c.req.query("page") });
   if (!parsed.success) {
-    return c.json({ error: "invalid_body" }, 400);
+    return c.json({ error: "invalid_query" }, 400);
   }
 
   const db = createDb(c.env);
-  try {
-    const entry = await setFavoriteSlot(c.env, db, c.get("userId"), slot, parsed.data.igdbId);
-    return c.json(GameEntrySchema.parse(entry));
-  } catch (error) {
-    if (error instanceof GameNotFoundError) {
-      return c.json({ error: "game_not_found" }, 404);
-    }
-    throw error;
-  }
+  const { results, hasMore } = await getPopularGamesForUser(c.env, db, parsed.data.page);
+  return c.json(DiscoverGamesResponseSchema.parse({ results, page: parsed.data.page, hasMore }));
 });
 
 gamesRouter.get("/:igdbId", async (c) => {

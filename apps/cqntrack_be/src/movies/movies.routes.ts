@@ -1,5 +1,6 @@
 import {
-  FAVORITE_SLOTS,
+  DiscoverMoviesQuerySchema,
+  DiscoverMoviesResponseSchema,
   ListMovieEntriesQuerySchema,
   MovieDetailResponseSchema,
   MovieEntrySchema,
@@ -7,23 +8,21 @@ import {
   PaginatedMovieEntriesResponseSchema,
   SearchMoviesQuerySchema,
   SearchMoviesResponseSchema,
-  SetMovieFavoriteSlotRequestSchema,
   UpsertMovieEntryRequestSchema,
-  type FavoriteSlotNumber,
 } from "@cqntrack/shared";
 import { Hono } from "hono";
 import { type AuthedEnv, requireSession } from "../auth/require-session";
 import { createDb } from "../db/client";
 import {
   deleteMovieEntry,
-  getFavoriteSlots,
+  getFavorites,
   getMovieEntryForUser,
   listMovieEntries,
-  setFavoriteSlot,
   upsertMovieEntry,
 } from "./entries.service";
 import {
   getOrCacheMovie,
+  getPopularMoviesForUser,
   mapCachedMovieCast,
   mapCachedMovieDirectors,
   mapCachedMovieToSummary,
@@ -38,13 +37,6 @@ moviesRouter.use("*", requireSession);
 function parseTmdbId(c: { req: { param: (name: string) => string } }): number | null {
   const tmdbId = Number(c.req.param("tmdbId"));
   return Number.isInteger(tmdbId) ? tmdbId : null;
-}
-
-function parseFavoriteSlot(c: {
-  req: { param: (name: string) => string };
-}): FavoriteSlotNumber | null {
-  const slot = Number(c.req.param("slot"));
-  return FAVORITE_SLOTS.includes(slot as FavoriteSlotNumber) ? (slot as FavoriteSlotNumber) : null;
 }
 
 // Rotas estáticas (/search, /entries, /favorites) precisam vir ANTES de
@@ -85,32 +77,18 @@ moviesRouter.get("/entries", async (c) => {
 
 moviesRouter.get("/favorites", async (c) => {
   const db = createDb(c.env);
-  const slots = await getFavoriteSlots(db, c.get("userId"));
-  return c.json(MovieFavoritesResponseSchema.parse({ slots }));
+  const items = await getFavorites(db, c.get("userId"));
+  return c.json(MovieFavoritesResponseSchema.parse({ items }));
 });
 
-moviesRouter.put("/favorites/:slot", async (c) => {
-  const slot = parseFavoriteSlot(c);
-  if (slot === null) {
-    return c.json({ error: "invalid_slot" }, 400);
-  }
-
-  const json = await c.req.json().catch(() => null);
-  const parsed = SetMovieFavoriteSlotRequestSchema.safeParse(json);
+moviesRouter.get("/discover", async (c) => {
+  const parsed = DiscoverMoviesQuerySchema.safeParse({ page: c.req.query("page") });
   if (!parsed.success) {
-    return c.json({ error: "invalid_body" }, 400);
+    return c.json({ error: "invalid_query" }, 400);
   }
 
-  const db = createDb(c.env);
-  try {
-    const entry = await setFavoriteSlot(c.env, db, c.get("userId"), slot, parsed.data.tmdbId);
-    return c.json(MovieEntrySchema.parse(entry));
-  } catch (error) {
-    if (error instanceof MovieNotFoundError) {
-      return c.json({ error: "movie_not_found" }, 404);
-    }
-    throw error;
-  }
+  const { results, hasMore } = await getPopularMoviesForUser(c.env, parsed.data.page);
+  return c.json(DiscoverMoviesResponseSchema.parse({ results, page: parsed.data.page, hasMore }));
 });
 
 moviesRouter.get("/:tmdbId", async (c) => {

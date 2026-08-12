@@ -1,6 +1,21 @@
 import { z } from "zod";
 import { CastMemberSchema, CrewMemberSchema } from "./credits";
-import { FavoriteSlotNumberSchema } from "./favorites";
+
+// Fonte única de verdade dos 2 status — importado tanto pelo schema Drizzle
+// (enum da coluna) quanto pelo z.enum abaixo. Diferente de série (sem
+// status, só watchedEpisodeCount): filme não tem substrutura, então o
+// status é só "já vi"/"quero ver" — sem os estados intermediários que jogo
+// tem (jogando/abandonado).
+export const MOVIE_STATUSES = ["watched", "want_to_watch"] as const;
+
+export const MovieStatusSchema = z.enum(MOVIE_STATUSES);
+
+export type MovieStatus = z.infer<typeof MovieStatusSchema>;
+
+export const MOVIE_STATUS_LABELS: Record<MovieStatus, string> = {
+  watched: "Já vi",
+  want_to_watch: "Quero ver",
+};
 
 // DTO enxuto de um filme — nunca a entity Drizzle crua. `rating` aqui é a
 // nota agregada da própria TMDB (0-10) — não confundir com a nota pessoal do
@@ -32,6 +47,24 @@ export const SearchMoviesResponseSchema = z.object({
 
 export type SearchMoviesResponse = z.infer<typeof SearchMoviesResponseSchema>;
 
+// Tela "Descobrir" (populares da própria TMDB, GET /movie/popular) — vira o
+// índice da seção de filmes no menu superior. Sem contagem total (a TMDB
+// não garante um número exato útil) — "hasMore" é aproximado: true quando a
+// página veio cheia, false quando veio incompleta (fim da lista).
+export const DiscoverMoviesQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).max(500).default(1),
+});
+
+export type DiscoverMoviesQuery = z.infer<typeof DiscoverMoviesQuerySchema>;
+
+export const DiscoverMoviesResponseSchema = z.object({
+  results: z.array(MovieSummarySchema),
+  page: z.number().int(),
+  hasMore: z.boolean(),
+});
+
+export type DiscoverMoviesResponse = z.infer<typeof DiscoverMoviesResponseSchema>;
+
 export const MovieDetailSchema = MovieSummarySchema.extend({
   overview: z.string().nullable(),
   cast: z.array(CastMemberSchema),
@@ -43,17 +76,18 @@ export type MovieDetail = z.infer<typeof MovieDetailSchema>;
 // Marcação do usuário para um filme específico — sem o `movie` embutido
 // (quem consome isso normalmente já sabe de qual filme se trata pelo
 // contexto da chamada). Ver MovieEntryWithMovieSchema para o caso de
-// listas/feeds. Sem status — filme não tem substrutura pra progredir, só
-// "assisti ou não" (watchedAt) + a nota. watchedAt é a fonte de verdade;
-// `watched` não existe como coluna própria — quem consome deriva
-// `watchedAt !== null`.
+// listas/feeds. `watchedAt` é derivado do status (preenchido só quando
+// status vira "watched") — continua existindo pra mostrar "Assistido em
+// DD/MM/AAAA", mas quem decide o valor é o status, não um toggle
+// independente.
 export const MovieEntrySchema = z.object({
   id: z.string(),
+  status: MovieStatusSchema.nullable(),
   rating: z.number().nullable(),
   watchedAt: z.iso.datetime().nullable(),
-  // Favoritar só acontece pelos 4 slots fixos da home (ver MovieFavoritesResponseSchema)
-  // — null = esse filme não está em nenhum dos 4 favoritos do usuário.
-  favoriteSlot: FavoriteSlotNumberSchema.nullable(),
+  // Favoritar não tem mais limite de quantidade (ver MovieFavoritesResponseSchema)
+  // — null = esse filme não está favoritado.
+  favoritedAt: z.iso.datetime().nullable(),
   review: z.string().nullable(),
   updatedAt: z.iso.datetime(),
 });
@@ -73,46 +107,33 @@ export const MovieDetailResponseSchema = z.object({
 
 export type MovieDetailResponse = z.infer<typeof MovieDetailResponseSchema>;
 
-// `watched` no corpo é um toggle explícito, independente de rating/review:
-// true seta watchedAt=now (no servidor), false limpa. Omitido = não mexe.
+// `favorited` no corpo é um toggle explícito, independente de rating/review/
+// status: true seta favoritedAt=now (no servidor), false limpa. Omitido =
+// não mexe — mesmo espírito de status (transição explícita, não implícita).
 export const UpsertMovieEntryRequestSchema = z.object({
+  status: MovieStatusSchema.nullable().optional(),
   rating: z.number().min(0).max(5).multipleOf(0.5).nullable().optional(),
   review: z.string().max(2000).nullable().optional(),
-  watched: z.boolean().optional(),
+  favorited: z.boolean().optional(),
 });
 
 export type UpsertMovieEntryRequest = z.infer<typeof UpsertMovieEntryRequestSchema>;
 
-// Corpo de PUT /api/movies/favorites/:slot — o slot vai na URL, aqui só o
-// filme escolhido.
-export const SetMovieFavoriteSlotRequestSchema = z.object({
-  tmdbId: z.number().int(),
-});
-
-export type SetMovieFavoriteSlotRequest = z.infer<typeof SetMovieFavoriteSlotRequestSchema>;
-
-export const MovieFavoriteSlotSchema = z.object({
-  slot: FavoriteSlotNumberSchema,
-  entry: MovieEntryWithMovieSchema.nullable(),
-});
-
-export type MovieFavoriteSlot = z.infer<typeof MovieFavoriteSlotSchema>;
-
+// Sem limite de quantidade (não é mais um pool de 4 slots) — lista dos
+// favoritos do usuário, já ordenada por favoritedAt decrescente (mais
+// recente primeiro) pelo service, não pelo cliente.
 export const MovieFavoritesResponseSchema = z.object({
-  slots: z.array(MovieFavoriteSlotSchema).length(4),
+  items: z.array(MovieEntryWithMovieSchema),
 });
 
 export type MovieFavoritesResponse = z.infer<typeof MovieFavoritesResponseSchema>;
 
-// "favorite" ordena/filtra por favoriteSlot (null = não favoritado). Sem
-// "status" (filme não tem) nem "platform" (nunca existiu fora de jogos).
-export const MOVIE_ENTRY_SORT_FIELDS = ["rating", "favorite", "updatedAt"] as const;
+// "favorite" ordena/filtra por favoritedAt (null = não favoritado).
+export const MOVIE_ENTRY_SORT_FIELDS = ["status", "rating", "favorite", "updatedAt"] as const;
 
 export const ListMovieEntriesQuerySchema = z.object({
+  status: MovieStatusSchema.optional(),
   favorite: z.coerce.boolean().optional(),
-  // Filtro extra que série não tem (não faz sentido lá): só os já
-  // assistidos, ou só os ainda não assistidos.
-  watched: z.coerce.boolean().optional(),
   sortBy: z.enum(MOVIE_ENTRY_SORT_FIELDS).default("updatedAt"),
   order: z.enum(["asc", "desc"]).default("desc"),
   page: z.coerce.number().int().min(1).default(1),

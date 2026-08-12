@@ -3,28 +3,18 @@ import {
   BookDetailResponseSchema,
   BookEntrySchema,
   BookFavoritesResponseSchema,
-  FAVORITE_SLOTS,
   ListBookEntriesQuerySchema,
   PaginatedBookEntriesResponseSchema,
   SearchBooksQuerySchema,
   SearchBooksResponseSchema,
-  SetBookFavoriteSlotRequestSchema,
   UpsertBookEntryRequestSchema,
-  type FavoriteSlotNumber,
 } from "@cqntrack/shared";
 import { Hono } from "hono";
 import { type AuthedEnv, requireSession } from "../auth/require-session";
 import { createDb } from "../db/client";
 import { getAuthorBooks } from "./authors.service";
 import { BookNotFoundError, getOrCacheBook, mapCachedBookToSummary, searchBooksForUser } from "./books.service";
-import {
-  deleteBookEntry,
-  getBookEntryForUser,
-  getFavoriteSlots,
-  listBookEntries,
-  setFavoriteSlot,
-  upsertBookEntry,
-} from "./entries.service";
+import { deleteBookEntry, getBookEntryForUser, getFavorites, listBookEntries, upsertBookEntry } from "./entries.service";
 
 export const booksRouter = new Hono<AuthedEnv>();
 
@@ -33,13 +23,6 @@ booksRouter.use("*", requireSession);
 function parseGoogleBooksId(c: { req: { param: (name: string) => string } }): string | null {
   const googleBooksId = c.req.param("googleBooksId");
   return googleBooksId.length > 0 ? googleBooksId : null;
-}
-
-function parseFavoriteSlot(c: {
-  req: { param: (name: string) => string };
-}): FavoriteSlotNumber | null {
-  const slot = Number(c.req.param("slot"));
-  return FAVORITE_SLOTS.includes(slot as FavoriteSlotNumber) ? (slot as FavoriteSlotNumber) : null;
 }
 
 // Rotas estáticas (/search, /entries, /favorites) precisam vir ANTES de
@@ -80,32 +63,8 @@ booksRouter.get("/entries", async (c) => {
 
 booksRouter.get("/favorites", async (c) => {
   const db = createDb(c.env);
-  const slots = await getFavoriteSlots(db, c.get("userId"));
-  return c.json(BookFavoritesResponseSchema.parse({ slots }));
-});
-
-booksRouter.put("/favorites/:slot", async (c) => {
-  const slot = parseFavoriteSlot(c);
-  if (slot === null) {
-    return c.json({ error: "invalid_slot" }, 400);
-  }
-
-  const json = await c.req.json().catch(() => null);
-  const parsed = SetBookFavoriteSlotRequestSchema.safeParse(json);
-  if (!parsed.success) {
-    return c.json({ error: "invalid_body" }, 400);
-  }
-
-  const db = createDb(c.env);
-  try {
-    const entry = await setFavoriteSlot(c.env, db, c.get("userId"), slot, parsed.data.googleBooksId);
-    return c.json(BookEntrySchema.parse(entry));
-  } catch (error) {
-    if (error instanceof BookNotFoundError) {
-      return c.json({ error: "book_not_found" }, 404);
-    }
-    throw error;
-  }
+  const items = await getFavorites(db, c.get("userId"));
+  return c.json(BookFavoritesResponseSchema.parse({ items }));
 });
 
 booksRouter.get("/authors/:name", async (c) => {

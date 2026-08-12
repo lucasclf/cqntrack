@@ -1,11 +1,8 @@
-import {
-  FAVORITE_SLOTS,
-  type BookEntry,
-  type BookEntryWithBook,
-  type BookFavoriteSlot,
-  type FavoriteSlotNumber,
-  type ListBookEntriesQuery,
-  type UpsertBookEntryRequest,
+import type {
+  BookEntry,
+  BookEntryWithBook,
+  ListBookEntriesQuery,
+  UpsertBookEntryRequest,
 } from "@cqntrack/shared";
 import { and, asc, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import type { createDb } from "../db/client";
@@ -19,7 +16,7 @@ type BookEntryRow = typeof bookEntry.$inferSelect;
 const SORT_COLUMNS = {
   status: bookEntry.status,
   rating: bookEntry.rating,
-  favorite: bookEntry.favoriteSlot,
+  favorite: bookEntry.favoritedAt,
   updatedAt: bookEntry.updatedAt,
 } as const;
 
@@ -28,7 +25,7 @@ function toBookEntry(row: BookEntryRow): BookEntry {
     id: row.id,
     status: row.status,
     rating: row.rating,
-    favoriteSlot: row.favoriteSlot as BookEntry["favoriteSlot"],
+    favoritedAt: row.favoritedAt?.toISOString() ?? null,
     review: row.review,
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -54,6 +51,11 @@ async function logBookEntryActivities(
   }
   if (input.review !== undefined && input.review !== null && input.review.trim() !== "") {
     activities.push({ userId, ...snapshot, type: "reviewed" });
+  }
+  // Só ao favoritar — desfavoritar não vira atividade (mesmo espírito de
+  // desmarcar status).
+  if (input.favorited === true) {
+    activities.push({ userId, ...snapshot, type: "favorited" });
   }
 
   if (activities.length > 0) {
@@ -89,6 +91,7 @@ export async function upsertBookEntry(
     status: input.status,
     rating: input.rating,
     review: input.review,
+    favoritedAt: input.favorited === undefined ? undefined : input.favorited ? new Date() : null,
   });
 
   const [row] = existing
@@ -104,62 +107,16 @@ export async function upsertBookEntry(
   return toBookEntry(row);
 }
 
-// Define qual livro ocupa um dos 4 slots fixos de favorito do usuário — a
-// única forma de favoritar (não existe um "favorite: true" solto em
-// qualquer marcação). Sempre sobrescreve: libera quem estava nesse slot e
-// qualquer outro slot que esse mesmo livro já ocupasse, já que um livro só
-// fica em um slot por vez.
-export async function setFavoriteSlot(
-  env: Env,
-  db: Db,
-  userId: string,
-  slot: FavoriteSlotNumber,
-  googleBooksId: string,
-): Promise<BookEntry> {
-  const cachedBook = await getOrCacheBook(env, db, googleBooksId);
-
-  await db
-    .update(bookEntry)
-    .set({ favoriteSlot: null })
-    .where(and(eq(bookEntry.userId, userId), eq(bookEntry.favoriteSlot, slot)));
-  await db
-    .update(bookEntry)
-    .set({ favoriteSlot: null })
-    .where(and(eq(bookEntry.userId, userId), eq(bookEntry.bookId, googleBooksId)));
-
-  const existing = await db.query.bookEntry.findFirst({
-    where: and(eq(bookEntry.userId, userId), eq(bookEntry.bookId, googleBooksId)),
-  });
-
-  const [row] = existing
-    ? await db.update(bookEntry).set({ favoriteSlot: slot }).where(eq(bookEntry.id, existing.id)).returning()
-    : await db.insert(bookEntry).values({ userId, bookId: googleBooksId, favoriteSlot: slot }).returning();
-
-  if (!row) {
-    throw new Error("Falha ao definir o favorito");
-  }
-
-  await db.insert(activity).values({ userId, ...toActivitySnapshot(cachedBook), type: "favorited" });
-
-  return toBookEntry(row);
-}
-
-// Sempre os 4 slots, preenchidos ou não — quem chama decide o que fazer com
-// os vazios (ex.: mostrar um placeholder "+" só na própria home).
-export async function getFavoriteSlots(db: Db, userId: string): Promise<BookFavoriteSlot[]> {
+// Sem limite de quantidade — todo livro com favoritedAt preenchido, mais
+// recente primeiro.
+export async function getFavorites(db: Db, userId: string): Promise<BookEntryWithBook[]> {
   const rows = await db.query.bookEntry.findMany({
-    where: and(eq(bookEntry.userId, userId), isNotNull(bookEntry.favoriteSlot)),
+    where: and(eq(bookEntry.userId, userId), isNotNull(bookEntry.favoritedAt)),
+    orderBy: desc(bookEntry.favoritedAt),
     with: { book: true },
   });
-  const bySlot = new Map(rows.map((row) => [row.favoriteSlot, row]));
 
-  return FAVORITE_SLOTS.map((slot) => {
-    const row = bySlot.get(slot);
-    return {
-      slot,
-      entry: row ? { ...toBookEntry(row), book: mapCachedBookToSummary(row.book) } : null,
-    };
-  });
+  return rows.map((row) => ({ ...toBookEntry(row), book: mapCachedBookToSummary(row.book) }));
 }
 
 export async function deleteBookEntry(db: Db, userId: string, googleBooksId: string): Promise<void> {
@@ -176,9 +133,7 @@ export async function listBookEntries(
     conditions.push(eq(bookEntry.status, query.status));
   }
   if (query.favorite !== undefined) {
-    conditions.push(
-      query.favorite ? isNotNull(bookEntry.favoriteSlot) : isNull(bookEntry.favoriteSlot),
-    );
+    conditions.push(query.favorite ? isNotNull(bookEntry.favoritedAt) : isNull(bookEntry.favoritedAt));
   }
   const where = and(...conditions);
 

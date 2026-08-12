@@ -2,7 +2,7 @@ import type { GameSummary } from "@cqntrack/shared";
 import { eq } from "drizzle-orm";
 import type { createDb } from "../db/client";
 import { game } from "../db/schema";
-import { getGameById, searchGames as igdbSearchGames } from "../integrations/igdb/games";
+import { getGameById, getPopularGames, searchGames as igdbSearchGames } from "../integrations/igdb/games";
 import { buildCoverUrl, type IgdbGame } from "../integrations/igdb/types";
 
 type Db = ReturnType<typeof createDb>;
@@ -67,6 +67,24 @@ export async function searchGamesForUser(
 ): Promise<GameSummary[]> {
   const games = await igdbSearchGames(env, db, query, limit);
   return games.map(mapIgdbGameToSummary);
+}
+
+const DISCOVER_PAGE_SIZE = 20;
+
+// Tela "Descobrir" — aclamados da própria IGDB. Diferente da TMDB, a IGDB
+// não devolve um total de páginas — hasMore é aproximado: true quando a
+// página veio cheia (provavelmente tem mais), false quando veio incompleta
+// (fim da lista).
+export async function getPopularGamesForUser(
+  env: Env,
+  db: Db,
+  page: number,
+): Promise<{ results: GameSummary[]; hasMore: boolean }> {
+  const games = await getPopularGames(env, db, page);
+  return {
+    results: games.map(mapIgdbGameToSummary),
+    hasMore: games.length >= DISCOVER_PAGE_SIZE,
+  };
 }
 
 // Busca o jogo no cache local (game); se não existir, consulta a IGDB e

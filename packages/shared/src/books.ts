@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { FavoriteSlotNumberSchema } from "./favorites";
 
 // Fonte única de verdade dos 4 status — importado tanto pelo schema Drizzle
 // (enum da coluna) quanto pelo z.enum abaixo. Mesmo modelo de jogos (status),
@@ -62,9 +61,9 @@ export const BookEntrySchema = z.object({
   id: z.string(),
   status: BookStatusSchema.nullable(),
   rating: z.number().nullable(),
-  // Favoritar só acontece pelos 4 slots fixos da home (ver BookFavoritesResponseSchema)
-  // — null = esse livro não está em nenhum dos 4 favoritos do usuário.
-  favoriteSlot: FavoriteSlotNumberSchema.nullable(),
+  // Favoritar não tem mais limite de quantidade (ver BookFavoritesResponseSchema)
+  // — null = esse livro não está favoritado.
+  favoritedAt: z.iso.datetime().nullable(),
   review: z.string().nullable(),
   updatedAt: z.iso.datetime(),
 });
@@ -88,32 +87,21 @@ export const UpsertBookEntryRequestSchema = z.object({
   status: BookStatusSchema.nullable().optional(),
   rating: z.number().min(0).max(5).multipleOf(0.5).nullable().optional(),
   review: z.string().max(2000).nullable().optional(),
+  favorited: z.boolean().optional(),
 });
 
 export type UpsertBookEntryRequest = z.infer<typeof UpsertBookEntryRequestSchema>;
 
-// Corpo de PUT /api/books/favorites/:slot — o slot vai na URL, aqui só o
-// livro escolhido.
-export const SetBookFavoriteSlotRequestSchema = z.object({
-  googleBooksId: z.string(),
-});
-
-export type SetBookFavoriteSlotRequest = z.infer<typeof SetBookFavoriteSlotRequestSchema>;
-
-export const BookFavoriteSlotSchema = z.object({
-  slot: FavoriteSlotNumberSchema,
-  entry: BookEntryWithBookSchema.nullable(),
-});
-
-export type BookFavoriteSlot = z.infer<typeof BookFavoriteSlotSchema>;
-
+// Sem limite de quantidade (não é mais um pool de 4 slots) — lista dos
+// favoritos do usuário, já ordenada por favoritedAt decrescente (mais
+// recente primeiro) pelo service, não pelo cliente.
 export const BookFavoritesResponseSchema = z.object({
-  slots: z.array(BookFavoriteSlotSchema).length(4),
+  items: z.array(BookEntryWithBookSchema),
 });
 
 export type BookFavoritesResponse = z.infer<typeof BookFavoritesResponseSchema>;
 
-// "favorite" ordena/filtra por favoriteSlot (null = não favoritado). Sem
+// "favorite" ordena/filtra por favoritedAt (null = não favoritado). Sem
 // "platform" (nunca existiu fora de jogos).
 export const BOOK_ENTRY_SORT_FIELDS = ["status", "rating", "favorite", "updatedAt"] as const;
 

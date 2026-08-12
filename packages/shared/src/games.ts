@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { FavoriteSlotNumberSchema } from "./favorites";
 
 // Fonte única de verdade dos 5 status — importado tanto pelo schema Drizzle
 // (enum da coluna) quanto pelo z.enum abaixo.
@@ -45,6 +44,24 @@ export const SearchGamesResponseSchema = z.object({
 
 export type SearchGamesResponse = z.infer<typeof SearchGamesResponseSchema>;
 
+// Tela "Descobrir" (aclamados da própria IGDB, ordenado por total_rating com
+// um piso de avaliações pra evitar jogo obscuro com 1 nota 100) — vira o
+// índice da seção de jogos no menu superior. Mesmo espírito de
+// DiscoverMoviesResponseSchema/DiscoverSeriesResponseSchema.
+export const DiscoverGamesQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).max(500).default(1),
+});
+
+export type DiscoverGamesQuery = z.infer<typeof DiscoverGamesQuerySchema>;
+
+export const DiscoverGamesResponseSchema = z.object({
+  results: z.array(GameSummarySchema),
+  page: z.number().int(),
+  hasMore: z.boolean(),
+});
+
+export type DiscoverGamesResponse = z.infer<typeof DiscoverGamesResponseSchema>;
+
 export const GameDetailSchema = GameSummarySchema.extend({
   summary: z.string().nullable(),
 });
@@ -58,9 +75,9 @@ export const GameEntrySchema = z.object({
   id: z.string(),
   status: GameStatusSchema.nullable(),
   rating: z.number().nullable(),
-  // Favoritar só acontece pelos 4 slots fixos da home (ver FavoritesResponseSchema)
-  // — null = esse jogo não está em nenhum dos 4 favoritos do usuário.
-  favoriteSlot: FavoriteSlotNumberSchema.nullable(),
+  // Favoritar não tem mais limite de quantidade (ver FavoritesResponseSchema)
+  // — null = esse jogo não está favoritado.
+  favoritedAt: z.iso.datetime().nullable(),
   // Um jogo pode ter sido jogado em mais de uma plataforma — lista, não texto
   // único. null = nenhuma selecionada.
   platforms: z.array(z.string()).nullable(),
@@ -88,34 +105,23 @@ export const UpsertGameEntryRequestSchema = z.object({
   rating: z.number().min(0).max(5).multipleOf(0.5).nullable().optional(),
   review: z.string().max(2000).nullable().optional(),
   platforms: z.array(z.string().min(1).max(60)).max(10).nullable().optional(),
+  favorited: z.boolean().optional(),
 });
 
 export type UpsertGameEntryRequest = z.infer<typeof UpsertGameEntryRequestSchema>;
 
-// Corpo de PUT /api/games/favorites/:slot — o slot vai na URL, aqui só o
-// jogo escolhido.
-export const SetFavoriteSlotRequestSchema = z.object({
-  igdbId: z.number().int(),
-});
-
-export type SetFavoriteSlotRequest = z.infer<typeof SetFavoriteSlotRequestSchema>;
-
-export const FavoriteSlotSchema = z.object({
-  slot: FavoriteSlotNumberSchema,
-  entry: GameEntryWithGameSchema.nullable(),
-});
-
-export type FavoriteSlot = z.infer<typeof FavoriteSlotSchema>;
-
+// Sem limite de quantidade (não é mais um pool de 4 slots) — lista dos
+// favoritos do usuário, já ordenada por favoritedAt decrescente (mais
+// recente primeiro) pelo service, não pelo cliente.
 export const FavoritesResponseSchema = z.object({
-  slots: z.array(FavoriteSlotSchema).length(4),
+  items: z.array(GameEntryWithGameSchema),
 });
 
 export type FavoritesResponse = z.infer<typeof FavoritesResponseSchema>;
 
 // "platform" (singular) continua sendo o nome do campo de ordenação/filtro —
 // filtra/ordena por conter essa plataforma na lista `platforms` da entry.
-// "favorite" ordena/filtra por favoriteSlot (null = não favoritado).
+// "favorite" ordena/filtra por favoritedAt (null = não favoritado).
 export const GAME_ENTRY_SORT_FIELDS = ["status", "rating", "favorite", "platform", "updatedAt"] as const;
 
 export const ListGameEntriesQuerySchema = z.object({
@@ -173,19 +179,15 @@ export const UpdateGameListRequestSchema = CreateGameListRequestSchema.partial()
 
 export type UpdateGameListRequest = z.infer<typeof UpdateGameListRequestSchema>;
 
-// Perfil público (/u/:username) — sem toggle de privacidade por item, tudo
+// Perfil público (/@:username) — sem toggle de privacidade por item, tudo
 // que existe aqui já é público por padrão (decisão de produto já fechada).
+// Sem stats agregados (existia só pra jogos, tirado no redesign do perfil
+// — a tela nova é toda baseada em grades de favoritos/recentes, não em
+// contadores).
 export const PublicProfileSchema = z.object({
   username: z.string(),
   displayUsername: z.string(),
   memberSince: z.iso.datetime(),
-  stats: z.object({
-    total: z.number().int(),
-    completed: z.number().int(),
-    playing: z.number().int(),
-    platinum: z.number().int(),
-    favorites: z.number().int(),
-  }),
 });
 
 export type PublicProfile = z.infer<typeof PublicProfileSchema>;

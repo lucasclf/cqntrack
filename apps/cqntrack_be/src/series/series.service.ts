@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import type { createDb } from "../db/client";
 import { series } from "../db/schema";
 import { getSeriesAggregateCredits } from "../integrations/tmdb/credits";
-import { getSeriesById, searchSeries as tmdbSearchSeries } from "../integrations/tmdb/series";
+import { getPopularSeries, getSeriesById, searchSeries as tmdbSearchSeries } from "../integrations/tmdb/series";
 import {
   buildPosterUrl,
   TV_GENRE_NAMES,
@@ -118,6 +118,19 @@ export async function searchSeriesForUser(
 ): Promise<SeriesSummary[]> {
   const results = await tmdbSearchSeries(env, query, limit);
   return results.map(mapTmdbSearchResultToSummary);
+}
+
+// Tela "Descobrir" — populares da própria TMDB. Mesmo espírito de
+// getPopularMoviesForUser (filme).
+export async function getPopularSeriesForUser(
+  env: Env,
+  page: number,
+): Promise<{ results: SeriesSummary[]; hasMore: boolean }> {
+  const response = await getPopularSeries(env, page);
+  return {
+    results: response.results.map(mapTmdbSearchResultToSummary),
+    hasMore: response.total_pages !== undefined && (response.page ?? page) < response.total_pages,
+  };
 }
 
 // Séries em exibição ganham temporada nova (ou episódios novos numa

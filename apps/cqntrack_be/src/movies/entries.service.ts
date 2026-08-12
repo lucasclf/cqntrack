@@ -1,11 +1,8 @@
-import {
-  FAVORITE_SLOTS,
-  type FavoriteSlotNumber,
-  type ListMovieEntriesQuery,
-  type MovieEntry,
-  type MovieEntryWithMovie,
-  type MovieFavoriteSlot,
-  type UpsertMovieEntryRequest,
+import type {
+  ListMovieEntriesQuery,
+  MovieEntry,
+  MovieEntryWithMovie,
+  UpsertMovieEntryRequest,
 } from "@cqntrack/shared";
 import { and, asc, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import type { createDb } from "../db/client";
@@ -17,17 +14,19 @@ type Db = ReturnType<typeof createDb>;
 type MovieEntryRow = typeof movieEntry.$inferSelect;
 
 const SORT_COLUMNS = {
+  status: movieEntry.status,
   rating: movieEntry.rating,
-  favorite: movieEntry.favoriteSlot,
+  favorite: movieEntry.favoritedAt,
   updatedAt: movieEntry.updatedAt,
 } as const;
 
 function toMovieEntry(row: MovieEntryRow): MovieEntry {
   return {
     id: row.id,
+    status: row.status,
     rating: row.rating,
     watchedAt: row.watchedAt ? row.watchedAt.toISOString() : null,
-    favoriteSlot: row.favoriteSlot as MovieEntry["favoriteSlot"],
+    favoritedAt: row.favoritedAt?.toISOString() ?? null,
     review: row.review,
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -42,16 +41,22 @@ async function logMovieEntryActivities(
   const snapshot = toActivitySnapshot(cachedMovie);
   const activities: (typeof activity.$inferInsert)[] = [];
 
+  // Só loga quando um status real é definido — desmarcar (status: null),
+  // como desfavoritar, não vira atividade no feed. Mesmo tipo já usado por
+  // jogo/livro ("status_changed") — filme agora também é status-based.
+  if (input.status !== undefined && input.status !== null) {
+    activities.push({ userId, ...snapshot, type: "status_changed", metadata: { status: input.status } });
+  }
   if (input.rating !== undefined && input.rating !== null) {
     activities.push({ userId, ...snapshot, type: "rated", metadata: { rating: input.rating } });
   }
   if (input.review !== undefined && input.review !== null && input.review.trim() !== "") {
     activities.push({ userId, ...snapshot, type: "reviewed" });
   }
-  // Só ao marcar, nunca ao desmarcar — mesmo espírito de "desfavoritar não
-  // gera atividade" e de season_watched em série.
-  if (input.watched === true) {
-    activities.push({ userId, ...snapshot, type: "watched" });
+  // Só ao favoritar, nunca ao desfavoritar — mesmo espírito de "desmarcar
+  // status não gera atividade".
+  if (input.favorited === true) {
+    activities.push({ userId, ...snapshot, type: "favorited" });
   }
 
   if (activities.length > 0) {
@@ -84,9 +89,13 @@ export async function upsertMovieEntry(
   });
 
   const patch = withoutUndefined({
+    status: input.status,
     rating: input.rating,
     review: input.review,
-    watchedAt: input.watched === undefined ? undefined : input.watched ? new Date() : null,
+    // watchedAt é derivado do status: só existe quando o status vira
+    // "watched" — não é mais um toggle independente.
+    watchedAt: input.status === undefined ? undefined : input.status === "watched" ? new Date() : null,
+    favoritedAt: input.favorited === undefined ? undefined : input.favorited ? new Date() : null,
   });
 
   const [row] = existing
@@ -105,71 +114,16 @@ export async function upsertMovieEntry(
   return toMovieEntry(row);
 }
 
-// Define qual filme ocupa um dos 4 slots fixos de favorito do usuário — a
-// única forma de favoritar (mesmo padrão de setFavoriteSlot de jogos/série).
-// Sempre sobrescreve: libera quem estava nesse slot e qualquer outro slot
-// que esse mesmo filme já ocupasse, já que um filme só fica em um slot por
-// vez.
-export async function setFavoriteSlot(
-  env: Env,
-  db: Db,
-  userId: string,
-  slot: FavoriteSlotNumber,
-  tmdbId: number,
-): Promise<MovieEntry> {
-  const cachedMovie = await getOrCacheMovie(env, db, tmdbId);
-
-  await db
-    .update(movieEntry)
-    .set({ favoriteSlot: null })
-    .where(and(eq(movieEntry.userId, userId), eq(movieEntry.favoriteSlot, slot)));
-  await db
-    .update(movieEntry)
-    .set({ favoriteSlot: null })
-    .where(and(eq(movieEntry.userId, userId), eq(movieEntry.movieId, tmdbId)));
-
-  const existing = await db.query.movieEntry.findFirst({
-    where: and(eq(movieEntry.userId, userId), eq(movieEntry.movieId, tmdbId)),
-  });
-
-  const [row] = existing
-    ? await db
-        .update(movieEntry)
-        .set({ favoriteSlot: slot })
-        .where(eq(movieEntry.id, existing.id))
-        .returning()
-    : await db
-        .insert(movieEntry)
-        .values({ userId, movieId: tmdbId, favoriteSlot: slot })
-        .returning();
-
-  if (!row) {
-    throw new Error("Falha ao definir o favorito");
-  }
-
-  await db.insert(activity).values({ userId, ...toActivitySnapshot(cachedMovie), type: "favorited" });
-
-  return toMovieEntry(row);
-}
-
-// Sempre os 4 slots, preenchidos ou não — quem chama decide o que fazer com
-// os vazios (ex.: mostrar um placeholder "+" só na própria home).
-export async function getFavoriteSlots(db: Db, userId: string): Promise<MovieFavoriteSlot[]> {
+// Sem limite de quantidade — todo filme com favoritedAt preenchido, mais
+// recente primeiro.
+export async function getFavorites(db: Db, userId: string): Promise<MovieEntryWithMovie[]> {
   const rows = await db.query.movieEntry.findMany({
-    where: and(eq(movieEntry.userId, userId), isNotNull(movieEntry.favoriteSlot)),
+    where: and(eq(movieEntry.userId, userId), isNotNull(movieEntry.favoritedAt)),
+    orderBy: desc(movieEntry.favoritedAt),
     with: { movie: true },
   });
-  const bySlot = new Map(rows.map((row) => [row.favoriteSlot, row]));
 
-  return FAVORITE_SLOTS.map((slot) => {
-    const row = bySlot.get(slot);
-    return {
-      slot,
-      entry: row
-        ? { ...toMovieEntry(row), movie: mapCachedMovieToSummary(row.movie) }
-        : null,
-    };
-  });
+  return rows.map((row) => ({ ...toMovieEntry(row), movie: mapCachedMovieToSummary(row.movie) }));
 }
 
 export async function deleteMovieEntry(db: Db, userId: string, tmdbId: number): Promise<void> {
@@ -184,13 +138,11 @@ export async function listMovieEntries(
   query: ListMovieEntriesQuery,
 ): Promise<{ items: MovieEntryWithMovie[]; total: number }> {
   const conditions = [eq(movieEntry.userId, userId)];
-  if (query.favorite !== undefined) {
-    conditions.push(
-      query.favorite ? isNotNull(movieEntry.favoriteSlot) : isNull(movieEntry.favoriteSlot),
-    );
+  if (query.status) {
+    conditions.push(eq(movieEntry.status, query.status));
   }
-  if (query.watched !== undefined) {
-    conditions.push(query.watched ? isNotNull(movieEntry.watchedAt) : isNull(movieEntry.watchedAt));
+  if (query.favorite !== undefined) {
+    conditions.push(query.favorite ? isNotNull(movieEntry.favoritedAt) : isNull(movieEntry.favoritedAt));
   }
   const where = and(...conditions);
 
