@@ -32,6 +32,15 @@ function coverUrlFromVolume(volumeInfo: GoogleBooksVolume["volumeInfo"]): string
   return raw ? toSecureImageUrl(raw) : null;
 }
 
+// A Google Books às vezes devolve nome de autor com espaço sobrando (ex.:
+// "Frank Herbert "), o que quebraria tanto a exibição quanto o link pra
+// /livros/autores/:name — apara em todo ponto de leitura (não só no volume
+// cru), pra também corrigir livros já cacheados no D1 sem esperar a
+// revalidação de 24h.
+function trimAuthors(authors: string[]): string[] {
+  return authors.map((author) => author.trim());
+}
+
 // Mapeia um volume da Google Books pro DTO exposto — busca e detalhe usam a
 // mesma forma de objeto (diferente da TMDB, que separa "resultado de busca"
 // de "detalhe"), então um único mapeador serve pros dois casos.
@@ -39,7 +48,7 @@ export function mapVolumeToSummary(volume: GoogleBooksVolume): BookSummary {
   return {
     googleBooksId: volume.id,
     title: volume.volumeInfo.title,
-    authors: volume.volumeInfo.authors ?? [],
+    authors: trimAuthors(volume.volumeInfo.authors ?? []),
     coverUrl: coverUrlFromVolume(volume.volumeInfo),
     publishedDate: volume.volumeInfo.publishedDate ?? null,
     categories: volume.volumeInfo.categories ?? [],
@@ -55,7 +64,7 @@ export function mapCachedBookToSummary(row: CachedBook): BookSummary {
   return {
     googleBooksId: row.googleBooksId,
     title: row.title,
-    authors: row.authors ?? [],
+    authors: trimAuthors(row.authors ?? []),
     coverUrl: row.coverUrl,
     publishedDate: row.publishedDate,
     categories: row.categories ?? [],
@@ -81,7 +90,7 @@ function isStale(row: CachedBook): boolean {
 function mapVolumeToRow(volume: GoogleBooksVolume) {
   return {
     title: volume.volumeInfo.title,
-    authors: volume.volumeInfo.authors ?? [],
+    authors: trimAuthors(volume.volumeInfo.authors ?? []),
     coverUrl: coverUrlFromVolume(volume.volumeInfo),
     publishedDate: volume.volumeInfo.publishedDate ?? null,
     description: volume.volumeInfo.description ? stripHtml(volume.volumeInfo.description) : null,

@@ -1,4 +1,5 @@
 import {
+  AuthorBooksResponseSchema,
   BookDetailResponseSchema,
   BookEntrySchema,
   BookFavoritesResponseSchema,
@@ -14,6 +15,7 @@ import {
 import { Hono } from "hono";
 import { type AuthedEnv, requireSession } from "../auth/require-session";
 import { createDb } from "../db/client";
+import { getAuthorBooks } from "./authors.service";
 import { BookNotFoundError, getOrCacheBook, mapCachedBookToSummary, searchBooksForUser } from "./books.service";
 import {
   deleteBookEntry,
@@ -104,6 +106,16 @@ booksRouter.put("/favorites/:slot", async (c) => {
     }
     throw error;
   }
+});
+
+booksRouter.get("/authors/:name", async (c) => {
+  const name = c.req.param("name");
+  if (!name) {
+    return c.json({ error: "invalid_name" }, 400);
+  }
+
+  const result = await getAuthorBooks(c.env, name);
+  return c.json(AuthorBooksResponseSchema.parse(result));
 });
 
 booksRouter.get("/:googleBooksId", async (c) => {

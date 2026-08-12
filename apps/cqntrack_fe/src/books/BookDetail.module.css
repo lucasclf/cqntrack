@@ -60,6 +60,16 @@
   margin-top: 12px;
 }
 
+.summary a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.summary a:hover {
+  text-decoration: underline;
+}
+
 .entrySection {
   border-top: 1px solid var(--card-border);
   padding-top: 20px;

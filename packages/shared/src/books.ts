@@ -170,3 +170,15 @@ export type CreateBookListRequest = z.infer<typeof CreateBookListRequestSchema>;
 export const UpdateBookListRequestSchema = CreateBookListRequestSchema.partial();
 
 export type UpdateBookListRequest = z.infer<typeof UpdateBookListRequestSchema>;
+
+// Diferente de PersonCreditsResponseSchema (filme/série): não existe
+// "detalhe do autor" (sem bio/foto/ID na Google Books) — só o nome
+// buscado (normalizado) e os livros encontrados pra ele. Sem paginação
+// (mesmo espírito de PersonCreditsResponseSchema — autor muito prolífico
+// pode ter uma lista grande, aceitável pro tráfego do projeto).
+export const AuthorBooksResponseSchema = z.object({
+  name: z.string(),
+  books: z.array(BookSummarySchema),
+});
+
+export type AuthorBooksResponse = z.infer<typeof AuthorBooksResponseSchema>;

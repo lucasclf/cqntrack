@@ -1,6 +1,6 @@
 import type { BookDetailResponse, BookEntry, UpsertBookEntryRequest } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
-import { useParams } from "react-router";
+import { Link, useParams } from "react-router";
 import { StarRating } from "../components/StarRating";
 import { ApiError, apiClient } from "../lib/api-client";
 import { AddToBookListMenu } from "./AddToBookListMenu";
@@ -87,7 +87,16 @@ export function BookDetail() {
         <div>
           <h1>{book.title}</h1>
 
-          {book.authors.length > 0 && <p className={styles.summary}>{book.authors.join(", ")}</p>}
+          {book.authors.length > 0 && (
+            <p className={styles.summary}>
+              {book.authors.map((author, index) => (
+                <span key={author}>
+                  {index > 0 && ", "}
+                  <Link to={`/livros/autores/${encodeURIComponent(author)}`}>{author}</Link>
+                </span>
+              ))}
+            </p>
+          )}
 
           <div className={styles.metaRow}>
             {year && <span className={styles.metaBadge}>{year}</span>}

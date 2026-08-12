@@ -61,6 +61,11 @@ describe("BookDetail", () => {
     expect(getMock).toHaveBeenCalledWith("/api/books/PCq3AAAAQBAJ");
     // Favoritar não acontece mais nesta página (só pelos slots da home).
     expect(screen.queryByRole("button", { name: /favorit/i })).not.toBeInTheDocument();
+    // Autor linka pra própria página do autor (livros/autores/:name).
+    expect(screen.getByRole("link", { name: "Machado de Assis" })).toHaveAttribute(
+      "href",
+      "/livros/autores/Machado%20de%20Assis",
+    );
   });
 
   it("cria a marcação ao escolher um status quando ainda não existe entry", async () => {

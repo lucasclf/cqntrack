@@ -93,6 +93,62 @@ describe("GET /api/books/search", () => {
   });
 });
 
+describe("GET /api/books/authors/:name", () => {
+  it("sem sessão retorna 401", async () => {
+    const res = await app.request("/api/books/authors/Frank%20Herbert", undefined, env);
+
+    expect(res.status).toBe(401);
+  });
+
+  it("com sessão devolve os livros do autor, filtrando ruído da busca textual", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubGoogleBooksFetchOnce({
+      items: [
+        {
+          id: "id-1",
+          volumeInfo: { title: "Duna", authors: ["Frank Herbert"], publishedDate: "1965-08-01" },
+        },
+        {
+          id: "id-2",
+          volumeInfo: { title: "Livro sem relação", authors: ["Outro Autor"], publishedDate: "2020-01-01" },
+        },
+      ],
+      totalItems: 2,
+    });
+
+    const res = await app.request("/api/books/authors/Frank%20Herbert", { headers: { cookie } }, env);
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({
+      name: "Frank Herbert",
+      books: [
+        {
+          googleBooksId: "id-1",
+          title: "Duna",
+          authors: ["Frank Herbert"],
+          coverUrl: null,
+          publishedDate: "1965-08-01",
+          categories: [],
+          pageCount: null,
+          rating: null,
+        },
+      ],
+    });
+    vi.unstubAllGlobals();
+  });
+
+  it("nome sem nenhum livro correspondente retorna 200 com lista vazia (não 404)", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubGoogleBooksFetchOnce({ totalItems: 0 });
+
+    const res = await app.request("/api/books/authors/Autor%20Inexistente", { headers: { cookie } }, env);
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({ name: "Autor Inexistente", books: [] });
+    vi.unstubAllGlobals();
+  });
+});
+
 describe("GET /api/books/:googleBooksId", () => {
   it("livro inexistente na Google Books retorna 404", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
