@@ -27,6 +27,10 @@ const MOVIE = {
   runtime: 148,
   rating: 8.4,
   overview: "Um ladrão que rouba segredos corporativos através do uso de tecnologia de sonhos.",
+  cast: [
+    { personId: 6193, name: "Leonardo DiCaprio", character: "Dom Cobb", profileUrl: null },
+  ],
+  directors: [{ personId: 525, name: "Christopher Nolan", profileUrl: null }],
 };
 
 function renderDetail() {
@@ -66,6 +70,18 @@ describe("MovieDetail", () => {
     expect(getMock).toHaveBeenCalledWith("/api/movies/27205");
     // Favoritar não acontece nesta página (só pelos slots da home).
     expect(screen.queryByRole("button", { name: /favorit/i })).not.toBeInTheDocument();
+
+    // Direção e elenco, com link pra página da pessoa.
+    expect(screen.getByRole("heading", { name: "Direção" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Christopher Nolan/ })).toHaveAttribute(
+      "href",
+      "/pessoas/525",
+    );
+    expect(screen.getByRole("heading", { name: "Elenco" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Leonardo DiCaprio/ })).toHaveAttribute(
+      "href",
+      "/pessoas/6193",
+    );
   });
 
   it("marca como assistido ao clicar no botão, criando a marcação quando ainda não existe entry", async () => {

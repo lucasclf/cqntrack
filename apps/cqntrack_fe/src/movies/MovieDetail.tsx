@@ -1,6 +1,8 @@
 import type { MovieDetailResponse, MovieEntry, UpsertMovieEntryRequest } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router";
+import { CastList } from "../components/CastList";
+import { CrewList } from "../components/CrewList";
 import { StarRating } from "../components/StarRating";
 import { ApiError, apiClient } from "../lib/api-client";
 import { AddToMovieListMenu } from "./AddToMovieListMenu";
@@ -123,6 +125,9 @@ export function MovieDetail() {
           {movie.overview && <p className={styles.summary}>{movie.overview}</p>}
         </div>
       </div>
+
+      <CrewList title="Direção" crew={movie.directors} />
+      <CastList title="Elenco" cast={movie.cast} />
 
       <section className={styles.entrySection}>
         <h2>Sua marcação</h2>
