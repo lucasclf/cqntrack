@@ -74,6 +74,97 @@ export interface TmdbSearchResponse<T> {
   results: T[];
 }
 
+// GET /movie/{id}/credits — cast/crew "simples", só o elenco/equipe
+// principal (sem quebra por episódio). Usado também como formato de
+// referência pros comentários abaixo.
+export interface TmdbCastMember {
+  id: number;
+  name: string;
+  character: string;
+  profile_path: string | null;
+  order: number;
+}
+
+export interface TmdbCrewMember {
+  id: number;
+  name: string;
+  job: string;
+  department: string;
+  profile_path: string | null;
+}
+
+export interface TmdbCredits {
+  cast: TmdbCastMember[];
+  crew: TmdbCrewMember[];
+}
+
+// GET /tv/{id}/aggregate_credits — diferente do credits "simples": cast tem
+// `roles[]` (um ator pode ter mais de um personagem ao longo da série, raro
+// — usamos só roles[0]) em vez de `character` único, e crew tem `jobs[]`
+// com a contagem de episódios por job (é daí que vem "dirigiu 11
+// episódios"). Série não tem um "diretor" único como filme — por isso esse
+// endpoint existe separado do credits simples.
+export interface TmdbAggregateCastMember {
+  id: number;
+  name: string;
+  profile_path: string | null;
+  order: number;
+  roles: { character: string; episode_count: number }[];
+}
+
+export interface TmdbAggregateCrewMember {
+  id: number;
+  name: string;
+  profile_path: string | null;
+  department: string;
+  jobs: { job: string; episode_count: number }[];
+}
+
+export interface TmdbAggregateCredits {
+  cast: TmdbAggregateCastMember[];
+  crew: TmdbAggregateCrewMember[];
+}
+
+// GET /person/{id}
+export interface TmdbPerson {
+  id: number;
+  name: string;
+  profile_path: string | null;
+  biography: string;
+}
+
+// GET /person/{id}/movie_credits — cast e crew usam o mesmo formato de
+// filme (title/release_date); cast tem `character`, crew tem `job`.
+export interface TmdbPersonMovieCredit {
+  id: number;
+  title: string;
+  poster_path: string | null;
+  release_date?: string;
+  character?: string;
+  job?: string;
+}
+
+export interface TmdbPersonMovieCredits {
+  cast: TmdbPersonMovieCredit[];
+  crew: TmdbPersonMovieCredit[];
+}
+
+// GET /person/{id}/tv_credits — mesma forma do movie_credits, mas com
+// name/first_air_date (like TV) em vez de title/release_date.
+export interface TmdbPersonTvCredit {
+  id: number;
+  name: string;
+  poster_path: string | null;
+  first_air_date?: string;
+  character?: string;
+  job?: string;
+}
+
+export interface TmdbPersonTvCredits {
+  cast: TmdbPersonTvCredit[];
+  crew: TmdbPersonTvCredit[];
+}
+
 export type TmdbImageSize = "w185" | "w342" | "w500" | "original";
 
 // poster_path já vem com "/" na frente (ex.: "/q1JB...jpg") — não duplicar.

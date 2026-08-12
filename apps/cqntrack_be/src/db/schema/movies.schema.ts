@@ -8,6 +8,9 @@ import { user } from "./auth.schema";
 // usuário (0-5, campo `rating` de movieEntry). `runtime` (minutos) só vem
 // preenchido depois que o filme é cacheado via detalhe (a busca da TMDB não
 // traz esse dado). Filme não tem substrutura (sem equivalente a "seasons").
+// `cast`/`directors` vêm de um request extra (GET /movie/{id}/credits) feito
+// junto do detalhe — linhas cacheadas antes dessa coluna existir ficam null
+// até a próxima revalidação de 24h (ALTER TABLE não migra dado antigo).
 export const movie = sqliteTable("movie", {
   tmdbId: integer("tmdb_id").primaryKey(),
   name: text("name").notNull(),
@@ -17,6 +20,12 @@ export const movie = sqliteTable("movie", {
   genres: text("genres", { mode: "json" }).$type<string[]>(),
   runtime: integer("runtime"),
   rating: real("rating"),
+  cast: text("cast", { mode: "json" }).$type<
+    { personId: number; name: string; character: string; profilePath: string | null }[]
+  >(),
+  directors: text("directors", { mode: "json" }).$type<
+    { personId: number; name: string; profilePath: string | null }[]
+  >(),
   cachedAt: integer("cached_at", { mode: "timestamp_ms" })
     .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
     .notNull(),

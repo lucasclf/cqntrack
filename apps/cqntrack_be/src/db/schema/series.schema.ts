@@ -10,6 +10,11 @@ import { user } from "./auth.schema";
 // cacheada via detalhe (a busca da TMDB não traz esse dado). `seasons` é
 // só o resumo (nome/contagem de episódios) — a lista de episódios em si
 // nunca é cacheada, é buscada ao vivo (ver series_episode_watch abaixo).
+// `cast`/`directors` vêm de um request extra (GET /tv/{id}/aggregate_credits)
+// feito junto do detalhe; `creators` vem de graça no próprio detalhe
+// (`created_by`), sem custo extra. Série não tem um "diretor" único como
+// filme — `creators` é quem a TMDB credita como criador/showrunner,
+// `directors` são os diretores mais frequentes por nº de episódios.
 export const series = sqliteTable("series", {
   tmdbId: integer("tmdb_id").primaryKey(),
   name: text("name").notNull(),
@@ -27,6 +32,15 @@ export const series = sqliteTable("series", {
       airDate: string | null;
       posterPath: string | null;
     }[]
+  >(),
+  cast: text("cast", { mode: "json" }).$type<
+    { personId: number; name: string; character: string; profilePath: string | null }[]
+  >(),
+  creators: text("creators", { mode: "json" }).$type<
+    { personId: number; name: string; profilePath: string | null }[]
+  >(),
+  directors: text("directors", { mode: "json" }).$type<
+    { personId: number; name: string; profilePath: string | null; episodeCount: number }[]
   >(),
   rating: real("rating"),
   cachedAt: integer("cached_at", { mode: "timestamp_ms" })
