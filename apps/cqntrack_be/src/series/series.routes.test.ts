@@ -808,6 +808,130 @@ describe("GET /api/series/:tmdbId/seasons/:seasonNumber", () => {
   });
 });
 
+function tmdbEpisodeDetail(seasonNumber: number, episodeNumber: number, overrides: Record<string, unknown> = {}) {
+  return {
+    episode_number: episodeNumber,
+    season_number: seasonNumber,
+    name: `Episódio ${episodeNumber}`,
+    overview: `Sinopse do episódio ${episodeNumber}`,
+    air_date: "2008-01-20",
+    still_path: `/still-s${seasonNumber}e${episodeNumber}.jpg`,
+    runtime: 58,
+    vote_average: 8.2,
+    crew: [
+      {
+        id: 66633,
+        name: "Vince Gilligan",
+        job: "Director",
+        department: "Directing",
+        profile_path: "/gilligan.jpg",
+      },
+      // Crédito duplicado — não pode aparecer duas vezes na resposta.
+      {
+        id: 66633,
+        name: "Vince Gilligan",
+        job: "Director",
+        department: "Directing",
+        profile_path: "/gilligan.jpg",
+      },
+      {
+        id: 999,
+        name: "Alguém da fotografia",
+        job: "Director of Photography",
+        department: "Camera",
+        profile_path: null,
+      },
+    ],
+    ...overrides,
+  };
+}
+
+describe("GET /api/series/:tmdbId/episodes/:seasonNumber/:episodeNumber", () => {
+  it("sem sessão retorna 401", async () => {
+    const res = await app.request("/api/series/901/episodes/1/1", undefined, env);
+
+    expect(res.status).toBe(401);
+  });
+
+  it("id inválido retorna 400", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+
+    const res = await app.request(
+      "/api/series/901/episodes/nao-e-um-id/1",
+      { headers: { cookie } },
+      env,
+    );
+
+    expect(res.status).toBe(400);
+  });
+
+  it("episódio inexistente na TMDB retorna 404", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValueOnce(jsonResponse({ status_message: "not found" }, 404)),
+    );
+
+    const res = await app.request("/api/series/901/episodes/1/999", { headers: { cookie } }, env);
+
+    expect(res.status).toBe(404);
+    vi.unstubAllGlobals();
+  });
+
+  it("devolve nome, sinopse, still, direção (deduplicada) e watched: false quando não marcado", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(jsonResponse(tmdbEpisodeDetail(1, 1))));
+
+    const res = await app.request("/api/series/905/episodes/1/1", { headers: { cookie } }, env);
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({
+      seasonNumber: 1,
+      episodeNumber: 1,
+      name: "Episódio 1",
+      overview: "Sinopse do episódio 1",
+      airDate: "2008-01-20",
+      stillUrl: "https://image.tmdb.org/t/p/w342/still-s1e1.jpg",
+      runtime: 58,
+      rating: 8.2,
+      watched: false,
+      // Só o job "Director" entra (Director of Photography fica de fora),
+      // sem duplicar Vince Gilligan.
+      directors: [
+        {
+          personId: 66633,
+          name: "Vince Gilligan",
+          profileUrl: "https://image.tmdb.org/t/p/w185/gilligan.jpg",
+        },
+      ],
+    });
+    vi.unstubAllGlobals();
+  });
+
+  it("watched: true depois que o episódio é marcado (mesma tabela da lista da temporada)", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubSeriesCacheFetch(906, "Breaking Bad");
+    await app.request(
+      "/api/series/906/episodes/1/1",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ watched: true }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(jsonResponse(tmdbEpisodeDetail(1, 1))));
+    const res = await app.request("/api/series/906/episodes/1/1", { headers: { cookie } }, env);
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { watched: boolean };
+    expect(body.watched).toBe(true);
+    vi.unstubAllGlobals();
+  });
+});
+
 describe("PUT /api/series/:tmdbId/episodes/:seasonNumber/:episodeNumber", () => {
   it("marca e desmarca um episódio, sem gerar atividade", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);

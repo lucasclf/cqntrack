@@ -205,3 +205,23 @@ export const SetWatchedRequestSchema = z.object({
 });
 
 export type SetWatchedRequest = z.infer<typeof SetWatchedRequestSchema>;
+
+// Detalhe completo de UM episódio (página própria) — diferente de
+// SeriesEpisodeSchema (usado na lista da temporada, sem sinopse/duração/
+// diretor). `directors` é quem dirigiu especificamente esse episódio, não
+// os diretores mais frequentes da série inteira (ver SeriesDirectorSchema,
+// usado em SeriesDetailSchema).
+export const SeriesEpisodeDetailSchema = z.object({
+  seasonNumber: z.number().int(),
+  episodeNumber: z.number().int(),
+  name: z.string(),
+  overview: z.string().nullable(),
+  airDate: z.iso.date().nullable(),
+  stillUrl: z.url().nullable(),
+  runtime: z.number().int().nullable(),
+  rating: z.number().nullable(),
+  watched: z.boolean(),
+  directors: z.array(CrewMemberSchema),
+});
+
+export type SeriesEpisodeDetail = z.infer<typeof SeriesEpisodeDetailSchema>;

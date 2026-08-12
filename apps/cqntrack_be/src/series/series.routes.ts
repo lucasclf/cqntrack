@@ -6,6 +6,7 @@ import {
   SearchSeriesResponseSchema,
   SeriesDetailResponseSchema,
   SeriesEntrySchema,
+  SeriesEpisodeDetailSchema,
   SeriesFavoritesResponseSchema,
   SeriesSeasonEpisodesResponseSchema,
   SetSeriesFavoriteSlotRequestSchema,
@@ -24,7 +25,7 @@ import {
   setFavoriteSlot,
   upsertSeriesEntry,
 } from "./entries.service";
-import { getSeasonEpisodes, setEpisodeWatched, setSeasonWatched } from "./episodes.service";
+import { getEpisodeDetail, getSeasonEpisodes, setEpisodeWatched, setSeasonWatched } from "./episodes.service";
 import {
   getOrCacheSeries,
   mapCachedSeriesCast,
@@ -204,6 +205,30 @@ seriesRouter.get("/:tmdbId/seasons/:seasonNumber", async (c) => {
   }
 
   return c.json(SeriesSeasonEpisodesResponseSchema.parse(season));
+});
+
+seriesRouter.get("/:tmdbId/episodes/:seasonNumber/:episodeNumber", async (c) => {
+  const tmdbId = parseTmdbId(c);
+  const seasonNumber = parseIntParam(c, "seasonNumber");
+  const episodeNumber = parseIntParam(c, "episodeNumber");
+  if (tmdbId === null || seasonNumber === null || episodeNumber === null) {
+    return c.json({ error: "invalid_id" }, 400);
+  }
+
+  const db = createDb(c.env);
+  const episode = await getEpisodeDetail(
+    c.env,
+    db,
+    c.get("userId"),
+    tmdbId,
+    seasonNumber,
+    episodeNumber,
+  );
+  if (!episode) {
+    return c.json({ error: "episode_not_found" }, 404);
+  }
+
+  return c.json(SeriesEpisodeDetailSchema.parse(episode));
 });
 
 seriesRouter.put("/:tmdbId/episodes/:seasonNumber/:episodeNumber", async (c) => {

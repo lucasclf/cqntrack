@@ -1,9 +1,9 @@
-import type { SeriesSeasonEpisodesResponse } from "@cqntrack/shared";
+import type { CrewMember, SeriesEpisodeDetail, SeriesSeasonEpisodesResponse } from "@cqntrack/shared";
 import { and, eq } from "drizzle-orm";
 import type { createDb } from "../db/client";
 import { activity, seriesEpisodeWatch } from "../db/schema";
-import { getSeriesSeason } from "../integrations/tmdb/series";
-import { buildPosterUrl } from "../integrations/tmdb/types";
+import { getSeriesEpisode, getSeriesSeason } from "../integrations/tmdb/series";
+import { buildPosterUrl, type TmdbCrewMember } from "../integrations/tmdb/types";
 import { ensureSeriesEntry } from "./entries.service";
 import { toActivitySnapshot } from "./series.service";
 
@@ -135,4 +135,64 @@ export async function setSeasonWatched(
   });
 
   return true;
+}
+
+// A TMDB às vezes credita a mesma pessoa duas vezes como diretora do mesmo
+// episódio (créditos duplicados) — dedupe por id, mesmo padrão já usado em
+// movies.service.ts.
+function mapCrewToDirectors(crew: TmdbCrewMember[]): CrewMember[] {
+  const seen = new Set<number>();
+  const directors: CrewMember[] = [];
+  for (const member of crew) {
+    if (member.job !== "Director" || seen.has(member.id)) continue;
+    seen.add(member.id);
+    directors.push({
+      personId: member.id,
+      name: member.name,
+      profileUrl: member.profile_path ? buildPosterUrl(member.profile_path, "w185") : null,
+    });
+  }
+  return directors;
+}
+
+// Detalhe completo de UM episódio (página própria) — buscado ao vivo, sem
+// cache local, mesmo espírito de getSeasonEpisodes. `watched` vem de
+// series_episode_watch, a mesma tabela já usada pra lista da temporada.
+export async function getEpisodeDetail(
+  env: Env,
+  db: Db,
+  userId: string,
+  tmdbId: number,
+  seasonNumber: number,
+  episodeNumber: number,
+): Promise<SeriesEpisodeDetail | null> {
+  const episode = await getSeriesEpisode(env, tmdbId, seasonNumber, episodeNumber);
+  if (!episode) {
+    return null;
+  }
+
+  const [watchedRow] = await db
+    .select()
+    .from(seriesEpisodeWatch)
+    .where(
+      and(
+        eq(seriesEpisodeWatch.userId, userId),
+        eq(seriesEpisodeWatch.seriesId, tmdbId),
+        eq(seriesEpisodeWatch.seasonNumber, seasonNumber),
+        eq(seriesEpisodeWatch.episodeNumber, episodeNumber),
+      ),
+    );
+
+  return {
+    seasonNumber,
+    episodeNumber,
+    name: episode.name,
+    overview: episode.overview && episode.overview.length > 0 ? episode.overview : null,
+    airDate: episode.air_date && episode.air_date.length > 0 ? episode.air_date : null,
+    stillUrl: episode.still_path ? buildPosterUrl(episode.still_path, "w342") : null,
+    runtime: episode.runtime ?? null,
+    rating: episode.vote_average ?? null,
+    watched: watchedRow !== undefined,
+    directors: mapCrewToDirectors(episode.crew),
+  };
 }
