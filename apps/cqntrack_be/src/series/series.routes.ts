@@ -27,6 +27,9 @@ import {
 import { getSeasonEpisodes, setEpisodeWatched, setSeasonWatched } from "./episodes.service";
 import {
   getOrCacheSeries,
+  mapCachedSeriesCast,
+  mapCachedSeriesCreators,
+  mapCachedSeriesDirectors,
   mapCachedSeriesToSummary,
   SeriesNotFoundError,
   searchSeriesForUser,
@@ -134,7 +137,13 @@ seriesRouter.get("/:tmdbId", async (c) => {
     const entry = await getSeriesEntryForUser(db, c.get("userId"), tmdbId);
 
     const body = SeriesDetailResponseSchema.parse({
-      series: { ...mapCachedSeriesToSummary(cachedSeries), overview: cachedSeries.overview },
+      series: {
+        ...mapCachedSeriesToSummary(cachedSeries),
+        overview: cachedSeries.overview,
+        cast: mapCachedSeriesCast(cachedSeries),
+        creators: mapCachedSeriesCreators(cachedSeries),
+        directors: mapCachedSeriesDirectors(cachedSeries),
+      },
       entry,
     });
     return c.json(body);

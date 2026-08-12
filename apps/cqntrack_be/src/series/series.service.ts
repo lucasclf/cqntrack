@@ -1,11 +1,13 @@
-import type { SeriesSummary } from "@cqntrack/shared";
+import type { CastMember, CrewMember, SeriesDirector, SeriesSummary } from "@cqntrack/shared";
 import { eq } from "drizzle-orm";
 import type { createDb } from "../db/client";
 import { series } from "../db/schema";
+import { getSeriesAggregateCredits } from "../integrations/tmdb/credits";
 import { getSeriesById, searchSeries as tmdbSearchSeries } from "../integrations/tmdb/series";
 import {
   buildPosterUrl,
   TV_GENRE_NAMES,
+  type TmdbAggregateCredits,
   type TmdbSeriesSearchResult,
 } from "../integrations/tmdb/types";
 
@@ -76,6 +78,39 @@ export function mapCachedSeriesToSummary(row: CachedSeries): SeriesSummary {
   };
 }
 
+// Mesmo tamanho de foto usado pra elenco/direção de filme (w185).
+function mapCastRowToDto(entry: NonNullable<CachedSeries["cast"]>[number]): CastMember {
+  return {
+    personId: entry.personId,
+    name: entry.name,
+    character: entry.character,
+    profileUrl: entry.profilePath ? buildPosterUrl(entry.profilePath, "w185") : null,
+  };
+}
+
+function mapCrewRowToDto(entry: { personId: number; name: string; profilePath: string | null }): CrewMember {
+  return {
+    personId: entry.personId,
+    name: entry.name,
+    profileUrl: entry.profilePath ? buildPosterUrl(entry.profilePath, "w185") : null,
+  };
+}
+
+export function mapCachedSeriesCast(row: CachedSeries): CastMember[] {
+  return (row.cast ?? []).map(mapCastRowToDto);
+}
+
+export function mapCachedSeriesCreators(row: CachedSeries): CrewMember[] {
+  return (row.creators ?? []).map(mapCrewRowToDto);
+}
+
+export function mapCachedSeriesDirectors(row: CachedSeries): SeriesDirector[] {
+  return (row.directors ?? []).map((entry) => ({
+    ...mapCrewRowToDto(entry),
+    episodeCount: entry.episodeCount,
+  }));
+}
+
 export async function searchSeriesForUser(
   env: Env,
   query: string,
@@ -96,7 +131,57 @@ function isStale(row: CachedSeries): boolean {
   return Date.now() - row.updatedAt.getTime() > CACHE_TTL_MS;
 }
 
-function mapSeriesDetailToRow(detail: NonNullable<Awaited<ReturnType<typeof getSeriesById>>>) {
+// Top billed cast, mesmo espírito de filme — não a lista completa (evita
+// payload gigante em séries longas; a página de pessoa cobre a carreira
+// inteira de quem quiser ir mais fundo).
+const MAX_CAST_MEMBERS = 10;
+// Série longa pode ter dezenas de diretores diferentes — top 5 por número
+// de episódios dirigidos, não a lista inteira.
+const MAX_DIRECTORS = 5;
+
+function mapAggregateCreditsToCastRows(credits: TmdbAggregateCredits | null) {
+  if (!credits) return [];
+  return [...credits.cast]
+    .sort((a, b) => a.order - b.order)
+    .slice(0, MAX_CAST_MEMBERS)
+    .map((member) => ({
+      personId: member.id,
+      name: member.name,
+      character: member.roles[0]?.character ?? "",
+      profilePath: member.profile_path,
+    }));
+}
+
+// "Diretor" de série não é um crédito único como em filme — cada membro do
+// crew tem um array `jobs[]` com a contagem de episódios por job. Filtra
+// quem tem algum job "Director", soma os episódios desse job específico
+// (uma pessoa não aparece duas vezes no array — já vem uma linha por
+// pessoa), ordena por quem dirigiu mais episódios e corta no top 5.
+function mapAggregateCreditsToDirectorRows(credits: TmdbAggregateCredits | null) {
+  if (!credits) return [];
+  return credits.crew
+    .map((member) => ({
+      member,
+      directorJob: member.jobs.find((job) => job.job === "Director"),
+    }))
+    .filter(
+      (entry): entry is { member: (typeof credits.crew)[number]; directorJob: { job: string; episode_count: number } } =>
+        entry.directorJob !== undefined,
+    )
+    .sort((a, b) => b.directorJob.episode_count - a.directorJob.episode_count)
+    .slice(0, MAX_DIRECTORS)
+    .map(({ member, directorJob }) => ({
+      personId: member.id,
+      name: member.name,
+      profilePath: member.profile_path,
+      episodeCount: directorJob.episode_count,
+    }));
+}
+
+function mapSeriesDetailToRow(
+  detail: NonNullable<Awaited<ReturnType<typeof getSeriesById>>>,
+  credits: TmdbAggregateCredits | null,
+) {
   return {
     name: detail.name,
     posterPath: detail.poster_path ?? null,
@@ -116,6 +201,14 @@ function mapSeriesDetailToRow(detail: NonNullable<Awaited<ReturnType<typeof getS
         airDate: season.air_date && season.air_date.length > 0 ? season.air_date : null,
         posterPath: season.poster_path ?? null,
       })) ?? [],
+    cast: mapAggregateCreditsToCastRows(credits),
+    creators:
+      detail.created_by?.map((creator) => ({
+        personId: creator.id,
+        name: creator.name,
+        profilePath: creator.profile_path,
+      })) ?? [],
+    directors: mapAggregateCreditsToDirectorRows(credits),
     rating: detail.vote_average ?? null,
   };
 }
@@ -140,7 +233,13 @@ export async function getOrCacheSeries(env: Env, db: Db, tmdbId: number): Promis
     throw new SeriesNotFoundError(tmdbId);
   }
 
-  const values = mapSeriesDetailToRow(detail);
+  // Elenco/direção vêm de um request separado — se falhar, não derruba a
+  // revalidação da série em si, só fica sem cast/directors até a próxima
+  // janela de 24h. `creators` não depende desse request (vem do próprio
+  // `detail.created_by`).
+  const credits = await getSeriesAggregateCredits(env, tmdbId).catch(() => null);
+
+  const values = mapSeriesDetailToRow(detail, credits);
 
   if (cached) {
     await db.update(series).set(values).where(eq(series.tmdbId, tmdbId));

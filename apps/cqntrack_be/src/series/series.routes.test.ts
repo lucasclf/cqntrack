@@ -57,6 +57,12 @@ function tmdbSeasonDetail(seasonNumber: number, episodeCount: number) {
   };
 }
 
+// getOrCacheSeries busca detalhe + aggregate_credits em sequência — vazio
+// por padrão nos testes que não se importam com elenco/direção especificamente.
+function tmdbSeriesCredits(): { cast: unknown[]; crew: unknown[] } {
+  return { cast: [], crew: [] };
+}
+
 // A TMDB não tem etapa de token (diferente da IGDB) — um fetch mockado por
 // chamada é suficiente.
 function stubTmdbFetchOnce(...responses: unknown[]): void {
@@ -65,6 +71,13 @@ function stubTmdbFetchOnce(...responses: unknown[]): void {
     fetchMock.mockResolvedValueOnce(jsonResponse(body));
   }
   vi.stubGlobal("fetch", fetchMock);
+}
+
+// Helper pra quando o cache ainda não existe (ou está sendo revalidado) —
+// getOrCacheSeries sempre faz os dois requests (detalhe + aggregate_credits)
+// nesse caso, nessa ordem.
+function stubSeriesCacheFetch(id: number, name: string): void {
+  stubTmdbFetchOnce(tmdbSeriesDetail(id, name), tmdbSeriesCredits());
 }
 
 describe("GET /api/series/search", () => {
@@ -138,7 +151,7 @@ describe("GET /api/series/:tmdbId", () => {
 
   it("cacheia a série na primeira consulta; entry vem null quando ainda não marcada", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
-    stubTmdbFetchOnce(tmdbSeriesDetail(501, "The Wire"));
+    stubSeriesCacheFetch(501, "The Wire");
 
     const res = await app.request("/api/series/501", { headers: { cookie } }, env);
 
@@ -163,15 +176,152 @@ describe("GET /api/series/:tmdbId", () => {
         ],
         rating: 8.9,
         overview: "Resumo da série 501",
+        cast: [],
+        creators: [],
+        directors: [],
       },
       entry: null,
     });
     vi.unstubAllGlobals();
   });
 
+  it("cacheia elenco (top billed), criadores (de graça no detalhe) e direção (top por episódios)", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubTmdbFetchOnce(
+      {
+        ...tmdbSeriesDetail(505, "Breaking Bad"),
+        created_by: [{ id: 66633, name: "Vince Gilligan", profile_path: "/gilligan.jpg" }],
+      },
+      {
+        cast: [
+          {
+            id: 84497,
+            name: "Aaron Paul",
+            profile_path: "/paul.jpg",
+            order: 1,
+            roles: [{ character: "Jesse Pinkman", episode_count: 62 }],
+          },
+          {
+            id: 17419,
+            name: "Bryan Cranston",
+            profile_path: "/cranston.jpg",
+            order: 0,
+            roles: [{ character: "Walter White", episode_count: 62 }],
+          },
+        ],
+        crew: [
+          {
+            id: 111338,
+            name: "Adam Bernstein",
+            profile_path: "/bernstein.jpg",
+            department: "Directing",
+            jobs: [{ job: "Director", episode_count: 8 }],
+          },
+          {
+            id: 29779,
+            name: "Michelle MacLaren",
+            profile_path: "/maclaren.jpg",
+            department: "Directing",
+            jobs: [{ job: "Director", episode_count: 11 }],
+          },
+          // Sem job "Director" — não pode entrar na lista de diretores.
+          {
+            id: 999,
+            name: "Alguém da produção",
+            profile_path: null,
+            department: "Production",
+            jobs: [{ job: "Producer", episode_count: 62 }],
+          },
+        ],
+      },
+    );
+
+    const res = await app.request("/api/series/505", { headers: { cookie } }, env);
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      series: {
+        cast: { personId: number; name: string; character: string; profileUrl: string | null }[];
+        creators: { personId: number; name: string; profileUrl: string | null }[];
+        directors: {
+          personId: number;
+          name: string;
+          profileUrl: string | null;
+          episodeCount: number;
+        }[];
+      };
+    };
+    // Reordenado por `order` (Cranston, order 0, vem antes de Paul, order 1);
+    // `character` vem de roles[0].
+    expect(body.series.cast).toEqual([
+      {
+        personId: 17419,
+        name: "Bryan Cranston",
+        character: "Walter White",
+        profileUrl: "https://image.tmdb.org/t/p/w185/cranston.jpg",
+      },
+      {
+        personId: 84497,
+        name: "Aaron Paul",
+        character: "Jesse Pinkman",
+        profileUrl: "https://image.tmdb.org/t/p/w185/paul.jpg",
+      },
+    ]);
+    expect(body.series.creators).toEqual([
+      {
+        personId: 66633,
+        name: "Vince Gilligan",
+        profileUrl: "https://image.tmdb.org/t/p/w185/gilligan.jpg",
+      },
+    ]);
+    // Ordenado por episode_count decrescente (MacLaren, 11, antes de Bernstein,
+    // 8); quem não tem job "Director" (o produtor) fica de fora.
+    expect(body.series.directors).toEqual([
+      {
+        personId: 29779,
+        name: "Michelle MacLaren",
+        profileUrl: "https://image.tmdb.org/t/p/w185/maclaren.jpg",
+        episodeCount: 11,
+      },
+      {
+        personId: 111338,
+        name: "Adam Bernstein",
+        profileUrl: "https://image.tmdb.org/t/p/w185/bernstein.jpg",
+        episodeCount: 8,
+      },
+    ]);
+    vi.unstubAllGlobals();
+  });
+
+  it("se o request de créditos falhar, a série ainda é cacheada (cast/directors vazios, creators intacto)", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse({
+          ...tmdbSeriesDetail(506, "The Sopranos"),
+          created_by: [{ id: 1, name: "David Chase", profile_path: null }],
+        }),
+      )
+      .mockRejectedValueOnce(new Error("TMDB fora do ar"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await app.request("/api/series/506", { headers: { cookie } }, env);
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      series: { name: string; cast: unknown[]; creators: { name: string }[]; directors: unknown[] };
+    };
+    expect(body.series.name).toBe("The Sopranos");
+    expect(body.series.cast).toEqual([]);
+    expect(body.series.creators).toEqual([{ personId: 1, name: "David Chase", profileUrl: null }]);
+    expect(body.series.directors).toEqual([]);
+    vi.unstubAllGlobals();
+  });
+
   it("não consulta a TMDB de novo quando a série já está cacheada", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
-    stubTmdbFetchOnce(tmdbSeriesDetail(502, "Fargo"));
+    stubSeriesCacheFetch(502, "Fargo");
     await app.request("/api/series/502", { headers: { cookie } }, env);
     vi.unstubAllGlobals();
 
@@ -187,7 +337,7 @@ describe("GET /api/series/:tmdbId", () => {
 
   it("revalida o cache depois de 24h (ex.: série ganhou uma temporada nova)", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
-    stubTmdbFetchOnce(tmdbSeriesDetail(503, "Better Call Saul"));
+    stubSeriesCacheFetch(503, "Better Call Saul");
     await app.request("/api/series/503", { headers: { cookie } }, env);
     vi.unstubAllGlobals();
 
@@ -198,25 +348,28 @@ describe("GET /api/series/:tmdbId", () => {
       .where(eq(series.tmdbId, 503));
 
     const base = tmdbSeriesDetail(503, "Better Call Saul");
-    stubTmdbFetchOnce({
-      ...base,
-      number_of_seasons: 6,
-      seasons: [
-        ...base.seasons,
-        {
-          season_number: 2,
-          name: "Temporada 2",
-          episode_count: 10,
-          air_date: "2016-02-15",
-          poster_path: "/poster-503-s2.jpg",
-        },
-      ],
-    });
+    stubTmdbFetchOnce(
+      {
+        ...base,
+        number_of_seasons: 6,
+        seasons: [
+          ...base.seasons,
+          {
+            season_number: 2,
+            name: "Temporada 2",
+            episode_count: 10,
+            air_date: "2016-02-15",
+            poster_path: "/poster-503-s2.jpg",
+          },
+        ],
+      },
+      tmdbSeriesCredits(),
+    );
 
     const res = await app.request("/api/series/503", { headers: { cookie } }, env);
 
     expect(res.status).toBe(200);
-    expect(fetch).toHaveBeenCalledTimes(1); // revalidou de verdade, não usou o cache velho
+    expect(fetch).toHaveBeenCalledTimes(2); // detalhe + créditos — revalidou de verdade, não usou o cache velho
     const body = (await res.json()) as {
       series: { numberOfSeasons: number; seasons: unknown[] };
     };
@@ -227,7 +380,7 @@ describe("GET /api/series/:tmdbId", () => {
 
   it("mantém o cache velho se a TMDB estiver indisponível ao revalidar", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
-    stubTmdbFetchOnce(tmdbSeriesDetail(504, "Ozark"));
+    stubSeriesCacheFetch(504, "Ozark");
     await app.request("/api/series/504", { headers: { cookie } }, env);
     vi.unstubAllGlobals();
 
@@ -253,7 +406,7 @@ describe("GET /api/series/:tmdbId", () => {
 describe("CRUD de marcação (/api/series/:tmdbId/entry)", () => {
   it("PUT cria uma marcação nova, com nota e review", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
-    stubTmdbFetchOnce(tmdbSeriesDetail(601, "Better Call Saul"));
+    stubSeriesCacheFetch(601, "Better Call Saul");
 
     const res = await app.request(
       "/api/series/601/entry",
@@ -278,7 +431,7 @@ describe("CRUD de marcação (/api/series/:tmdbId/entry)", () => {
 
   it("PUT com payload parcial não apaga campos já preenchidos", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
-    stubTmdbFetchOnce(tmdbSeriesDetail(602, "Ozark"));
+    stubSeriesCacheFetch(602, "Ozark");
     await app.request(
       "/api/series/602/entry",
       {
@@ -307,7 +460,7 @@ describe("CRUD de marcação (/api/series/:tmdbId/entry)", () => {
 
   it("PUT com nota gera atividade rated", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
-    stubTmdbFetchOnce(tmdbSeriesDetail(604, "The Sopranos"));
+    stubSeriesCacheFetch(604, "The Sopranos");
 
     await app.request(
       "/api/series/604/entry",
@@ -328,7 +481,7 @@ describe("CRUD de marcação (/api/series/:tmdbId/entry)", () => {
 
   it("DELETE remove a marcação", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
-    stubTmdbFetchOnce(tmdbSeriesDetail(603, "Chernobyl"));
+    stubSeriesCacheFetch(603, "Chernobyl");
     await app.request(
       "/api/series/603/entry",
       {
@@ -347,7 +500,7 @@ describe("CRUD de marcação (/api/series/:tmdbId/entry)", () => {
     );
     expect(deleteRes.status).toBe(204);
 
-    stubTmdbFetchOnce(tmdbSeriesDetail(603, "Chernobyl"));
+    stubSeriesCacheFetch(603, "Chernobyl");
     const detailRes = await app.request("/api/series/603", { headers: { cookie } }, env);
     await expect(detailRes.json()).resolves.toMatchObject({ entry: null });
     vi.unstubAllGlobals();
@@ -358,7 +511,7 @@ describe("GET /api/series/entries", () => {
   it("lista só as marcações do usuário logado", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
 
-    stubTmdbFetchOnce(tmdbSeriesDetail(701, "Succession"));
+    stubSeriesCacheFetch(701, "Succession");
     await app.request(
       "/api/series/701/entry",
       {
@@ -370,7 +523,7 @@ describe("GET /api/series/entries", () => {
     );
     vi.unstubAllGlobals();
 
-    stubTmdbFetchOnce(tmdbSeriesDetail(702, "The Bear"));
+    stubSeriesCacheFetch(702, "The Bear");
     await app.request(
       "/api/series/702/entry",
       {
@@ -393,7 +546,7 @@ describe("GET /api/series/entries", () => {
   it("filtra por favorito", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
 
-    stubTmdbFetchOnce(tmdbSeriesDetail(703, "Fargo"));
+    stubSeriesCacheFetch(703, "Fargo");
     await app.request(
       "/api/series/favorites/1",
       {
@@ -405,7 +558,7 @@ describe("GET /api/series/entries", () => {
     );
     vi.unstubAllGlobals();
 
-    stubTmdbFetchOnce(tmdbSeriesDetail(704, "Ozark"));
+    stubSeriesCacheFetch(704, "Ozark");
     await app.request(
       "/api/series/704/entry",
       {
@@ -470,7 +623,7 @@ describe("GET/PUT /api/series/favorites", () => {
 
   it("PUT /favorites/:slot preenche um slot e reflete no GET", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
-    stubTmdbFetchOnce(tmdbSeriesDetail(620, "Fargo"));
+    stubSeriesCacheFetch(620, "Fargo");
 
     const putRes = await app.request(
       "/api/series/favorites/2",
@@ -496,7 +649,7 @@ describe("GET/PUT /api/series/favorites", () => {
 
   it("trocar um slot já ocupado libera a série que estava nele", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
-    stubTmdbFetchOnce(tmdbSeriesDetail(621, "The Wire"));
+    stubSeriesCacheFetch(621, "The Wire");
     await app.request(
       "/api/series/favorites/1",
       {
@@ -508,7 +661,7 @@ describe("GET/PUT /api/series/favorites", () => {
     );
     vi.unstubAllGlobals();
 
-    stubTmdbFetchOnce(tmdbSeriesDetail(622, "Chernobyl"));
+    stubSeriesCacheFetch(622, "Chernobyl");
     await app.request(
       "/api/series/favorites/1",
       {
@@ -533,7 +686,7 @@ describe("GET/PUT /api/series/favorites", () => {
 
   it("escolher a mesma série pra outro slot move-a (não duplica em dois slots)", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
-    stubTmdbFetchOnce(tmdbSeriesDetail(623, "Better Call Saul"));
+    stubSeriesCacheFetch(623, "Better Call Saul");
     await app.request(
       "/api/series/favorites/1",
       {
@@ -584,7 +737,7 @@ describe("GET/PUT /api/series/favorites", () => {
 
   it("favoritar gera atividade do tipo favorited", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
-    stubTmdbFetchOnce(tmdbSeriesDetail(624, "The Sopranos"));
+    stubSeriesCacheFetch(624, "The Sopranos");
 
     await app.request(
       "/api/series/favorites/1",
@@ -658,7 +811,7 @@ describe("GET /api/series/:tmdbId/seasons/:seasonNumber", () => {
 describe("PUT /api/series/:tmdbId/episodes/:seasonNumber/:episodeNumber", () => {
   it("marca e desmarca um episódio, sem gerar atividade", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
-    stubTmdbFetchOnce(tmdbSeriesDetail(901, "The Wire"));
+    stubSeriesCacheFetch(901, "The Wire");
 
     const markRes = await app.request(
       "/api/series/901/episodes/1/1",
@@ -741,7 +894,7 @@ describe("PUT /api/series/:tmdbId/episodes/:seasonNumber/:episodeNumber", () => 
 describe("PUT /api/series/:tmdbId/seasons/:seasonNumber", () => {
   it("marca a temporada inteira e gera atividade season_watched", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
-    stubTmdbFetchOnce(tmdbSeriesDetail(902, "Fargo"), tmdbSeasonDetail(1, 3));
+    stubTmdbFetchOnce(tmdbSeriesDetail(902, "Fargo"), tmdbSeriesCredits(), tmdbSeasonDetail(1, 3));
 
     const res = await app.request(
       "/api/series/902/seasons/1",
@@ -771,7 +924,7 @@ describe("PUT /api/series/:tmdbId/seasons/:seasonNumber", () => {
 
   it("desmarca a temporada inteira sem gerar nova atividade", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
-    stubTmdbFetchOnce(tmdbSeriesDetail(903, "Ozark"), tmdbSeasonDetail(1, 2));
+    stubTmdbFetchOnce(tmdbSeriesDetail(903, "Ozark"), tmdbSeriesCredits(), tmdbSeasonDetail(1, 2));
     await app.request(
       "/api/series/903/seasons/1",
       {
@@ -813,11 +966,12 @@ describe("PUT /api/series/:tmdbId/seasons/:seasonNumber", () => {
 
   it("temporada inexistente na TMDB retorna 404", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
-    // Primeiro fetch cacheia a série (ensureSeriesEntry); o segundo busca a
-    // temporada em si, que aqui responde 404.
+    // Os dois primeiros fetches cacheiam a série (ensureSeriesEntry: detalhe
+    // + créditos); o terceiro busca a temporada em si, que aqui responde 404.
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(jsonResponse(tmdbSeriesDetail(904, "Chernobyl")))
+      .mockResolvedValueOnce(jsonResponse(tmdbSeriesCredits()))
       .mockResolvedValueOnce(jsonResponse({ status_message: "not found" }, 404));
     vi.stubGlobal("fetch", fetchMock);
 

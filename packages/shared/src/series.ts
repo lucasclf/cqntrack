@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CastMemberSchema, CrewMemberSchema, SeriesDirectorSchema } from "./credits";
 import { FavoriteSlotNumberSchema } from "./favorites";
 
 // Resumo de uma temporada — vem de graça no mesmo GET /tv/{id} que já
@@ -49,6 +50,12 @@ export type SearchSeriesResponse = z.infer<typeof SearchSeriesResponseSchema>;
 
 export const SeriesDetailSchema = SeriesSummarySchema.extend({
   overview: z.string().nullable(),
+  cast: z.array(CastMemberSchema),
+  // Criador/showrunner (created_by da TMDB) — não é a mesma coisa que
+  // "Direção" (diretores mais frequentes por episódio, ver `directors`
+  // abaixo). Série não tem um diretor único como filme.
+  creators: z.array(CrewMemberSchema),
+  directors: z.array(SeriesDirectorSchema),
 });
 
 export type SeriesDetail = z.infer<typeof SeriesDetailSchema>;

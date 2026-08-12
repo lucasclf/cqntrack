@@ -31,6 +31,10 @@ export interface TmdbSeriesDetail {
     air_date: string | null;
     poster_path: string | null;
   }[];
+  // Criador(es)/showrunner — já vem de graça nesse mesmo GET /tv/{id}, sem
+  // request extra. Não é a mesma coisa que "diretor" (ver TmdbAggregateCrewMember
+  // abaixo) — série não tem um diretor único como filme.
+  created_by?: { id: number; name: string; profile_path: string | null }[];
 }
 
 // GET /tv/{series_id}/season/{season_number} — buscado ao vivo, sem cache
