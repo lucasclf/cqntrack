@@ -18,6 +18,7 @@ import { MovieListDetail } from "./movies/MovieListDetail";
 import { MovieSearch } from "./movies/MovieSearch";
 import { MyMovieEntries } from "./movies/MyMovieEntries";
 import { MyMovieLists } from "./movies/MyMovieLists";
+import { PersonDetail } from "./people/PersonDetail";
 import { PublicListDetail } from "./profile/PublicListDetail";
 import { PublicProfile } from "./profile/PublicProfile";
 import { RedirectToJogosListDetail } from "./routes/RedirectToJogosListDetail";
@@ -89,6 +90,9 @@ export const routes: RouteObject[] = [
               { path: "listas/:listId", element: <BookListDetail /> },
             ],
           },
+          // Sem seção própria (não é um MEDIA_TYPE) — só alcançável por link
+          // de dentro de um filme/série (elenco/direção).
+          { path: "pessoas/:personId", element: <PersonDetail /> },
         ],
       },
     ],
