@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../lib/api-client";
@@ -77,126 +77,180 @@ function renderProfile(username = "gamer_1") {
   );
 }
 
+// Mock com dado real em todas as 8 rotas (favoritos + recente x4 mídias) —
+// reaproveitado pelos testes que navegam entre abas.
+function mockAllTabsWithData() {
+  getMock.mockImplementation((path: string) => {
+    if (path === "/api/users/gamer_1") return Promise.resolve(PROFILE);
+
+    if (path === "/api/users/gamer_1/movies/favorites") {
+      return Promise.resolve({
+        items: [
+          {
+            id: "1",
+            status: "watched",
+            rating: null,
+            watchedAt: "2026-01-01T00:00:00.000Z",
+            favoritedAt: "2026-01-02T00:00:00.000Z",
+            review: null,
+            updatedAt: "2026-01-02T00:00:00.000Z",
+            movie: MOVIE,
+          },
+        ],
+      });
+    }
+    if (path === "/api/users/gamer_1/series/favorites") {
+      return Promise.resolve({
+        items: [
+          {
+            id: "1",
+            rating: null,
+            watchedEpisodeCount: 10,
+            favoritedAt: "2026-01-03T00:00:00.000Z",
+            review: null,
+            updatedAt: "2026-01-03T00:00:00.000Z",
+            series: SERIES,
+          },
+        ],
+      });
+    }
+    if (path === "/api/users/gamer_1/books/favorites") {
+      return Promise.resolve({
+        items: [
+          {
+            id: "1",
+            status: "read",
+            rating: null,
+            favoritedAt: "2026-01-01T00:00:00.000Z",
+            review: null,
+            updatedAt: "2026-01-01T00:00:00.000Z",
+            book: BOOK,
+          },
+        ],
+      });
+    }
+    if (path === "/api/users/gamer_1/games/favorites") {
+      return Promise.resolve({
+        items: [
+          {
+            id: "1",
+            status: "completed",
+            rating: null,
+            favoritedAt: "2026-01-01T00:00:00.000Z",
+            platforms: null,
+            review: null,
+            updatedAt: "2026-01-01T00:00:00.000Z",
+            game: GAME,
+          },
+        ],
+      });
+    }
+
+    if (path.startsWith("/api/users/gamer_1/movies/entries")) {
+      return Promise.resolve({
+        items: [
+          {
+            id: "1",
+            status: "watched",
+            rating: null,
+            watchedAt: "2026-01-01T00:00:00.000Z",
+            favoritedAt: null,
+            review: null,
+            updatedAt: "2026-01-01T00:00:00.000Z",
+            movie: MOVIE,
+          },
+        ],
+        page: 1,
+        pageSize: 12,
+        total: 1,
+      });
+    }
+    if (path.startsWith("/api/users/gamer_1/series/recently-watched")) {
+      return Promise.resolve({
+        items: [{ series: SERIES, lastWatchedAt: "2026-01-02T00:00:00.000Z" }],
+      });
+    }
+    if (path.startsWith("/api/users/gamer_1/books/entries")) {
+      return Promise.resolve({
+        items: [
+          {
+            id: "1",
+            status: "read",
+            rating: null,
+            favoritedAt: null,
+            review: null,
+            updatedAt: "2026-01-01T00:00:00.000Z",
+            book: BOOK,
+          },
+        ],
+        page: 1,
+        pageSize: 12,
+        total: 1,
+      });
+    }
+    if (path.startsWith("/api/users/gamer_1/games/entries")) {
+      return Promise.resolve({
+        items: [
+          {
+            id: "1",
+            status: "completed",
+            rating: null,
+            favoritedAt: null,
+            platforms: null,
+            review: null,
+            updatedAt: "2026-01-01T00:00:00.000Z",
+            game: GAME,
+          },
+        ],
+        page: 1,
+        pageSize: 20,
+        total: 1,
+      });
+    }
+
+    return Promise.reject(new Error("rota inesperada: " + path));
+  });
+}
+
 describe("PublicProfile", () => {
   beforeEach(() => {
     getMock.mockReset();
   });
 
-  it("mostra header e as 6 seções de favoritos/recentes, sem exigir sessão", async () => {
-    getMock.mockImplementation((path: string) => {
-      if (path === "/api/users/gamer_1") return Promise.resolve(PROFILE);
-
-      if (path === "/api/users/gamer_1/movies/favorites") {
-        return Promise.resolve({
-          items: [
-            {
-              id: "1",
-              status: "watched",
-              rating: null,
-              watchedAt: "2026-01-01T00:00:00.000Z",
-              favoritedAt: "2026-01-02T00:00:00.000Z",
-              review: null,
-              updatedAt: "2026-01-02T00:00:00.000Z",
-              movie: MOVIE,
-            },
-          ],
-        });
-      }
-      if (path === "/api/users/gamer_1/series/favorites") {
-        return Promise.resolve({
-          items: [
-            {
-              id: "1",
-              rating: null,
-              watchedEpisodeCount: 10,
-              favoritedAt: "2026-01-03T00:00:00.000Z",
-              review: null,
-              updatedAt: "2026-01-03T00:00:00.000Z",
-              series: SERIES,
-            },
-          ],
-        });
-      }
-      if (path === "/api/users/gamer_1/books/favorites") return Promise.resolve(EMPTY_ITEMS);
-      if (path === "/api/users/gamer_1/games/favorites") return Promise.resolve(EMPTY_ITEMS);
-
-      if (path.startsWith("/api/users/gamer_1/movies/entries")) {
-        return Promise.resolve({
-          items: [
-            {
-              id: "1",
-              status: "watched",
-              rating: null,
-              watchedAt: "2026-01-01T00:00:00.000Z",
-              favoritedAt: null,
-              review: null,
-              updatedAt: "2026-01-01T00:00:00.000Z",
-              movie: MOVIE,
-            },
-          ],
-          page: 1,
-          pageSize: 12,
-          total: 1,
-        });
-      }
-      if (path.startsWith("/api/users/gamer_1/series/recently-watched")) {
-        return Promise.resolve({
-          items: [{ series: SERIES, lastWatchedAt: "2026-01-02T00:00:00.000Z" }],
-        });
-      }
-      if (path.startsWith("/api/users/gamer_1/books/entries")) {
-        return Promise.resolve({
-          items: [
-            {
-              id: "1",
-              status: "read",
-              rating: null,
-              favoritedAt: null,
-              review: null,
-              updatedAt: "2026-01-01T00:00:00.000Z",
-              book: BOOK,
-            },
-          ],
-          page: 1,
-          pageSize: 12,
-          total: 1,
-        });
-      }
-      if (path.startsWith("/api/users/gamer_1/games/entries")) {
-        return Promise.resolve({
-          items: [
-            {
-              id: "1",
-              status: "completed",
-              rating: null,
-              favoritedAt: null,
-              platforms: null,
-              review: null,
-              updatedAt: "2026-01-01T00:00:00.000Z",
-              game: GAME,
-            },
-          ],
-          page: 1,
-          pageSize: 20,
-          total: 1,
-        });
-      }
-
-      return Promise.reject(new Error("rota inesperada: " + path));
-    });
-
+  it("mostra header e abas por mídia (Filmes/Séries/Jogos/Livros)", async () => {
+    mockAllTabsWithData();
     renderProfile();
 
     expect(await screen.findByRole("heading", { name: "Gamer_1" })).toBeInTheDocument();
     expect(screen.getByText("@gamer_1")).toBeInTheDocument();
 
-    expect(await screen.findByRole("heading", { name: "Filmes e séries favoritos" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Assistido recentemente" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Jogado recentemente" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Filmes" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Séries" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Jogos" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Livros" })).toBeInTheDocument();
+
+    // Aba padrão é Filmes.
+    expect(screen.getByRole("tab", { name: "Filmes" })).toHaveAttribute("aria-selected", "true");
+    expect(await screen.findByRole("heading", { name: "Filmes favoritos" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Assistido recentemente" })).toBeInTheDocument();
     expect(screen.getAllByText("Inception")).not.toHaveLength(0);
+    expect(screen.queryByText("Breaking Bad")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Séries favoritas" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Séries" }));
+    expect(await screen.findByRole("heading", { name: "Séries favoritas" })).toBeInTheDocument();
     expect(screen.getAllByText("Breaking Bad")).not.toHaveLength(0);
-    expect(screen.getByText("Dom Casmurro")).toBeInTheDocument();
-    expect(screen.getByText("The Witcher 3: Wild Hunt")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Filmes favoritos" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Jogos" }));
+    expect(await screen.findByRole("heading", { name: "Jogos favoritos" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Jogado recentemente" })).toBeInTheDocument();
+    expect(screen.getAllByText("The Witcher 3: Wild Hunt")).not.toHaveLength(0);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Livros" }));
+    expect(await screen.findByRole("heading", { name: "Livros favoritos" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Lido recentemente" })).toBeInTheDocument();
+    expect(screen.getAllByText("Dom Casmurro")).not.toHaveLength(0);
 
     // Sem stats/listas/marcações completas — perfil enxuto (redesign).
     expect(screen.queryByRole("heading", { name: "Listas" })).not.toBeInTheDocument();
@@ -222,10 +276,12 @@ describe("PublicProfile", () => {
     renderProfile();
 
     expect(await screen.findByRole("heading", { name: "Gamer_1" })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Filmes e séries favoritos" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Filmes favoritos" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Assistido recentemente" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Livros" }));
+    expect(screen.queryByRole("heading", { name: "Livros favoritos" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Lido recentemente" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Jogado recentemente" })).not.toBeInTheDocument();
   });
 
   it("mostra 'usuário não encontrado' em 404", async () => {

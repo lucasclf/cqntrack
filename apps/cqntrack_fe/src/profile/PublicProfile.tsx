@@ -5,11 +5,14 @@ import { BookFavoritesSection } from "../books/BookFavoritesSection";
 import { FavoritesSection } from "../games/FavoritesSection";
 import { PublicLayout } from "../layouts/PublicLayout";
 import { ApiError, apiClient } from "../lib/api-client";
-import { FavoriteMoviesAndSeries } from "./FavoriteMoviesAndSeries";
+import { MovieFavorites } from "./MovieFavorites";
+import { type ProfileTab, ProfileTabs } from "./ProfileTabs";
 import styles from "./PublicProfile.module.css";
 import { RecentlyPlayedGames } from "./RecentlyPlayedGames";
 import { RecentlyReadBooks } from "./RecentlyReadBooks";
-import { RecentlyWatchedMoviesAndSeries } from "./RecentlyWatchedMoviesAndSeries";
+import { RecentlyWatchedMovies } from "./RecentlyWatchedMovies";
+import { RecentlyWatchedSeries } from "./RecentlyWatchedSeries";
+import { SeriesFavorites } from "./SeriesFavorites";
 
 type LoadStatus = "loading" | "ready" | "not-found" | "error";
 
@@ -17,11 +20,12 @@ type LoadStatus = "loading" | "ready" | "not-found" | "error";
 // próprio dono do perfil — AppShell não tem aba "Perfil" ainda (só o
 // dropdown de conta linka pra cá), essa distinção fica pra quando existir.
 //
-// 7 seções fixas: favoritos (filme+série juntos, livro, jogo) seguidos de
-// recente (assistido, lido, jogado) — substitui a versão anterior, que
-// mostrava (repetido 4x) favoritos + listas + marcações completas por
-// domínio. Listas e marcações completas continuam existindo como rotas,
-// só que agora só acessíveis pelo próprio usuário logado.
+// Conteúdo organizado em abas por mídia (Filmes/Séries/Jogos/Livros, estilo
+// Filmow) — cada aba mostra favoritos + recente daquela mídia. Substitui a
+// versão anterior, que empilhava as 6 seções (com filme+série favoritos e
+// assistidos misturados numa seção só). Listas e marcações completas
+// continuam existindo como rotas, só que agora só acessíveis pelo próprio
+// usuário logado.
 export function PublicProfile() {
   // A rota é "/:handle" (não "/@:username") — react-router não casa texto
   // literal + parâmetro no mesmo segmento, então o "@" vem junto no valor
@@ -32,14 +36,17 @@ export function PublicProfile() {
   const username = handle?.startsWith("@") ? handle.slice(1) : null;
   const [profile, setProfile] = useState<PublicProfileDto | null>(null);
   const [loadStatus, setLoadStatus] = useState<LoadStatus>(username ? "loading" : "not-found");
+  const [activeTab, setActiveTab] = useState<ProfileTab>("movies");
 
   // Reseta assim que o :handle da rota muda — feito durante o render (mesmo
   // padrão já usado em MovieDetail/SeriesDetail/etc. pra "adjusting state
-  // when props change"), não dentro do efeito abaixo.
+  // when props change"), não dentro do efeito abaixo. Volta pra aba padrão
+  // também, senão navegar de um perfil pra outro mantém a aba de antes.
   const [trackedUsername, setTrackedUsername] = useState(username);
   if (username !== trackedUsername) {
     setTrackedUsername(username);
     setLoadStatus(username ? "loading" : "not-found");
+    setActiveTab("movies");
   }
 
   useEffect(() => {
@@ -111,12 +118,32 @@ export function PublicProfile() {
           </div>
         </header>
 
-        <FavoriteMoviesAndSeries username={username} />
-        <BookFavoritesSection favoritesEndpoint={`/api/users/${username}/books/favorites`} />
-        <FavoritesSection favoritesEndpoint={`/api/users/${username}/games/favorites`} />
-        <RecentlyWatchedMoviesAndSeries username={username} />
-        <RecentlyReadBooks username={username} />
-        <RecentlyPlayedGames username={username} />
+        <ProfileTabs active={activeTab} onChange={setActiveTab} />
+
+        {activeTab === "movies" && (
+          <>
+            <MovieFavorites username={username} />
+            <RecentlyWatchedMovies username={username} />
+          </>
+        )}
+        {activeTab === "series" && (
+          <>
+            <SeriesFavorites username={username} />
+            <RecentlyWatchedSeries username={username} />
+          </>
+        )}
+        {activeTab === "games" && (
+          <>
+            <FavoritesSection favoritesEndpoint={`/api/users/${username}/games/favorites`} />
+            <RecentlyPlayedGames username={username} />
+          </>
+        )}
+        {activeTab === "books" && (
+          <>
+            <BookFavoritesSection favoritesEndpoint={`/api/users/${username}/books/favorites`} />
+            <RecentlyReadBooks username={username} />
+          </>
+        )}
       </div>
     </PublicLayout>
   );
