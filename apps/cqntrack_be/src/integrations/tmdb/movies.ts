@@ -21,7 +21,19 @@ export async function getPopularMovies(env: Env, page = 1): Promise<TmdbSearchRe
   return tmdbFetch<TmdbSearchResponse<TmdbMovieSearchResult>>(env, `/movie/popular?page=${page}`);
 }
 
-export async function getMovieById(env: Env, tmdbId: number): Promise<TmdbMovieDetail | null> {
+// `fetchOverviewFallback: false` (import em massa do CSV do Filmow, ver
+// movies.service.ts) pula esse segundo request de propósito — o plano Free
+// de Workers só dá 10ms de CPU por invocação, e cada request a mais custa
+// tanto o round-trip quanto o parse do JSON de resposta. Sinopse fica vazia
+// até a próxima revalidação de verdade (24h, ou antes se cast/directors
+// também tiverem ficado null — ver isStale em movies.service.ts).
+export async function getMovieById(
+  env: Env,
+  tmdbId: number,
+  options: { fetchOverviewFallback?: boolean } = {},
+): Promise<TmdbMovieDetail | null> {
+  const fetchOverviewFallback = options.fetchOverviewFallback ?? true;
+
   let detail: TmdbMovieDetail;
   try {
     detail = await tmdbFetch<TmdbMovieDetail>(env, `/movie/${tmdbId}`);
@@ -32,7 +44,7 @@ export async function getMovieById(env: Env, tmdbId: number): Promise<TmdbMovieD
     throw error;
   }
 
-  if (!detail.overview) {
+  if (!detail.overview && fetchOverviewFallback) {
     // Sem tradução pt-BR cadastrada pra esse filme — refaz em inglês só
     // pra sinopse. Se esse segundo request falhar, segue com sinopse
     // vazia mesmo: não derruba um detalhe que já veio certo por causa

@@ -122,8 +122,12 @@ export async function getPopularMoviesForUser(
 // foi cacheado da primeira vez).
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
+// cast === null (nunca chegou a buscar créditos, ver getOrCacheMovie com
+// fetchCredits: false) força revalidação na próxima chamada, mesmo dentro
+// da janela de 24h — senão um filme importado em massa ficaria até um dia
+// inteiro sem elenco/direção na tela de detalhe.
 function isStale(row: CachedMovie): boolean {
-  return Date.now() - row.updatedAt.getTime() > CACHE_TTL_MS;
+  return row.cast === null || Date.now() - row.updatedAt.getTime() > CACHE_TTL_MS;
 }
 
 // Top billed cast, mesmo espírito de qualquer site de filme — não a lista
@@ -158,10 +162,7 @@ function mapCreditsToDirectorRows(credits: TmdbCredits | null) {
   return directors;
 }
 
-function mapMovieDetailToRow(
-  detail: NonNullable<Awaited<ReturnType<typeof getMovieById>>>,
-  credits: TmdbCredits | null,
-) {
+function mapMovieDetailToRow(detail: NonNullable<Awaited<ReturnType<typeof getMovieById>>>) {
   return {
     name: detail.title,
     posterPath: detail.poster_path ?? null,
@@ -171,8 +172,6 @@ function mapMovieDetailToRow(
     genres: detail.genres?.map((genre) => genre.name) ?? [],
     runtime: detail.runtime ?? null,
     rating: detail.vote_average ?? null,
-    cast: mapCreditsToCastRows(credits),
-    directors: mapCreditsToDirectorRows(credits),
   };
 }
 
@@ -180,13 +179,29 @@ function mapMovieDetailToRow(
 // estiver velho, consulta a TMDB e grava (insert ou update) antes de
 // devolver. `onConflictDoNothing` torna o insert seguro sob requests
 // concorrentes cacheando o mesmo filme pela primeira vez.
-export async function getOrCacheMovie(env: Env, db: Db, tmdbId: number): Promise<CachedMovie> {
+//
+// `fetchCredits: false` (import em massa do CSV do Filmow, ver
+// import.service.ts) pula o request de elenco/direção — cada filme novo já
+// bate o teto de CPU do Worker (JSON grande de créditos + sort/dedupe) num
+// lote com vários filmes nunca vistos antes; o elenco fica null e backfila
+// sozinho na próxima vez que alguém abrir o detalhe do filme de verdade
+// (fetchCredits volta a ser true por padrão), via o isStale acima.
+export async function getOrCacheMovie(
+  env: Env,
+  db: Db,
+  tmdbId: number,
+  options: { fetchCredits?: boolean; fetchOverviewFallback?: boolean } = {},
+): Promise<CachedMovie> {
+  const fetchCredits = options.fetchCredits ?? true;
+
   const [cached] = await db.select().from(movie).where(eq(movie.tmdbId, tmdbId));
   if (cached && !isStale(cached)) {
     return cached;
   }
 
-  const detail = await getMovieById(env, tmdbId);
+  const detail = await getMovieById(env, tmdbId, {
+    fetchOverviewFallback: options.fetchOverviewFallback,
+  });
   if (!detail) {
     // TMDB indisponível ou filme removido de lá — melhor devolver o cache
     // velho (se existir) do que quebrar a tela por causa da revalidação.
@@ -198,10 +213,25 @@ export async function getOrCacheMovie(env: Env, db: Db, tmdbId: number): Promise
 
   // Elenco/direção vêm de um request separado — se falhar, não derruba a
   // revalidação do filme em si, só fica sem cast/directors até a próxima
-  // janela de 24h.
-  const credits = await getMovieCredits(env, tmdbId).catch(() => null);
+  // janela de 24h. fetchCredits: false pula esse request de propósito (ver
+  // comentário acima) — nesse caso cast/directors ficam de fora do payload
+  // (em vez de virarem `[]`), pra um update não apagar elenco que já
+  // tinha sido buscado antes, e um insert novo ficar com a coluna null
+  // (== "nunca buscou", ver isStale) em vez de "buscou e não achou ninguém".
+  const baseValues = mapMovieDetailToRow(detail);
+  let values: typeof baseValues & {
+    cast?: ReturnType<typeof mapCreditsToCastRows>;
+    directors?: ReturnType<typeof mapCreditsToDirectorRows>;
+  } = baseValues;
 
-  const values = mapMovieDetailToRow(detail, credits);
+  if (fetchCredits) {
+    const credits = await getMovieCredits(env, tmdbId).catch(() => null);
+    values = {
+      ...baseValues,
+      cast: mapCreditsToCastRows(credits),
+      directors: mapCreditsToDirectorRows(credits),
+    };
+  }
 
   if (cached) {
     await db.update(movie).set(values).where(eq(movie.tmdbId, tmdbId));

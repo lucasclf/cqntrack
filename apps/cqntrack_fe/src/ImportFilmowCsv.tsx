@@ -2,15 +2,40 @@ import type { ImportFilmowResponse, ImportFilmowResult } from "@cqntrack/shared"
 import { type ChangeEvent, useState } from "react";
 import styles from "./ImportFilmowCsv.module.css";
 import { apiClient } from "./lib/api-client";
-import { parseCsv } from "./lib/parseCsv";
+import { parseCsv, titlesToCsv } from "./lib/parseCsv";
 
-// Lote pequeno o bastante pra cada request ao backend ficar bem abaixo do
-// limite de subrequests do Worker (cada título novo custa ~3 lá dentro:
-// busca + detalhe + créditos na TMDB) — ver ImportFilmowRequestSchema
-// (max 30 por request; 20 aqui dá folga).
-const BATCH_SIZE = 20;
+// 1 título por request — o plano Free de Workers tem só 10ms de CPU por
+// invocação, e processar um filme novo (busca + detalhe na TMDB, validação,
+// gravação no D1, em cima do custo fixo de verificar a sessão) já é
+// suficiente pra estourar esse teto às vezes. Sem retry: se um título falhar
+// (rede, ou o Worker estourando o limite de CPU), ele já sai marcado como
+// erro na hora — tentar de novo raramente ajuda porque a causa costuma ser
+// o mesmo teto de CPU, não algo transitório. O usuário baixa um CSV só com
+// quem falhou (ver downloadErroredCsv) e reimporta depois.
+const BATCH_SIZE = 1;
+
+// Mesmo limite de ImportFilmowRequestSchema (título até 300 caracteres).
+// Filtrado aqui, antes de montar os lotes, pra um título gigante/corrompido
+// (ex.: CSV com encoding quebrado) não derrubar o request na validação do
+// backend — vira "error" na hora, sem gastar request nenhuma.
+const MAX_TITLE_LENGTH = 300;
 
 type ImportStatus = "idle" | "reading" | "importing" | "done" | "error";
+
+// Baixa um CSV no mesmo formato aceito por ImportFilmowCsv (coluna
+// "Title") com só os títulos que falharam, pro usuário poder tentar de
+// novo mais tarde (ex.: depois de mais filmes da lista já estarem
+// cacheados, o que reduz o trabalho por request) sem precisar separar isso
+// à mão do CSV original.
+function downloadErroredCsv(titles: string[]) {
+  const blob = new Blob([titlesToCsv(titles)], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "filmow-titulos-com-erro.csv";
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
 function extractTitles(csvText: string): string[] | null {
   const rows = parseCsv(csvText);
@@ -38,13 +63,21 @@ export function ImportFilmowCsv() {
   const [error, setError] = useState<string | null>(null);
 
   async function runImport(titles: string[]) {
-    setStatus("importing");
-    setProgress({ done: 0, total: titles.length });
-    setResults([]);
+    const validTitles = titles.filter((title) => title.length <= MAX_TITLE_LENGTH);
+    const oversized = titles.filter((title) => title.length > MAX_TITLE_LENGTH);
 
-    const collected: ImportFilmowResult[] = [];
-    for (let start = 0; start < titles.length; start += BATCH_SIZE) {
-      const batch = titles.slice(start, start + BATCH_SIZE);
+    setStatus("importing");
+    setProgress({ done: oversized.length, total: titles.length });
+
+    const collected: ImportFilmowResult[] = oversized.map((title) => ({
+      title,
+      status: "error",
+      movie: null,
+    }));
+    setResults([...collected]);
+
+    for (let start = 0; start < validTitles.length; start += BATCH_SIZE) {
+      const batch = validTitles.slice(start, start + BATCH_SIZE);
       try {
         const response = await apiClient.post<ImportFilmowResponse>("/api/movies/import/filmow", {
           titles: batch,
@@ -55,7 +88,10 @@ export function ImportFilmowCsv() {
           collected.push({ title, status: "error", movie: null });
         }
       }
-      setProgress({ done: Math.min(start + BATCH_SIZE, titles.length), total: titles.length });
+      setProgress({
+        done: oversized.length + Math.min(start + BATCH_SIZE, validTitles.length),
+        total: titles.length,
+      });
       setResults([...collected]);
     }
 
@@ -124,8 +160,15 @@ export function ImportFilmowCsv() {
             <div role="alert">
               <p>
                 {errored.length} {errored.length === 1 ? "título falhou" : "títulos falharam"} ao
-                importar — importe o CSV de novo pra tentar esses de novo.
+                importar.
               </p>
+              <button
+                type="button"
+                className={styles.downloadButton}
+                onClick={() => downloadErroredCsv(errored.map((result) => result.title))}
+              >
+                Baixar CSV com {errored.length === 1 ? "o título que falhou" : "os títulos que falharam"}
+              </button>
               <details>
                 <summary>
                   Ver {errored.length === 1 ? "o título que falhou" : "os títulos que falharam"}

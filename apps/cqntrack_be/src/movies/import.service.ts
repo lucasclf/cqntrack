@@ -6,12 +6,15 @@ import { mapTmdbSearchResultToSummary } from "./movies.service";
 
 type Db = ReturnType<typeof createDb>;
 
-// Concorrência baixa — cada título novo já dispara ~3 requests à TMDB
-// dentro de upsertMovieEntry (busca + detalhe + créditos, via
-// getOrCacheMovie); um lote inteiro em paralelo estouraria tanto o rate
-// limit da TMDB quanto o limite de subrequests do Worker. O front já manda
-// em lotes pequenos (ver ImportFilmowRequestSchema) — isso aqui é a
-// segunda camada de controle, dentro de cada lote.
+// Concorrência baixa — o front manda 1 título por request (ver BATCH_SIZE
+// em ImportFilmowCsv.tsx: o plano Free de Workers só dá 10ms de CPU por
+// invocação, e cada request a mais custa CPU de parse de JSON, não só rede
+// — créditos e o fallback de sinopse em inglês são pulados de propósito,
+// ver fetchCredits/fetchOverviewFallback abaixo). CONCURRENCY > 1 só entra
+// em jogo se alguém chamar o endpoint direto com mais de 1 título no
+// mesmo request (o schema permite até um teto maior, ver
+// ImportFilmowRequestSchema) — mantido como segunda camada de proteção
+// contra rate limit da TMDB nesse caso.
 const CONCURRENCY = 3;
 
 // Sem heurística de desambiguação: pega o 1º resultado da busca por texto
@@ -36,7 +39,14 @@ async function importOne(
       return { title, status: "not_found", movie: null };
     }
 
-    await upsertMovieEntry(env, db, userId, top.id, { status: "watched" }, { logActivity: false });
+    await upsertMovieEntry(
+      env,
+      db,
+      userId,
+      top.id,
+      { status: "watched" },
+      { logActivity: false, fetchCredits: false, fetchOverviewFallback: false },
+    );
     return { title, status: "imported", movie: mapTmdbSearchResultToSummary(top) };
   } catch {
     return { title, status: "error", movie: null };

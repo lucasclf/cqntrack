@@ -191,10 +191,13 @@ export type UpdateMovieListRequest = z.infer<typeof UpdateMovieListRequestSchema
 // própria TMDB) — sem heurística de desambiguação além disso. Cada título
 // processado vira uma marcação "Já vi" quando encontrado. Lote pequeno
 // (server-side, além do que o front já manda em lotes) pra não estourar o
-// limite de subrequests do Worker (cada título novo custa ~3: busca +
-// detalhe + créditos).
+// limite de 50 subrequests externos por invocação do plano Free de Workers
+// — cada título novo custa até 4 (busca + detalhe em pt-BR + detalhe em
+// en-US, só quando o filme não tem sinopse pt-BR cadastrada na TMDB, ver
+// getMovieById + créditos), então 10 por request fica com folga real do
+// teto mesmo se nenhum filme do lote já estiver cacheado.
 export const ImportFilmowRequestSchema = z.object({
-  titles: z.array(z.string().min(1).max(300)).min(1).max(30),
+  titles: z.array(z.string().min(1).max(300)).min(1).max(10),
 });
 
 export type ImportFilmowRequest = z.infer<typeof ImportFilmowRequestSchema>;

@@ -740,7 +740,7 @@ describe("POST /api/movies/import/filmow", () => {
     expect(res.status).toBe(401);
   });
 
-  it("corpo inválido (sem títulos, ou mais de 30) retorna 400", async () => {
+  it("corpo inválido (sem títulos, ou mais de 10) retorna 400", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
 
     const emptyRes = await app.request(
@@ -759,7 +759,7 @@ describe("POST /api/movies/import/filmow", () => {
       {
         method: "POST",
         headers: { cookie, "Content-Type": "application/json" },
-        body: JSON.stringify({ titles: Array.from({ length: 31 }, (_, i) => `Filme ${i}`) }),
+        body: JSON.stringify({ titles: Array.from({ length: 11 }, (_, i) => `Filme ${i}`) }),
       },
       env,
     );
@@ -769,9 +769,11 @@ describe("POST /api/movies/import/filmow", () => {
   it("título encontrado vira marcação 'Já vi' sem gerar atividade; título sem match vira not_found", async () => {
     const { cookie, username } = await createAuthenticatedUser(app, env);
 
+    // Sem stub de "/movie/27205/credits" de propósito — import em massa
+    // pula esse request (fetchCredits: false, ver import.service.ts); se o
+    // código voltar a chamá-lo, o mock lança "URL inesperada" e o teste falha.
     stubTmdbByUrl([
       ["/search/movie?query=Inception", { results: [TMDB_SEARCH_RESULT] }],
-      ["/movie/27205/credits", tmdbMovieCredits()],
       ["/movie/27205", tmdbMovieDetail(27205, "Inception")],
       ["/search/movie?query=Zzznotfound", { results: [] }],
     ]);
@@ -814,5 +816,11 @@ describe("POST /api/movies/import/filmow", () => {
     // Import em massa não deve poluir o feed de atividade.
     const activities = await createDb(env).query.activity.findMany();
     expect(activities.filter((item) => item.itemId === "27205")).toHaveLength(0);
+
+    // fetchCredits: false — elenco/direção ficam null (backfilam sozinhos
+    // na próxima vez que alguém abrir o detalhe do filme de verdade).
+    const [cachedMovie] = await createDb(env).select().from(movie).where(eq(movie.tmdbId, 27205));
+    expect(cachedMovie?.cast).toBeNull();
+    expect(cachedMovie?.directors).toBeNull();
   });
 });

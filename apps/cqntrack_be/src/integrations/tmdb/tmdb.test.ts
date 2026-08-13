@@ -333,6 +333,28 @@ describe("integrations/tmdb", () => {
     vi.unstubAllGlobals();
   });
 
+  it("getMovieById pula o fallback em inglês quando fetchOverviewFallback é false", async () => {
+    const movieDetail = {
+      id: 352114,
+      title: "Quay",
+      poster_path: null,
+      release_date: "2015-09-01",
+      overview: "",
+      genres: [],
+      runtime: 15,
+      vote_average: 6.5,
+    };
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(movieDetail));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await getMovieById(env, 352114, { fetchOverviewFallback: false });
+
+    expect(result?.overview).toBe("");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    vi.unstubAllGlobals();
+  });
+
   it("getMovieById não quebra se o fallback em inglês também falhar", async () => {
     const movieDetail = {
       id: 352114,

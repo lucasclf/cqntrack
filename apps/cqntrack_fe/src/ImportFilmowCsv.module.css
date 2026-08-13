@@ -43,6 +43,20 @@
   margin: 0 0 6px;
 }
 
+.downloadButton {
+  display: inline-flex;
+  align-items: center;
+  margin: 4px 0 8px;
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .notFoundList {
   margin: 8px 0 0;
   padding-left: 20px;

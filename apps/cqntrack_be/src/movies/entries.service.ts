@@ -93,10 +93,15 @@ export async function upsertMovieEntry(
   input: UpsertMovieEntryRequest,
   // logActivity: false pra import em massa (ver import.service.ts) — 700
   // linhas de "status_changed" de uma vez enterrariam o feed de atividade
-  // de verdade.
-  options: { logActivity?: boolean } = {},
+  // de verdade. fetchCredits/fetchOverviewFallback: false, mesmo motivo —
+  // pulam requests extras (elenco/direção, e a segunda busca de sinopse em
+  // inglês) pra não estourar os 10ms de CPU do plano Free de Workers.
+  options: { logActivity?: boolean; fetchCredits?: boolean; fetchOverviewFallback?: boolean } = {},
 ): Promise<MovieEntry> {
-  const cachedMovie = await getOrCacheMovie(env, db, tmdbId); // garante que a FK movieId existe
+  const cachedMovie = await getOrCacheMovie(env, db, tmdbId, {
+    fetchCredits: options.fetchCredits,
+    fetchOverviewFallback: options.fetchOverviewFallback,
+  }); // garante que a FK movieId existe
 
   const existing = await db.query.movieEntry.findFirst({
     where: and(eq(movieEntry.userId, userId), eq(movieEntry.movieId, tmdbId)),

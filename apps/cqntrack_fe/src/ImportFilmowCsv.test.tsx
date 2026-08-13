@@ -53,32 +53,38 @@ describe("ImportFilmowCsv", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Nenhum título encontrado");
   });
 
-  it("importa os títulos da coluna Title e mostra o resumo", async () => {
-    postMock.mockResolvedValue({
-      results: [
-        {
-          title: "The Matrix",
-          status: "imported",
-          movie: {
-            tmdbId: 603,
-            name: "The Matrix",
-            posterUrl: null,
-            releaseDate: null,
-            genres: [],
-            runtime: null,
-            rating: null,
+  it("importa os títulos da coluna Title (1 por request) e mostra o resumo", async () => {
+    postMock
+      .mockResolvedValueOnce({
+        results: [
+          {
+            title: "The Matrix",
+            status: "imported",
+            movie: {
+              tmdbId: 603,
+              name: "The Matrix",
+              posterUrl: null,
+              releaseDate: null,
+              genres: [],
+              runtime: null,
+              rating: null,
+            },
           },
-        },
-        { title: "Filme Inexistente XYZ", status: "not_found", movie: null },
-      ],
-    });
+        ],
+      })
+      .mockResolvedValueOnce({
+        results: [{ title: "Filme Inexistente XYZ", status: "not_found", movie: null }],
+      });
     render(<ImportFilmowCsv />);
 
     await selectFile("Title\nThe Matrix\nFilme Inexistente XYZ");
 
     expect(await findSummaryText(/1 filme importado/)).toBeInTheDocument();
-    expect(postMock).toHaveBeenCalledWith("/api/movies/import/filmow", {
-      titles: ["The Matrix", "Filme Inexistente XYZ"],
+    expect(postMock).toHaveBeenNthCalledWith(1, "/api/movies/import/filmow", {
+      titles: ["The Matrix"],
+    });
+    expect(postMock).toHaveBeenNthCalledWith(2, "/api/movies/import/filmow", {
+      titles: ["Filme Inexistente XYZ"],
     });
     expect(screen.getByText("1 não encontrado")).toBeInTheDocument();
 
@@ -96,29 +102,29 @@ describe("ImportFilmowCsv", () => {
     expect(postMock).toHaveBeenCalledWith("/api/movies/import/filmow", { titles: ["A, B"] });
   });
 
-  it("quebra em lotes de 20 títulos por request", async () => {
+  it("manda 1 título por request", async () => {
     postMock.mockResolvedValue({ results: [] });
-    const titles = Array.from({ length: 25 }, (_, i) => `Filme ${i}`);
+    const titles = Array.from({ length: 3 }, (_, i) => `Filme ${i}`);
     render(<ImportFilmowCsv />);
 
     await selectFile(`Title\n${titles.join("\n")}`);
 
-    await vi.waitFor(() => expect(postMock).toHaveBeenCalledTimes(2));
-    expect(postMock).toHaveBeenNthCalledWith(1, "/api/movies/import/filmow", {
-      titles: titles.slice(0, 20),
-    });
-    expect(postMock).toHaveBeenNthCalledWith(2, "/api/movies/import/filmow", {
-      titles: titles.slice(20),
-    });
+    await vi.waitFor(() => expect(postMock).toHaveBeenCalledTimes(3));
+    for (const [index, title] of titles.entries()) {
+      expect(postMock).toHaveBeenNthCalledWith(index + 1, "/api/movies/import/filmow", {
+        titles: [title],
+      });
+    }
   });
 
-  it("lote que falha vira 'error' pros títulos daquele lote, sem travar o restante", async () => {
+  it("título que falha vira 'error' direto, sem retry", async () => {
     postMock.mockRejectedValue(new Error("falha de rede"));
     render(<ImportFilmowCsv />);
 
     await selectFile("Title\nThe Matrix");
 
     expect(await screen.findByRole("alert")).toHaveTextContent("1 título falhou");
+    expect(postMock).toHaveBeenCalledTimes(1);
   });
 
   it("mostra o nome dos títulos que falharam ao expandir a lista", async () => {
@@ -133,5 +139,36 @@ describe("ImportFilmowCsv", () => {
 
     expect(screen.getByText("The Matrix")).toBeInTheDocument();
     expect(screen.getByText("Bacurau")).toBeInTheDocument();
+  });
+
+  it("baixa um CSV só com os títulos que falharam", async () => {
+    postMock.mockRejectedValue(new Error("falha de rede"));
+    const createObjectURL = vi.fn<(blob: Blob) => string>(() => "blob:mock-url");
+    const revokeObjectURL = vi.fn();
+    const originalCreateObjectURL = URL.createObjectURL;
+    const originalRevokeObjectURL = URL.revokeObjectURL;
+    URL.createObjectURL = createObjectURL;
+    URL.revokeObjectURL = revokeObjectURL;
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+
+    try {
+      render(<ImportFilmowCsv />);
+
+      await selectFile("Title\nThe Matrix\nBacurau");
+
+      await screen.findByRole("alert");
+      fireEvent.click(screen.getByText(/Baixar CSV com os títulos que falharam/));
+
+      expect(createObjectURL).toHaveBeenCalledTimes(1);
+      const blob = createObjectURL.mock.calls[0]?.[0];
+      expect(blob?.type).toBe("text/csv;charset=utf-8;");
+      await expect(blob?.text()).resolves.toBe("Title\r\nThe Matrix\r\nBacurau");
+      expect(clickSpy).toHaveBeenCalledTimes(1);
+      expect(revokeObjectURL).toHaveBeenCalledWith("blob:mock-url");
+    } finally {
+      URL.createObjectURL = originalCreateObjectURL;
+      URL.revokeObjectURL = originalRevokeObjectURL;
+      clickSpy.mockRestore();
+    }
   });
 });

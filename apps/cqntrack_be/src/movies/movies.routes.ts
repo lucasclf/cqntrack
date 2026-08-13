@@ -85,7 +85,7 @@ moviesRouter.get("/favorites", async (c) => {
 });
 
 // "Conta" > "Importar dados" > CSV do Filmow — o front já quebra o CSV em
-// lotes pequenos (ver ImportFilmowRequestSchema, max 30 por request) pra
+// lotes pequenos (ver ImportFilmowRequestSchema, max 10 por request) pra
 // não estourar o limite de subrequests do Worker nem o rate limit da TMDB.
 moviesRouter.post("/import/filmow", async (c) => {
   const json = await c.req.json().catch(() => null);
