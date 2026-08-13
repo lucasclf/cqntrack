@@ -1,0 +1,131 @@
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 20px;
+  background: var(--panel-bg);
+  border-bottom: 1px solid var(--card-border);
+  position: sticky;
+  top: 0;
+  z-index: 15;
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  min-width: 0;
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  /* Reserva espaço pro ThemeToggle, que se posiciona sozinho (fixed, canto
+     superior direito) — evita ele sobrepor o menu de conta. */
+  padding-right: 48px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.brandMark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--on-accent);
+  --mark-bg: var(--accent);
+  flex-shrink: 0;
+}
+
+.brandMarkIcon {
+  width: 21px;
+  height: 21px;
+}
+
+.brandWord {
+  font-family: "Space Grotesk", sans-serif;
+  font-weight: 600;
+  font-size: 18px;
+  color: var(--text-primary);
+}
+
+.mediaNav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+}
+
+.mediaLink {
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.mediaLink:hover {
+  background: var(--input-bg);
+  color: var(--text-primary);
+}
+
+.mediaLinkActive {
+  background: var(--input-bg);
+  color: var(--accent);
+}
+
+.iconBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--card-border);
+  background: var(--input-bg);
+  color: var(--text-secondary);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.iconBtn:hover {
+  color: var(--text-primary);
+}
+
+.navIcon {
+  width: 18px;
+  height: 18px;
+}
+
+@media (max-width: 860px) {
+  .topbar {
+    flex-wrap: wrap;
+    padding: 10px 12px;
+  }
+
+  .brandWord {
+    display: none;
+  }
+
+  .left {
+    gap: 12px;
+  }
+
+  .right {
+    padding-right: 0;
+  }
+}

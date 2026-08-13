@@ -38,7 +38,10 @@ describe("AppShell", () => {
   beforeEach(() => {
     useSessionMock.mockReset();
     signOutMock.mockReset();
-    useSessionMock.mockReturnValue({ data: { user: { id: "1", username: "lucas" } }, isPending: false });
+    useSessionMock.mockReturnValue({
+      data: { user: { id: "1", username: "lucas" } },
+      isPending: false,
+    });
   });
 
   it("renderiza a navegação de mídias e o conteúdo da rota ativa", () => {
@@ -85,23 +88,38 @@ describe("AppShell", () => {
     renderShell("/series/buscar");
     openAccountMenu();
 
-    expect(screen.getByRole("menuitem", { name: "Minhas marcações" })).toHaveAttribute("href", "/series/marcacoes");
-    expect(screen.getByRole("menuitem", { name: "Minhas listas" })).toHaveAttribute("href", "/series/listas");
+    expect(screen.getByRole("menuitem", { name: "Minhas marcações" })).toHaveAttribute(
+      "href",
+      "/series/marcacoes",
+    );
+    expect(screen.getByRole("menuitem", { name: "Minhas listas" })).toHaveAttribute(
+      "href",
+      "/series/listas",
+    );
   });
 
   it("fora de uma seção, o menu de conta usa jogos como padrão", () => {
     renderShell("/");
     openAccountMenu();
 
-    expect(screen.getByRole("menuitem", { name: "Minhas marcações" })).toHaveAttribute("href", "/jogos/marcacoes");
-    expect(screen.getByRole("menuitem", { name: "Minhas listas" })).toHaveAttribute("href", "/jogos/listas");
+    expect(screen.getByRole("menuitem", { name: "Minhas marcações" })).toHaveAttribute(
+      "href",
+      "/jogos/marcacoes",
+    );
+    expect(screen.getByRole("menuitem", { name: "Minhas listas" })).toHaveAttribute(
+      "href",
+      "/jogos/listas",
+    );
   });
 
   it("menu de conta mostra 'Ver meu perfil' apontando pro @username da sessão", () => {
     renderShell("/");
     openAccountMenu();
 
-    expect(screen.getByRole("menuitem", { name: "Ver meu perfil" })).toHaveAttribute("href", "/@lucas");
+    expect(screen.getByRole("menuitem", { name: "Ver meu perfil" })).toHaveAttribute(
+      "href",
+      "/@lucas",
+    );
   });
 
   it("sem username na sessão, não mostra 'Ver meu perfil'", () => {
