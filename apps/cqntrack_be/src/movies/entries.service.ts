@@ -8,7 +8,12 @@ import { and, asc, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import type { createDb } from "../db/client";
 import { activity, movieEntry } from "../db/schema";
 import { withoutUndefined } from "../lib/without-undefined";
-import { type CachedMovie, getOrCacheMovie, mapCachedMovieToSummary, toActivitySnapshot } from "./movies.service";
+import {
+  type CachedMovie,
+  getOrCacheMovie,
+  mapCachedMovieToSummary,
+  toActivitySnapshot,
+} from "./movies.service";
 
 type Db = ReturnType<typeof createDb>;
 type MovieEntryRow = typeof movieEntry.$inferSelect;
@@ -45,7 +50,12 @@ async function logMovieEntryActivities(
   // como desfavoritar, não vira atividade no feed. Mesmo tipo já usado por
   // jogo/livro ("status_changed") — filme agora também é status-based.
   if (input.status !== undefined && input.status !== null) {
-    activities.push({ userId, ...snapshot, type: "status_changed", metadata: { status: input.status } });
+    activities.push({
+      userId,
+      ...snapshot,
+      type: "status_changed",
+      metadata: { status: input.status },
+    });
   }
   if (input.rating !== undefined && input.rating !== null) {
     activities.push({ userId, ...snapshot, type: "rated", metadata: { rating: input.rating } });
@@ -81,6 +91,10 @@ export async function upsertMovieEntry(
   userId: string,
   tmdbId: number,
   input: UpsertMovieEntryRequest,
+  // logActivity: false pra import em massa (ver import.service.ts) — 700
+  // linhas de "status_changed" de uma vez enterrariam o feed de atividade
+  // de verdade.
+  options: { logActivity?: boolean } = {},
 ): Promise<MovieEntry> {
   const cachedMovie = await getOrCacheMovie(env, db, tmdbId); // garante que a FK movieId existe
 
@@ -94,7 +108,8 @@ export async function upsertMovieEntry(
     review: input.review,
     // watchedAt é derivado do status: só existe quando o status vira
     // "watched" — não é mais um toggle independente.
-    watchedAt: input.status === undefined ? undefined : input.status === "watched" ? new Date() : null,
+    watchedAt:
+      input.status === undefined ? undefined : input.status === "watched" ? new Date() : null,
     favoritedAt: input.favorited === undefined ? undefined : input.favorited ? new Date() : null,
   });
 
@@ -109,7 +124,9 @@ export async function upsertMovieEntry(
     throw new Error("Falha ao gravar a marcação do filme");
   }
 
-  await logMovieEntryActivities(db, userId, cachedMovie, input);
+  if (options.logActivity !== false) {
+    await logMovieEntryActivities(db, userId, cachedMovie, input);
+  }
 
   return toMovieEntry(row);
 }
@@ -142,7 +159,9 @@ export async function listMovieEntries(
     conditions.push(eq(movieEntry.status, query.status));
   }
   if (query.favorite !== undefined) {
-    conditions.push(query.favorite ? isNotNull(movieEntry.favoritedAt) : isNull(movieEntry.favoritedAt));
+    conditions.push(
+      query.favorite ? isNotNull(movieEntry.favoritedAt) : isNull(movieEntry.favoritedAt),
+    );
   }
   const where = and(...conditions);
 
@@ -157,7 +176,10 @@ export async function listMovieEntries(
       offset: (query.page - 1) * query.pageSize,
       with: { movie: true },
     }),
-    db.select({ count: sql<number>`count(*)` }).from(movieEntry).where(where),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(movieEntry)
+      .where(where),
   ]);
 
   return {

@@ -184,3 +184,31 @@ export type CreateMovieListRequest = z.infer<typeof CreateMovieListRequestSchema
 export const UpdateMovieListRequestSchema = CreateMovieListRequestSchema.partial();
 
 export type UpdateMovieListRequest = z.infer<typeof UpdateMovieListRequestSchema>;
+
+// Importação de CSV do Filmow ("Conta" > "Importar dados") — o export do
+// Filmow é só uma coluna "Title" (sem ano/nota/data), então o match é por
+// título de texto na TMDB, pegando o 1º resultado (mais relevante segundo a
+// própria TMDB) — sem heurística de desambiguação além disso. Cada título
+// processado vira uma marcação "Já vi" quando encontrado. Lote pequeno
+// (server-side, além do que o front já manda em lotes) pra não estourar o
+// limite de subrequests do Worker (cada título novo custa ~3: busca +
+// detalhe + créditos).
+export const ImportFilmowRequestSchema = z.object({
+  titles: z.array(z.string().min(1).max(300)).min(1).max(30),
+});
+
+export type ImportFilmowRequest = z.infer<typeof ImportFilmowRequestSchema>;
+
+export const ImportFilmowResultSchema = z.object({
+  title: z.string(),
+  status: z.enum(["imported", "not_found", "error"]),
+  movie: MovieSummarySchema.nullable(),
+});
+
+export type ImportFilmowResult = z.infer<typeof ImportFilmowResultSchema>;
+
+export const ImportFilmowResponseSchema = z.object({
+  results: z.array(ImportFilmowResultSchema),
+});
+
+export type ImportFilmowResponse = z.infer<typeof ImportFilmowResponseSchema>;

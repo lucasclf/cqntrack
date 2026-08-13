@@ -54,7 +54,10 @@ function stubTmdbFetchOnce(...responses: unknown[]): void {
 // Helper pra quando o cache ainda não existe (ou está sendo revalidado) —
 // getOrCacheMovie sempre faz os dois requests (detalhe + créditos) nesse caso.
 function stubMovieCacheFetch(id: number, title: string, voteAverage = 8.4): void {
-  stubTmdbFetchOnce({ ...tmdbMovieDetail(id, title), vote_average: voteAverage }, tmdbMovieCredits());
+  stubTmdbFetchOnce(
+    { ...tmdbMovieDetail(id, title), vote_average: voteAverage },
+    tmdbMovieCredits(),
+  );
 }
 
 describe("GET /api/movies/search", () => {
@@ -264,7 +267,11 @@ describe("GET /api/movies/:tmdbId", () => {
     ]);
     // Só o job "Director" entra (Director of Photography fica de fora), sem duplicar Nolan.
     expect(body.movie.directors).toEqual([
-      { personId: 525, name: "Christopher Nolan", profileUrl: "https://image.tmdb.org/t/p/w185/nolan.jpg" },
+      {
+        personId: 525,
+        name: "Christopher Nolan",
+        profileUrl: "https://image.tmdb.org/t/p/w185/nolan.jpg",
+      },
     ]);
     vi.unstubAllGlobals();
   });
@@ -280,7 +287,9 @@ describe("GET /api/movies/:tmdbId", () => {
     const res = await app.request("/api/movies/508", { headers: { cookie } }, env);
 
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { movie: { name: string; cast: unknown[]; directors: unknown[] } };
+    const body = (await res.json()) as {
+      movie: { name: string; cast: unknown[]; directors: unknown[] };
+    };
     expect(body.movie.name).toBe("Tenet");
     expect(body.movie.cast).toEqual([]);
     expect(body.movie.directors).toEqual([]);
@@ -407,7 +416,10 @@ describe("CRUD de marcação (/api/movies/:tmdbId/entry)", () => {
       env,
     );
     expect(unmarkRes.status).toBe(200);
-    const unmarkBody = (await unmarkRes.json()) as { status: string | null; watchedAt: string | null };
+    const unmarkBody = (await unmarkRes.json()) as {
+      status: string | null;
+      watchedAt: string | null;
+    };
     expect(unmarkBody.status).toBe("want_to_watch");
     expect(unmarkBody.watchedAt).toBeNull();
   });
@@ -526,7 +538,11 @@ describe("CRUD de marcação (/api/movies/:tmdbId/entry)", () => {
   it("sem sessão retorna 401", async () => {
     const res = await app.request(
       "/api/movies/601/entry",
-      { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rating: 3 }) },
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rating: 3 }),
+      },
       env,
     );
 
@@ -562,7 +578,11 @@ describe("GET /api/movies/entries", () => {
     );
     vi.unstubAllGlobals();
 
-    const res = await app.request("/api/movies/entries?status=watched", { headers: { cookie } }, env);
+    const res = await app.request(
+      "/api/movies/entries?status=watched",
+      { headers: { cookie } },
+      env,
+    );
 
     expect(res.status).toBe(200);
     const body = (await res.json()) as { total: number; items: Array<Record<string, unknown>> };
@@ -686,5 +706,113 @@ describe("GET /api/movies/favorites", () => {
       (item) => item.itemId === "805" && item.type === "favorited",
     );
     expect(favorited).toHaveLength(1);
+  });
+});
+
+describe("POST /api/movies/import/filmow", () => {
+  // Roda com CONCURRENCY>1 dentro do service (ver import.service.ts), então
+  // um mock de fetch baseado em fila (fifo) não é confiável — os fetches
+  // dos vários títulos intercalam. Responde por conteúdo da URL em vez de
+  // ordem de chamada.
+  function stubTmdbByUrl(handlers: [pattern: string, body: unknown][]): void {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        for (const [pattern, body] of handlers) {
+          if (url.includes(pattern)) return jsonResponse(body);
+        }
+        throw new Error("URL inesperada no teste: " + url);
+      }),
+    );
+  }
+
+  it("sem sessão retorna 401", async () => {
+    const res = await app.request(
+      "/api/movies/import/filmow",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ titles: ["Inception"] }),
+      },
+      env,
+    );
+
+    expect(res.status).toBe(401);
+  });
+
+  it("corpo inválido (sem títulos, ou mais de 30) retorna 400", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+
+    const emptyRes = await app.request(
+      "/api/movies/import/filmow",
+      {
+        method: "POST",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ titles: [] }),
+      },
+      env,
+    );
+    expect(emptyRes.status).toBe(400);
+
+    const tooManyRes = await app.request(
+      "/api/movies/import/filmow",
+      {
+        method: "POST",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ titles: Array.from({ length: 31 }, (_, i) => `Filme ${i}`) }),
+      },
+      env,
+    );
+    expect(tooManyRes.status).toBe(400);
+  });
+
+  it("título encontrado vira marcação 'Já vi' sem gerar atividade; título sem match vira not_found", async () => {
+    const { cookie, username } = await createAuthenticatedUser(app, env);
+
+    stubTmdbByUrl([
+      ["/search/movie?query=Inception", { results: [TMDB_SEARCH_RESULT] }],
+      ["/movie/27205/credits", tmdbMovieCredits()],
+      ["/movie/27205", tmdbMovieDetail(27205, "Inception")],
+      ["/search/movie?query=Zzznotfound", { results: [] }],
+    ]);
+
+    const res = await app.request(
+      "/api/movies/import/filmow",
+      {
+        method: "POST",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ titles: ["Inception", "Zzznotfound"] }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      results: Array<{ title: string; status: string; movie: { tmdbId: number } | null }>;
+    };
+    expect(body.results).toHaveLength(2);
+
+    const inception = body.results.find((r) => r.title === "Inception");
+    expect(inception).toMatchObject({ status: "imported", movie: { tmdbId: 27205 } });
+
+    const notFound = body.results.find((r) => r.title === "Zzznotfound");
+    expect(notFound).toMatchObject({ status: "not_found", movie: null });
+
+    const entriesRes = await app.request(
+      `/api/users/${username}/movies/entries?status=watched`,
+      undefined,
+      env,
+    );
+    const entriesBody = (await entriesRes.json()) as {
+      items: Array<{ movie: { tmdbId: number } }>;
+    };
+    expect(entriesBody.items).toEqual([
+      expect.objectContaining({ movie: expect.objectContaining({ tmdbId: 27205 }) }),
+    ]);
+
+    // Import em massa não deve poluir o feed de atividade.
+    const activities = await createDb(env).query.activity.findMany();
+    expect(activities.filter((item) => item.itemId === "27205")).toHaveLength(0);
   });
 });

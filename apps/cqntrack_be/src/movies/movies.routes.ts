@@ -1,6 +1,8 @@
 import {
   DiscoverMoviesQuerySchema,
   DiscoverMoviesResponseSchema,
+  ImportFilmowRequestSchema,
+  ImportFilmowResponseSchema,
   ListMovieEntriesQuerySchema,
   MovieDetailResponseSchema,
   MovieEntrySchema,
@@ -20,6 +22,7 @@ import {
   listMovieEntries,
   upsertMovieEntry,
 } from "./entries.service";
+import { importFilmowTitles } from "./import.service";
 import {
   getOrCacheMovie,
   getPopularMoviesForUser,
@@ -79,6 +82,21 @@ moviesRouter.get("/favorites", async (c) => {
   const db = createDb(c.env);
   const items = await getFavorites(db, c.get("userId"));
   return c.json(MovieFavoritesResponseSchema.parse({ items }));
+});
+
+// "Conta" > "Importar dados" > CSV do Filmow — o front já quebra o CSV em
+// lotes pequenos (ver ImportFilmowRequestSchema, max 30 por request) pra
+// não estourar o limite de subrequests do Worker nem o rate limit da TMDB.
+moviesRouter.post("/import/filmow", async (c) => {
+  const json = await c.req.json().catch(() => null);
+  const parsed = ImportFilmowRequestSchema.safeParse(json);
+  if (!parsed.success) {
+    return c.json({ error: "invalid_body" }, 400);
+  }
+
+  const db = createDb(c.env);
+  const results = await importFilmowTitles(c.env, db, c.get("userId"), parsed.data.titles);
+  return c.json(ImportFilmowResponseSchema.parse({ results }));
 });
 
 moviesRouter.get("/discover", async (c) => {
