@@ -20,7 +20,9 @@ export function RecentlyWatchedSeries({ username }: RecentlyWatchedSeriesProps) 
     let cancelled = false;
 
     apiClient
-      .get<RecentlyWatchedSeriesResponse>(`/api/users/${username}/series/recently-watched?limit=${RECENT_LIMIT}`)
+      .get<RecentlyWatchedSeriesResponse>(
+        `/api/users/${username}/series/recently-watched?page=1&pageSize=${RECENT_LIMIT}`,
+      )
       .then((res) => {
         if (!cancelled) {
           setData(res);

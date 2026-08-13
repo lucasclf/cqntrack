@@ -22,8 +22,12 @@ import { MovieSearch } from "./movies/MovieSearch";
 import { MyMovieEntries } from "./movies/MyMovieEntries";
 import { MyMovieLists } from "./movies/MyMovieLists";
 import { PersonDetail } from "./people/PersonDetail";
+import { PublicBookEntries } from "./profile/PublicBookEntries";
+import { PublicGameEntries } from "./profile/PublicGameEntries";
 import { PublicListDetail } from "./profile/PublicListDetail";
+import { PublicMovieEntries } from "./profile/PublicMovieEntries";
 import { PublicProfile } from "./profile/PublicProfile";
+import { PublicSeriesEntries } from "./profile/PublicSeriesEntries";
 import { RedirectToJogosListDetail } from "./routes/RedirectToJogosListDetail";
 import { RequireAuth } from "./routes/RequireAuth";
 import { EpisodeDetail } from "./series/EpisodeDetail";
@@ -45,6 +49,13 @@ export const routes: RouteObject[] = [
   // ("@lucas") como :handle e separa o "@" dentro do componente.
   { path: "/:handle", element: <PublicProfile /> },
   { path: "/:handle/listas/:listId", element: <PublicListDetail /> },
+  // Destino das estatísticas clicáveis do perfil público (ver MovieStats/
+  // GameStats/BookStats/SeriesStats) — listagem completa, opcionalmente
+  // filtrada por status via query string (?status=).
+  { path: "/:handle/filmes", element: <PublicMovieEntries /> },
+  { path: "/:handle/series", element: <PublicSeriesEntries /> },
+  { path: "/:handle/jogos", element: <PublicGameEntries /> },
+  { path: "/:handle/livros", element: <PublicBookEntries /> },
   { path: "/buscar", element: <Navigate to="/jogos/buscar" replace /> },
   { path: "/marcacoes", element: <Navigate to="/jogos/marcacoes" replace /> },
   { path: "/listas", element: <Navigate to="/jogos/listas" replace /> },

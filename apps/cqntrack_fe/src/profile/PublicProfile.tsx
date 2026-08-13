@@ -5,7 +5,10 @@ import { BookFavoritesSection } from "../books/BookFavoritesSection";
 import { FavoritesSection } from "../games/FavoritesSection";
 import { PublicLayout } from "../layouts/PublicLayout";
 import { ApiError, apiClient } from "../lib/api-client";
+import { BookStats } from "./BookStats";
+import { GameStats } from "./GameStats";
 import { MovieFavorites } from "./MovieFavorites";
+import { MovieStats } from "./MovieStats";
 import { type ProfileTab, ProfileTabs } from "./ProfileTabs";
 import styles from "./PublicProfile.module.css";
 import { RecentlyPlayedGames } from "./RecentlyPlayedGames";
@@ -13,6 +16,7 @@ import { RecentlyReadBooks } from "./RecentlyReadBooks";
 import { RecentlyWatchedMovies } from "./RecentlyWatchedMovies";
 import { RecentlyWatchedSeries } from "./RecentlyWatchedSeries";
 import { SeriesFavorites } from "./SeriesFavorites";
+import { SeriesStats } from "./SeriesStats";
 
 type LoadStatus = "loading" | "ready" | "not-found" | "error";
 
@@ -120,30 +124,41 @@ export function PublicProfile() {
 
         <ProfileTabs active={activeTab} onChange={setActiveTab} />
 
-        {activeTab === "movies" && (
-          <>
-            <MovieFavorites username={username} />
-            <RecentlyWatchedMovies username={username} />
-          </>
-        )}
-        {activeTab === "series" && (
-          <>
-            <SeriesFavorites username={username} />
-            <RecentlyWatchedSeries username={username} />
-          </>
-        )}
-        {activeTab === "games" && (
-          <>
-            <FavoritesSection favoritesEndpoint={`/api/users/${username}/games/favorites`} />
-            <RecentlyPlayedGames username={username} />
-          </>
-        )}
-        {activeTab === "books" && (
-          <>
-            <BookFavoritesSection favoritesEndpoint={`/api/users/${username}/books/favorites`} />
-            <RecentlyReadBooks username={username} />
-          </>
-        )}
+        <div className={styles.layout}>
+          <div className={styles.main}>
+            {activeTab === "movies" && (
+              <>
+                <MovieFavorites username={username} />
+                <RecentlyWatchedMovies username={username} />
+              </>
+            )}
+            {activeTab === "series" && (
+              <>
+                <SeriesFavorites username={username} />
+                <RecentlyWatchedSeries username={username} />
+              </>
+            )}
+            {activeTab === "games" && (
+              <>
+                <FavoritesSection favoritesEndpoint={`/api/users/${username}/games/favorites`} />
+                <RecentlyPlayedGames username={username} />
+              </>
+            )}
+            {activeTab === "books" && (
+              <>
+                <BookFavoritesSection favoritesEndpoint={`/api/users/${username}/books/favorites`} />
+                <RecentlyReadBooks username={username} />
+              </>
+            )}
+          </div>
+
+          <aside className={styles.sidebar}>
+            {activeTab === "movies" && <MovieStats username={username} />}
+            {activeTab === "series" && <SeriesStats username={username} />}
+            {activeTab === "games" && <GameStats username={username} />}
+            {activeTab === "books" && <BookStats username={username} />}
+          </aside>
+        </div>
       </div>
     </PublicLayout>
   );

@@ -77,10 +77,27 @@ function renderProfile(username = "gamer_1") {
   );
 }
 
+// Contagens por status usadas pelas estatísticas da lateral (MovieStats/
+// GameStats/BookStats fazem 1 request por status, pageSize=1, só pra ler
+// `total`) — valores distintos por status pra dar pra conferir no teste.
+const MOVIE_STATUS_TOTALS: Record<string, number> = { watched: 3, want_to_watch: 2 };
+const GAME_STATUS_TOTALS: Record<string, number> = {
+  not_started: 1,
+  playing: 2,
+  dropped: 0,
+  completed: 4,
+  platinum: 0,
+};
+const BOOK_STATUS_TOTALS: Record<string, number> = { want_to_read: 1, reading: 0, read: 5, dropped: 0 };
+const SERIES_WATCHED_TOTAL = 7;
+
 // Mock com dado real em todas as 8 rotas (favoritos + recente x4 mídias) —
 // reaproveitado pelos testes que navegam entre abas.
 function mockAllTabsWithData() {
   getMock.mockImplementation((path: string) => {
+    const url = new URL(path, "http://localhost");
+    const status = url.searchParams.get("status");
+
     if (path === "/api/users/gamer_1") return Promise.resolve(PROFILE);
 
     if (path === "/api/users/gamer_1/movies/favorites") {
@@ -148,63 +165,71 @@ function mockAllTabsWithData() {
 
     if (path.startsWith("/api/users/gamer_1/movies/entries")) {
       return Promise.resolve({
-        items: [
-          {
-            id: "1",
-            status: "watched",
-            rating: null,
-            watchedAt: "2026-01-01T00:00:00.000Z",
-            favoritedAt: null,
-            review: null,
-            updatedAt: "2026-01-01T00:00:00.000Z",
-            movie: MOVIE,
-          },
-        ],
+        items:
+          status === "watched"
+            ? [
+                {
+                  id: "1",
+                  status: "watched",
+                  rating: null,
+                  watchedAt: "2026-01-01T00:00:00.000Z",
+                  favoritedAt: null,
+                  review: null,
+                  updatedAt: "2026-01-01T00:00:00.000Z",
+                  movie: MOVIE,
+                },
+              ]
+            : [],
         page: 1,
         pageSize: 12,
-        total: 1,
+        total: status ? MOVIE_STATUS_TOTALS[status] : 1,
       });
     }
     if (path.startsWith("/api/users/gamer_1/series/recently-watched")) {
       return Promise.resolve({
         items: [{ series: SERIES, lastWatchedAt: "2026-01-02T00:00:00.000Z" }],
+        page: 1,
+        pageSize: 12,
+        total: SERIES_WATCHED_TOTAL,
       });
     }
     if (path.startsWith("/api/users/gamer_1/books/entries")) {
       return Promise.resolve({
-        items: [
-          {
-            id: "1",
-            status: "read",
-            rating: null,
-            favoritedAt: null,
-            review: null,
-            updatedAt: "2026-01-01T00:00:00.000Z",
-            book: BOOK,
-          },
-        ],
+        items:
+          status === "read"
+            ? [
+                {
+                  id: "1",
+                  status: "read",
+                  rating: null,
+                  favoritedAt: null,
+                  review: null,
+                  updatedAt: "2026-01-01T00:00:00.000Z",
+                  book: BOOK,
+                },
+              ]
+            : [],
         page: 1,
         pageSize: 12,
-        total: 1,
+        total: status ? BOOK_STATUS_TOTALS[status] : 1,
       });
     }
     if (path.startsWith("/api/users/gamer_1/games/entries")) {
+      const gameEntry = {
+        id: "1",
+        status: "completed",
+        rating: null,
+        favoritedAt: null,
+        platforms: null,
+        review: null,
+        updatedAt: "2026-01-01T00:00:00.000Z",
+        game: GAME,
+      };
       return Promise.resolve({
-        items: [
-          {
-            id: "1",
-            status: "completed",
-            rating: null,
-            favoritedAt: null,
-            platforms: null,
-            review: null,
-            updatedAt: "2026-01-01T00:00:00.000Z",
-            game: GAME,
-          },
-        ],
+        items: status === null || status === "completed" ? [gameEntry] : [],
         page: 1,
         pageSize: 20,
-        total: 1,
+        total: status ? GAME_STATUS_TOTALS[status] : 1,
       });
     }
 
@@ -237,20 +262,44 @@ describe("PublicProfile", () => {
     expect(screen.queryByText("Breaking Bad")).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Séries favoritas" })).not.toBeInTheDocument();
 
+    // Estatísticas na lateral: uma por status, clicável pra listagem
+    // completa filtrada (ver PublicMovieEntries).
+    expect(await screen.findByRole("link", { name: /Já vi.*3/ })).toHaveAttribute(
+      "href",
+      "/@gamer_1/filmes?status=watched",
+    );
+    expect(screen.getByRole("link", { name: /Quero ver.*2/ })).toHaveAttribute(
+      "href",
+      "/@gamer_1/filmes?status=want_to_watch",
+    );
+
     fireEvent.click(screen.getByRole("tab", { name: "Séries" }));
     expect(await screen.findByRole("heading", { name: "Séries favoritas" })).toBeInTheDocument();
     expect(screen.getAllByText("Breaking Bad")).not.toHaveLength(0);
     expect(screen.queryByRole("heading", { name: "Filmes favoritos" })).not.toBeInTheDocument();
+    // Série não tem status — só um total agregado, clicável.
+    expect(await screen.findByRole("link", { name: /Séries acompanhadas.*7/ })).toHaveAttribute(
+      "href",
+      "/@gamer_1/series",
+    );
 
     fireEvent.click(screen.getByRole("tab", { name: "Jogos" }));
     expect(await screen.findByRole("heading", { name: "Jogos favoritos" })).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Jogado recentemente" })).toBeInTheDocument();
     expect(screen.getAllByText("The Witcher 3: Wild Hunt")).not.toHaveLength(0);
+    expect(await screen.findByRole("link", { name: /Finalizado.*4/ })).toHaveAttribute(
+      "href",
+      "/@gamer_1/jogos?status=completed",
+    );
 
     fireEvent.click(screen.getByRole("tab", { name: "Livros" }));
     expect(await screen.findByRole("heading", { name: "Livros favoritos" })).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Lido recentemente" })).toBeInTheDocument();
     expect(screen.getAllByText("Dom Casmurro")).not.toHaveLength(0);
+    expect(await screen.findByRole("link", { name: /Lido.*5/ })).toHaveAttribute(
+      "href",
+      "/@gamer_1/livros?status=read",
+    );
 
     // Sem stats/listas/marcações completas — perfil enxuto (redesign).
     expect(screen.queryByRole("heading", { name: "Listas" })).not.toBeInTheDocument();
@@ -266,7 +315,7 @@ describe("PublicProfile", () => {
       if (path === "/api/users/gamer_1/games/favorites") return Promise.resolve(EMPTY_ITEMS);
       if (path.startsWith("/api/users/gamer_1/movies/entries")) return Promise.resolve(EMPTY_ENTRIES);
       if (path.startsWith("/api/users/gamer_1/series/recently-watched")) {
-        return Promise.resolve({ items: [] });
+        return Promise.resolve({ items: [], page: 1, pageSize: 12, total: 0 });
       }
       if (path.startsWith("/api/users/gamer_1/books/entries")) return Promise.resolve(EMPTY_ENTRIES);
       if (path.startsWith("/api/users/gamer_1/games/entries")) return Promise.resolve(EMPTY_ENTRIES);
