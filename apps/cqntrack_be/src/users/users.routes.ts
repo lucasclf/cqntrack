@@ -17,6 +17,7 @@ import {
   PaginatedMovieEntriesResponseSchema,
   PaginatedSeriesEntriesResponseSchema,
   PublicProfileSchema,
+  RecentlyWatchedSeriesQuerySchema,
   RecentlyWatchedSeriesResponseSchema,
   SeriesFavoritesResponseSchema,
   SeriesListDetailSchema,
@@ -42,8 +43,6 @@ import { getPublicProfile, resolveUserIdByUsername, UserNotFoundError } from "./
 // nenhum dado aqui é privado (decisão de produto já fechada). Entries/
 // favorites/lists ficam prefixadas por seção (/games/*, /series/*, /movies/*).
 export const usersRouter = new Hono<{ Bindings: Env }>();
-
-const RECENT_ITEMS_LIMIT = 12;
 
 usersRouter.get("/:username", async (c) => {
   const db = createDb(c.env);
@@ -171,13 +170,22 @@ usersRouter.get("/:username/series/favorites", async (c) => {
 
 // Só série precisa desse endpoint dedicado — ela não tem status pra
 // reaproveitar o filtro de /entries como filme/livro/jogo (ver
-// getRecentlyWatchedSeries).
+// getRecentlyWatchedSeries). Paginado: mesma rota serve a seção "Assistido
+// recentemente" (pageSize=12) e a listagem completa de "séries
+// acompanhadas" clicável a partir da estatística do perfil.
 usersRouter.get("/:username/series/recently-watched", async (c) => {
+  const parsed = RecentlyWatchedSeriesQuerySchema.safeParse(c.req.query());
+  if (!parsed.success) {
+    return c.json({ error: "invalid_query" }, 400);
+  }
+
   const db = createDb(c.env);
   try {
     const userId = await resolveUserIdByUsername(db, c.req.param("username"));
-    const items = await getRecentlyWatchedSeries(db, userId, RECENT_ITEMS_LIMIT);
-    return c.json(RecentlyWatchedSeriesResponseSchema.parse({ items }));
+    const { items, total } = await getRecentlyWatchedSeries(db, userId, parsed.data.page, parsed.data.pageSize);
+    return c.json(
+      RecentlyWatchedSeriesResponseSchema.parse({ items, page: parsed.data.page, pageSize: parsed.data.pageSize, total }),
+    );
   } catch (error) {
     if (error instanceof UserNotFoundError) {
       return c.json({ error: "user_not_found" }, 404);

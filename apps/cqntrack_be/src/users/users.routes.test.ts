@@ -233,6 +233,70 @@ describe("/api/users", () => {
     expect(listDetailRes.status).toBe(200);
   });
 
+  it("pagina 'séries acompanhadas' via /series/recently-watched (série não tem status)", async () => {
+    const { cookie, username } = await createAuthenticatedUser(app, env);
+
+    const tmdbSeriesDetail = (id: number, name: string) => ({
+      id,
+      name,
+      poster_path: `/poster-${id}.jpg`,
+      first_air_date: "2008-01-20",
+      genres: [],
+      number_of_seasons: 1,
+      number_of_episodes: 1,
+      vote_average: 8,
+    });
+
+    // Marca 1 episódio em 3 séries diferentes, em sequência — watchedAt é
+    // preenchido com a hora real da escrita, então a ordem de marcação vira
+    // a ordem esperada (mais recente primeiro).
+    for (const [id, name] of [
+      [2001, "Série A"],
+      [2002, "Série B"],
+      [2003, "Série C"],
+    ] as const) {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValueOnce(jsonResponse(tmdbSeriesDetail(id, name))).mockResolvedValueOnce(
+          jsonResponse({ cast: [], crew: [] }),
+        ),
+      );
+      const res = await app.request(
+        `/api/series/${id}/episodes/1/1`,
+        {
+          method: "PUT",
+          headers: { cookie, "Content-Type": "application/json" },
+          body: JSON.stringify({ watched: true }),
+        },
+        env,
+      );
+      expect(res.status).toBe(204);
+      vi.unstubAllGlobals();
+    }
+
+    const page1Res = await app.request(
+      `/api/users/${username}/series/recently-watched?page=1&pageSize=2`,
+      undefined,
+      env,
+    );
+    expect(page1Res.status).toBe(200);
+    const page1Body = (await page1Res.json()) as {
+      items: Array<{ series: { name: string } }>;
+      total: number;
+    };
+    expect(page1Body.total).toBe(3);
+    expect(page1Body.items.map((item) => item.series.name)).toEqual(["Série C", "Série B"]);
+
+    const page2Res = await app.request(
+      `/api/users/${username}/series/recently-watched?page=2&pageSize=2`,
+      undefined,
+      env,
+    );
+    const page2Body = (await page2Res.json()) as { items: Array<{ series: { name: string } }>; total: number };
+    expect(page2Body.total).toBe(3);
+    expect(page2Body.items.map((item) => item.series.name)).toEqual(["Série A"]);
+  });
+
   it("lista as marcações, favoritos e listas públicas de filmes do usuário", async () => {
     const { cookie, username } = await createAuthenticatedUser(app, env);
 

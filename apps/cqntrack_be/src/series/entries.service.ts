@@ -186,26 +186,37 @@ export async function getFavorites(db: Db, userId: string): Promise<SeriesEntryW
 
 // Série não tem status pra filtrar "recente" (diferente de filme/livro/
 // jogo) — usa o episódio assistido mais recentemente como sinal, agregando
-// MAX(watchedAt) por série em series_episode_watch. Só pra seção "Assistido
-// recentemente" do perfil público.
+// MAX(watchedAt) por série em series_episode_watch. Paginado: usado tanto
+// pela seção "Assistido recentemente" do perfil (pageSize=12) quanto pela
+// listagem completa de "séries acompanhadas" (clicável a partir da
+// estatística do perfil — sem filtro de status, série não tem esse campo).
 export async function getRecentlyWatchedSeries(
   db: Db,
   userId: string,
-  limit: number,
-): Promise<RecentlyWatchedSeriesItem[]> {
-  const rows = await db
-    .select({
-      seriesId: seriesEpisodeWatch.seriesId,
-      lastWatchedAt: sql<number>`max(${seriesEpisodeWatch.watchedAt})`,
-    })
-    .from(seriesEpisodeWatch)
-    .where(eq(seriesEpisodeWatch.userId, userId))
-    .groupBy(seriesEpisodeWatch.seriesId)
-    .orderBy(desc(sql`max(${seriesEpisodeWatch.watchedAt})`))
-    .limit(limit);
+  page: number,
+  pageSize: number,
+): Promise<{ items: RecentlyWatchedSeriesItem[]; total: number }> {
+  const [rows, countResult] = await Promise.all([
+    db
+      .select({
+        seriesId: seriesEpisodeWatch.seriesId,
+        lastWatchedAt: sql<number>`max(${seriesEpisodeWatch.watchedAt})`,
+      })
+      .from(seriesEpisodeWatch)
+      .where(eq(seriesEpisodeWatch.userId, userId))
+      .groupBy(seriesEpisodeWatch.seriesId)
+      .orderBy(desc(sql`max(${seriesEpisodeWatch.watchedAt})`))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize),
+    db
+      .select({ count: sql<number>`count(distinct ${seriesEpisodeWatch.seriesId})` })
+      .from(seriesEpisodeWatch)
+      .where(eq(seriesEpisodeWatch.userId, userId)),
+  ]);
+  const total = countResult[0]?.count ?? 0;
 
   if (rows.length === 0) {
-    return [];
+    return { items: [], total };
   }
 
   const seriesRows = await db.query.series.findMany({
@@ -216,7 +227,7 @@ export async function getRecentlyWatchedSeries(
   });
   const byId = new Map(seriesRows.map((row) => [row.tmdbId, row]));
 
-  return rows.flatMap((row) => {
+  const items = rows.flatMap((row) => {
     const cachedSeries = byId.get(row.seriesId);
     if (!cachedSeries) {
       return [];
@@ -228,6 +239,8 @@ export async function getRecentlyWatchedSeries(
       },
     ];
   });
+
+  return { items, total };
 }
 
 export async function deleteSeriesEntry(db: Db, userId: string, tmdbId: number): Promise<void> {

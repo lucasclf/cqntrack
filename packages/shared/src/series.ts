@@ -241,8 +241,22 @@ export const RecentlyWatchedSeriesItemSchema = z.object({
 
 export type RecentlyWatchedSeriesItem = z.infer<typeof RecentlyWatchedSeriesItemSchema>;
 
+// Paginado (page/pageSize/total) — tanto a seção "Assistido recentemente"
+// (perfil, pageSize=12) quanto a listagem completa de "séries acompanhadas"
+// (clicável a partir da estatística "N séries acompanhadas" do perfil)
+// reaproveitam o mesmo endpoint/schema.
+export const RecentlyWatchedSeriesQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(12),
+});
+
+export type RecentlyWatchedSeriesQuery = z.infer<typeof RecentlyWatchedSeriesQuerySchema>;
+
 export const RecentlyWatchedSeriesResponseSchema = z.object({
   items: z.array(RecentlyWatchedSeriesItemSchema),
+  page: z.number().int(),
+  pageSize: z.number().int(),
+  total: z.number().int(),
 });
 
 export type RecentlyWatchedSeriesResponse = z.infer<typeof RecentlyWatchedSeriesResponseSchema>;
