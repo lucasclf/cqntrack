@@ -120,4 +120,18 @@ describe("ImportFilmowCsv", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("1 título falhou");
   });
+
+  it("mostra o nome dos títulos que falharam ao expandir a lista", async () => {
+    postMock.mockRejectedValue(new Error("falha de rede"));
+    render(<ImportFilmowCsv />);
+
+    await selectFile("Title\nThe Matrix\nBacurau");
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("2 títulos falharam");
+
+    fireEvent.click(screen.getByText("Ver os títulos que falharam"));
+
+    expect(screen.getByText("The Matrix")).toBeInTheDocument();
+    expect(screen.getByText("Bacurau")).toBeInTheDocument();
+  });
 });

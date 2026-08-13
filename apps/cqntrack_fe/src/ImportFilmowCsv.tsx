@@ -89,7 +89,7 @@ export function ImportFilmowCsv() {
 
   const imported = results.filter((r) => r.status === "imported").length;
   const notFound = results.filter((r) => r.status === "not_found");
-  const errored = results.filter((r) => r.status === "error").length;
+  const errored = results.filter((r) => r.status === "error");
   const busy = status === "reading" || status === "importing";
 
   return (
@@ -120,11 +120,23 @@ export function ImportFilmowCsv() {
             <strong>{imported}</strong> {imported === 1 ? "filme importado" : "filmes importados"}{" "}
             como "Já vi".
           </p>
-          {errored > 0 && (
-            <p role="alert">
-              {errored} {errored === 1 ? "título falhou" : "títulos falharam"} ao importar — importe
-              o CSV de novo pra tentar esses de novo.
-            </p>
+          {errored.length > 0 && (
+            <div role="alert">
+              <p>
+                {errored.length} {errored.length === 1 ? "título falhou" : "títulos falharam"} ao
+                importar — importe o CSV de novo pra tentar esses de novo.
+              </p>
+              <details>
+                <summary>
+                  Ver {errored.length === 1 ? "o título que falhou" : "os títulos que falharam"}
+                </summary>
+                <ul className={styles.notFoundList}>
+                  {errored.map((result, index) => (
+                    <li key={`${result.title}-${index}`}>{result.title}</li>
+                  ))}
+                </ul>
+              </details>
+            </div>
           )}
           {notFound.length > 0 && (
             <details>
