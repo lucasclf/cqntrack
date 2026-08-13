@@ -3,13 +3,14 @@ import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Account } from "./Account";
 
-const { useSessionMock, updateUserMock, changePasswordMock, signOutMock, navigateMock } = vi.hoisted(() => ({
-  useSessionMock: vi.fn(),
-  updateUserMock: vi.fn(),
-  changePasswordMock: vi.fn(),
-  signOutMock: vi.fn(),
-  navigateMock: vi.fn(),
-}));
+const { useSessionMock, updateUserMock, changePasswordMock, signOutMock, navigateMock } =
+  vi.hoisted(() => ({
+    useSessionMock: vi.fn(),
+    updateUserMock: vi.fn(),
+    changePasswordMock: vi.fn(),
+    signOutMock: vi.fn(),
+    navigateMock: vi.fn(),
+  }));
 
 vi.mock("./lib/auth-client", () => ({
   authClient: {
@@ -92,6 +93,16 @@ describe("Account", () => {
     fireEvent.click(screen.getByRole("button", { name: "Alterar senha" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Senha atual incorreta");
+  });
+
+  it("mostra a seção de importar dados com a opção de CSV do Filmow", () => {
+    renderAccount();
+
+    expect(screen.getByRole("heading", { name: "Importar dados" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Filmes assistidos (Filmow, CSV)" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Escolher arquivo CSV")).toBeInTheDocument();
   });
 
   it("desloga e navega pro login", async () => {

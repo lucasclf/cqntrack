@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from "react";
 import { useNavigate } from "react-router";
 import styles from "./Account.module.css";
+import { ImportFilmowCsv } from "./ImportFilmowCsv";
 import { authClient } from "./lib/auth-client";
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
@@ -117,6 +118,11 @@ export function Account() {
             {passwordStatus === "saving" ? "Salvando..." : "Alterar senha"}
           </button>
         </form>
+      </section>
+
+      <section className={styles.section}>
+        <h2>Importar dados</h2>
+        <ImportFilmowCsv />
       </section>
 
       <section className={styles.section}>
