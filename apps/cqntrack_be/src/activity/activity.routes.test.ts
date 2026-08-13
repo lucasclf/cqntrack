@@ -66,7 +66,11 @@ describe("/api/activity", () => {
     // status_changed no jogo 901
     await app.request(
       "/api/games/901/entry",
-      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ status: "playing" }) },
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "playing" }),
+      },
       env,
     );
     await sleep(5);
@@ -74,7 +78,11 @@ describe("/api/activity", () => {
     // rated no jogo 901 (mesmo jogo, já cacheado — sem nova chamada à IGDB)
     await app.request(
       "/api/games/901/entry",
-      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ rating: 4.5 }) },
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ rating: 4.5 }),
+      },
       env,
     );
     await sleep(5);
@@ -82,12 +90,20 @@ describe("/api/activity", () => {
     // added_to_list no jogo 902
     const createListRes = await app.request(
       "/api/lists",
-      { method: "POST", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ name: "Favoritos" }) },
+      {
+        method: "POST",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Favoritos" }),
+      },
       env,
     );
     const { id: listId } = (await createListRes.json()) as { id: string };
 
-    await app.request(`/api/lists/${listId}/items/902`, { method: "PUT", headers: { cookie } }, env);
+    await app.request(
+      `/api/lists/${listId}/items/902`,
+      { method: "PUT", headers: { cookie } },
+      env,
+    );
     vi.unstubAllGlobals();
 
     const res = await app.request("/api/activity", { headers: { cookie } }, env);
@@ -109,7 +125,10 @@ describe("/api/activity", () => {
       metadata: { listId, listName: "Favoritos" },
     });
     expect(body.items[1]).toMatchObject({ type: "rated", metadata: { rating: 4.5 } });
-    expect(body.items[2]).toMatchObject({ type: "status_changed", metadata: { status: "playing" } });
+    expect(body.items[2]).toMatchObject({
+      type: "status_changed",
+      metadata: { status: "playing" },
+    });
 
     for (const item of body.items) {
       expect(item.itemTitle).toEqual(expect.any(String));
@@ -119,25 +138,41 @@ describe("/api/activity", () => {
   it("pagina por cursor sem duplicar nem perder itens", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
 
-    stubIgdbFetchOnce([igdbGame(801, "Jogo A")], [igdbGame(802, "Jogo B")], [igdbGame(803, "Jogo C")]);
+    stubIgdbFetchOnce(
+      [igdbGame(801, "Jogo A")],
+      [igdbGame(802, "Jogo B")],
+      [igdbGame(803, "Jogo C")],
+    );
 
     await app.request(
       "/api/games/801/entry",
-      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ status: "playing" }) },
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "playing" }),
+      },
       env,
     );
     await sleep(5);
 
     await app.request(
       "/api/games/802/entry",
-      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ status: "playing" }) },
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "playing" }),
+      },
       env,
     );
     await sleep(5);
 
     await app.request(
       "/api/games/803/entry",
-      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ status: "playing" }) },
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "playing" }),
+      },
       env,
     );
     vi.unstubAllGlobals();
@@ -164,5 +199,71 @@ describe("/api/activity", () => {
 
     const allIds = [...firstPage.items, ...secondPage.items].map((item) => item.id);
     expect(new Set(allIds).size).toBe(3);
+  });
+
+  it("filtra por mediaType (aba 'Atividades' da home)", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+
+    stubIgdbFetchOnce([igdbGame(911, "Hollow Knight")]);
+    await app.request(
+      "/api/games/911/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "playing" }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const tmdbMovieDetail = {
+      id: 27205,
+      title: "Inception",
+      poster_path: "/poster.jpg",
+      release_date: "2010-07-15",
+      overview: "Resumo",
+      genres: [],
+      runtime: 148,
+      vote_average: 8.4,
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(jsonResponse(tmdbMovieDetail))
+        .mockResolvedValueOnce(jsonResponse({ cast: [], crew: [] })),
+    );
+    await app.request(
+      "/api/movies/27205/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ favorited: true }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const gamesRes = await app.request(
+      "/api/activity?mediaType=games",
+      { headers: { cookie } },
+      env,
+    );
+    const gamesBody = (await gamesRes.json()) as { items: Array<{ mediaType: string }> };
+    expect(gamesBody.items).toHaveLength(1);
+    expect(gamesBody.items[0]?.mediaType).toBe("games");
+
+    const moviesRes = await app.request(
+      "/api/activity?mediaType=movies",
+      { headers: { cookie } },
+      env,
+    );
+    const moviesBody = (await moviesRes.json()) as { items: Array<{ mediaType: string }> };
+    expect(moviesBody.items).toHaveLength(1);
+    expect(moviesBody.items[0]?.mediaType).toBe("movies");
+
+    const allRes = await app.request("/api/activity", { headers: { cookie } }, env);
+    const allBody = (await allRes.json()) as { items: unknown[] };
+    expect(allBody.items).toHaveLength(2);
   });
 });

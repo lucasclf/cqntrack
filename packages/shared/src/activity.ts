@@ -23,10 +23,12 @@ export const ActivityItemSchema = z.object({
 export type ActivityItem = z.infer<typeof ActivityItemSchema>;
 
 // Paginação por cursor (createdAt do último item da página anterior) — um
-// log append-only sofreria drift com paginação por offset.
+// log append-only sofreria drift com paginação por offset. `mediaType`
+// filtra o feed por seção (aba "Atividades" da home).
 export const ListActivityQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
   before: z.iso.datetime().optional(),
+  mediaType: MediaTypeSchema.optional(),
 });
 
 export type ListActivityQuery = z.infer<typeof ListActivityQuerySchema>;

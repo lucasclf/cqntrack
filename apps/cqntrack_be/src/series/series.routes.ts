@@ -3,6 +3,8 @@ import {
   DiscoverSeriesResponseSchema,
   ListSeriesEntriesQuerySchema,
   PaginatedSeriesEntriesResponseSchema,
+  RecentlyWatchedSeriesQuerySchema,
+  RecentlyWatchedSeriesResponseSchema,
   SearchSeriesQuerySchema,
   SearchSeriesResponseSchema,
   SeriesDetailResponseSchema,
@@ -16,8 +18,20 @@ import {
 import { Hono } from "hono";
 import { type AuthedEnv, requireSession } from "../auth/require-session";
 import { createDb } from "../db/client";
-import { deleteSeriesEntry, getFavorites, getSeriesEntryForUser, listSeriesEntries, upsertSeriesEntry } from "./entries.service";
-import { getEpisodeDetail, getSeasonEpisodes, setEpisodeWatched, setSeasonWatched } from "./episodes.service";
+import {
+  deleteSeriesEntry,
+  getFavorites,
+  getRecentlyWatchedSeries,
+  getSeriesEntryForUser,
+  listSeriesEntries,
+  upsertSeriesEntry,
+} from "./entries.service";
+import {
+  getEpisodeDetail,
+  getSeasonEpisodes,
+  setEpisodeWatched,
+  setSeasonWatched,
+} from "./episodes.service";
 import {
   getOrCacheSeries,
   getPopularSeriesForUser,
@@ -86,6 +100,32 @@ seriesRouter.get("/favorites", async (c) => {
   const db = createDb(c.env);
   const items = await getFavorites(db, c.get("userId"));
   return c.json(SeriesFavoritesResponseSchema.parse({ items }));
+});
+
+// Mesma lógica da rota pública equivalente (/api/users/:username/series/
+// recently-watched) — usada pela aba "Séries" da home (dados próprios, ver
+// SeriesTab/SeriesStats reaproveitados de profile/).
+seriesRouter.get("/recently-watched", async (c) => {
+  const parsed = RecentlyWatchedSeriesQuerySchema.safeParse(c.req.query());
+  if (!parsed.success) {
+    return c.json({ error: "invalid_query" }, 400);
+  }
+
+  const db = createDb(c.env);
+  const { items, total } = await getRecentlyWatchedSeries(
+    db,
+    c.get("userId"),
+    parsed.data.page,
+    parsed.data.pageSize,
+  );
+  return c.json(
+    RecentlyWatchedSeriesResponseSchema.parse({
+      items,
+      page: parsed.data.page,
+      pageSize: parsed.data.pageSize,
+      total,
+    }),
+  );
 });
 
 seriesRouter.get("/discover", async (c) => {

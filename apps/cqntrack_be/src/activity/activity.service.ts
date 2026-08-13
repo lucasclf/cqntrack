@@ -31,6 +31,9 @@ export async function listActivity(
   if (query.before) {
     conditions.push(lt(activity.createdAt, new Date(query.before)));
   }
+  if (query.mediaType) {
+    conditions.push(eq(activity.mediaType, query.mediaType));
+  }
 
   // Busca um item a mais só pra saber se existe próxima página.
   const rows = await db.query.activity.findMany({
