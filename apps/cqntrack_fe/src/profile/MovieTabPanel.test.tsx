@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { PublicMovieEntries } from "./PublicMovieEntries";
+import { MovieTabPanel } from "./MovieTabPanel";
 
 const { getMock } = vi.hoisted(() => ({ getMock: vi.fn() }));
 
@@ -32,11 +32,11 @@ function entry(id: string) {
   };
 }
 
-function renderPage(initialEntry: string) {
+function renderPanel(initialEntry: string) {
   render(
     <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
-        <Route path="/:handle/filmes" element={<PublicMovieEntries />} />
+        <Route path="/:handle/filmes" element={<MovieTabPanel />} />
       </Routes>
     </MemoryRouter>,
   );
@@ -47,31 +47,35 @@ function lastQuery(): URLSearchParams {
   return new URLSearchParams(call[0].split("?")[1]);
 }
 
-describe("PublicMovieEntries", () => {
+describe("MovieTabPanel", () => {
   beforeEach(() => {
     getMock.mockReset();
   });
 
-  it("sem status na URL, mostra título genérico 'Filmes' e busca sem filtro", async () => {
-    getMock.mockResolvedValue({ items: [entry("1")], page: 1, pageSize: 24, total: 1 });
-    renderPage("/@lucas/filmes");
+  it("sem status na URL, mostra favoritos + assistido recentemente (não busca listagem completa)", async () => {
+    getMock.mockResolvedValue({ items: [entry("1")], page: 1, pageSize: 12, total: 1 });
+    renderPanel("/@lucas/filmes");
 
-    expect(await screen.findByRole("heading", { name: "Filmes" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Voltar pro perfil/ })).toHaveAttribute("href", "/@lucas");
-    expect(lastQuery().get("status")).toBeNull();
+    expect(await screen.findByRole("heading", { name: "Filmes favoritos" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Assistido recentemente" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Anterior" })).not.toBeInTheDocument();
   });
 
   it("com status na URL, usa o rótulo do status como título e filtra a busca", async () => {
     getMock.mockResolvedValue({ items: [entry("1")], page: 1, pageSize: 24, total: 1 });
-    renderPage("/@lucas/filmes?status=want_to_watch");
+    renderPanel("/@lucas/filmes?status=want_to_watch");
 
     expect(await screen.findByRole("heading", { name: "Quero ver" })).toBeInTheDocument();
     expect(lastQuery().get("status")).toBe("want_to_watch");
+    expect(screen.getByRole("link", { name: "Limpar filtro" })).toHaveAttribute(
+      "href",
+      "/@lucas/filmes",
+    );
   });
 
   it("pagina com os botões Anterior/Próxima", async () => {
     getMock.mockResolvedValue({ items: [entry("1")], page: 1, pageSize: 24, total: 50 });
-    renderPage("/@lucas/filmes");
+    renderPanel("/@lucas/filmes?status=watched");
 
     await screen.findByText("Inception");
     expect(screen.getByRole("button", { name: "Anterior" })).toBeDisabled();
@@ -81,24 +85,17 @@ describe("PublicMovieEntries", () => {
     expect(lastQuery().get("page")).toBe("2");
   });
 
-  it("mostra hint quando não há itens", async () => {
+  it("mostra hint quando não há itens com o status filtrado", async () => {
     getMock.mockResolvedValue({ items: [], page: 1, pageSize: 24, total: 0 });
-    renderPage("/@lucas/filmes");
+    renderPanel("/@lucas/filmes?status=watched");
 
     expect(await screen.findByText("Nada por aqui ainda.")).toBeInTheDocument();
   });
 
-  it("mostra erro quando a busca falha", async () => {
-    getMock.mockRejectedValue(new Error("falha de rede"));
-    renderPage("/@lucas/filmes");
+  it("status inválido na URL é tratado como ausente", async () => {
+    getMock.mockResolvedValue({ items: [entry("1")], page: 1, pageSize: 12, total: 1 });
+    renderPanel("/@lucas/filmes?status=nao-existe");
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Falha ao carregar");
-  });
-
-  it("handle inválido (sem @) mostra 'usuário não encontrado', sem chamar a API", async () => {
-    renderPage("/lucas/filmes");
-
-    expect(await screen.findByText("Usuário não encontrado.")).toBeInTheDocument();
-    expect(getMock).not.toHaveBeenCalled();
+    expect(await screen.findByRole("heading", { name: "Filmes favoritos" })).toBeInTheDocument();
   });
 });

@@ -5,14 +5,16 @@ import { MovieCard } from "../movies/MovieCard";
 import styles from "./MixedMediaGrid.module.css";
 
 interface RecentlyWatchedMoviesProps {
-  username: string;
+  // "/api/users/:username" (perfil público) ou "/api" (home, dados
+  // próprios) — mesmo componente serve os dois, só troca o prefixo.
+  basePath: string;
 }
 
 type LoadStatus = "loading" | "ready" | "error";
 
 const RECENT_LIMIT = 12;
 
-export function RecentlyWatchedMovies({ username }: RecentlyWatchedMoviesProps) {
+export function RecentlyWatchedMovies({ basePath }: RecentlyWatchedMoviesProps) {
   const [data, setData] = useState<PaginatedMovieEntriesResponse | null>(null);
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
 
@@ -21,7 +23,7 @@ export function RecentlyWatchedMovies({ username }: RecentlyWatchedMoviesProps) 
 
     apiClient
       .get<PaginatedMovieEntriesResponse>(
-        `/api/users/${username}/movies/entries?status=watched&sortBy=updatedAt&order=desc&pageSize=${RECENT_LIMIT}`,
+        `${basePath}/movies/entries?status=watched&sortBy=updatedAt&order=desc&pageSize=${RECENT_LIMIT}`,
       )
       .then((res) => {
         if (!cancelled) {
@@ -36,7 +38,7 @@ export function RecentlyWatchedMovies({ username }: RecentlyWatchedMoviesProps) 
     return () => {
       cancelled = true;
     };
-  }, [username]);
+  }, [basePath]);
 
   if (loadStatus !== "ready" || !data || data.items.length === 0) {
     return null;

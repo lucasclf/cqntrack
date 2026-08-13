@@ -22,12 +22,12 @@ import { MovieSearch } from "./movies/MovieSearch";
 import { MyMovieEntries } from "./movies/MyMovieEntries";
 import { MyMovieLists } from "./movies/MyMovieLists";
 import { PersonDetail } from "./people/PersonDetail";
-import { PublicBookEntries } from "./profile/PublicBookEntries";
-import { PublicGameEntries } from "./profile/PublicGameEntries";
+import { BookTabPanel } from "./profile/BookTabPanel";
+import { GameTabPanel } from "./profile/GameTabPanel";
+import { MovieTabPanel } from "./profile/MovieTabPanel";
 import { PublicListDetail } from "./profile/PublicListDetail";
-import { PublicMovieEntries } from "./profile/PublicMovieEntries";
 import { PublicProfile } from "./profile/PublicProfile";
-import { PublicSeriesEntries } from "./profile/PublicSeriesEntries";
+import { SeriesTabPanel } from "./profile/SeriesTabPanel";
 import { RedirectToJogosListDetail } from "./routes/RedirectToJogosListDetail";
 import { RequireAuth } from "./routes/RequireAuth";
 import { EpisodeDetail } from "./series/EpisodeDetail";
@@ -47,15 +47,21 @@ export const routes: RouteObject[] = [
   // react-router não casa texto literal + parâmetro no mesmo segmento
   // (confirmado: "/@:username" nunca dá match) — captura o segmento inteiro
   // ("@lucas") como :handle e separa o "@" dentro do componente.
-  { path: "/:handle", element: <PublicProfile /> },
+  // PublicProfile é uma casca persistente (header/abas/lateral de
+  // estatísticas) — as 4 abas são rotas filhas de verdade, renderizadas
+  // via <Outlet/>, pra trocar de aba/estatística sem desmontar o resto.
+  {
+    path: "/:handle",
+    element: <PublicProfile />,
+    children: [
+      { index: true, element: <Navigate to="filmes" replace /> },
+      { path: "filmes", element: <MovieTabPanel /> },
+      { path: "series", element: <SeriesTabPanel /> },
+      { path: "jogos", element: <GameTabPanel /> },
+      { path: "livros", element: <BookTabPanel /> },
+    ],
+  },
   { path: "/:handle/listas/:listId", element: <PublicListDetail /> },
-  // Destino das estatísticas clicáveis do perfil público (ver MovieStats/
-  // GameStats/BookStats/SeriesStats) — listagem completa, opcionalmente
-  // filtrada por status via query string (?status=).
-  { path: "/:handle/filmes", element: <PublicMovieEntries /> },
-  { path: "/:handle/series", element: <PublicSeriesEntries /> },
-  { path: "/:handle/jogos", element: <PublicGameEntries /> },
-  { path: "/:handle/livros", element: <PublicBookEntries /> },
   { path: "/buscar", element: <Navigate to="/jogos/buscar" replace /> },
   { path: "/marcacoes", element: <Navigate to="/jogos/marcacoes" replace /> },
   { path: "/listas", element: <Navigate to="/jogos/listas" replace /> },

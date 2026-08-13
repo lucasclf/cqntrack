@@ -1,19 +1,29 @@
-import { MOVIE_STATUSES, MOVIE_STATUS_LABELS, type PaginatedMovieEntriesResponse } from "@cqntrack/shared";
+import {
+  MOVIE_STATUSES,
+  MOVIE_STATUS_LABELS,
+  type PaginatedMovieEntriesResponse,
+} from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { apiClient } from "../lib/api-client";
 import styles from "./ProfileStats.module.css";
 
 interface MovieStatsProps {
-  username: string;
+  // "/api/users/:username" (perfil público) ou "/api" (home, dados
+  // próprios) — mesmo componente serve os dois, só troca o prefixo das
+  // chamadas de contagem.
+  basePath: string;
+  // Base do link de cada estatística — "/@username/filmes" (perfil público,
+  // ver MovieTabPanel) ou "/filmes/marcacoes" (home, tela de marcações já
+  // existente, que lê ?status= como filtro inicial).
+  linkBase: string;
 }
 
 type LoadStatus = "loading" | "ready" | "error";
 
 // Uma contagem por status (pageSize=1 só pra ler `total`, sem baixar os
-// itens) — cada linha é clicável e leva pra listagem completa filtrada
-// (ver PublicMovieEntries).
-export function MovieStats({ username }: MovieStatsProps) {
+// itens) — cada linha é clicável e leva pra listagem completa filtrada.
+export function MovieStats({ basePath, linkBase }: MovieStatsProps) {
   const [counts, setCounts] = useState<Record<string, number> | null>(null);
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
 
@@ -23,7 +33,9 @@ export function MovieStats({ username }: MovieStatsProps) {
     Promise.all(
       MOVIE_STATUSES.map((status) =>
         apiClient
-          .get<PaginatedMovieEntriesResponse>(`/api/users/${username}/movies/entries?status=${status}&pageSize=1`)
+          .get<PaginatedMovieEntriesResponse>(
+            `${basePath}/movies/entries?status=${status}&pageSize=1`,
+          )
           .then((res) => [status, res.total] as const),
       ),
     )
@@ -39,7 +51,7 @@ export function MovieStats({ username }: MovieStatsProps) {
     return () => {
       cancelled = true;
     };
-  }, [username]);
+  }, [basePath]);
 
   if (loadStatus !== "ready" || !counts) {
     return null;
@@ -51,7 +63,7 @@ export function MovieStats({ username }: MovieStatsProps) {
       <ul className={styles.list}>
         {MOVIE_STATUSES.map((status) => (
           <li key={status}>
-            <Link to={`/@${username}/filmes?status=${status}`} className={styles.stat}>
+            <Link to={`${linkBase}?status=${status}`} className={styles.stat}>
               <span>{MOVIE_STATUS_LABELS[status]}</span>
               <span className={styles.statCount}>{counts[status]}</span>
             </Link>

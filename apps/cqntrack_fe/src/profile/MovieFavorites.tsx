@@ -5,12 +5,14 @@ import { MovieCard } from "../movies/MovieCard";
 import styles from "./MixedMediaGrid.module.css";
 
 interface MovieFavoritesProps {
-  username: string;
+  // "/api/users/:username" (perfil público) ou "/api" (home, dados
+  // próprios) — mesmo componente serve os dois, só troca o prefixo.
+  basePath: string;
 }
 
 type LoadStatus = "loading" | "ready" | "error";
 
-export function MovieFavorites({ username }: MovieFavoritesProps) {
+export function MovieFavorites({ basePath }: MovieFavoritesProps) {
   const [data, setData] = useState<MovieFavoritesResponse | null>(null);
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
 
@@ -18,7 +20,7 @@ export function MovieFavorites({ username }: MovieFavoritesProps) {
     let cancelled = false;
 
     apiClient
-      .get<MovieFavoritesResponse>(`/api/users/${username}/movies/favorites`)
+      .get<MovieFavoritesResponse>(`${basePath}/movies/favorites`)
       .then((res) => {
         if (!cancelled) {
           setData(res);
@@ -32,7 +34,7 @@ export function MovieFavorites({ username }: MovieFavoritesProps) {
     return () => {
       cancelled = true;
     };
-  }, [username]);
+  }, [basePath]);
 
   if (loadStatus !== "ready" || !data || data.items.length === 0) {
     return null;

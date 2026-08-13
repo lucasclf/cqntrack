@@ -5,12 +5,14 @@ import { SeriesCard } from "../series/SeriesCard";
 import styles from "./MixedMediaGrid.module.css";
 
 interface SeriesFavoritesProps {
-  username: string;
+  // "/api/users/:username" (perfil público) ou "/api" (home, dados
+  // próprios) — mesmo componente serve os dois, só troca o prefixo.
+  basePath: string;
 }
 
 type LoadStatus = "loading" | "ready" | "error";
 
-export function SeriesFavorites({ username }: SeriesFavoritesProps) {
+export function SeriesFavorites({ basePath }: SeriesFavoritesProps) {
   const [data, setData] = useState<SeriesFavoritesResponse | null>(null);
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
 
@@ -18,7 +20,7 @@ export function SeriesFavorites({ username }: SeriesFavoritesProps) {
     let cancelled = false;
 
     apiClient
-      .get<SeriesFavoritesResponse>(`/api/users/${username}/series/favorites`)
+      .get<SeriesFavoritesResponse>(`${basePath}/series/favorites`)
       .then((res) => {
         if (!cancelled) {
           setData(res);
@@ -32,7 +34,7 @@ export function SeriesFavorites({ username }: SeriesFavoritesProps) {
     return () => {
       cancelled = true;
     };
-  }, [username]);
+  }, [basePath]);
 
   if (loadStatus !== "ready" || !data || data.items.length === 0) {
     return null;

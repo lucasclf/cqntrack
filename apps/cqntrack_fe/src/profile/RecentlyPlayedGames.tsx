@@ -5,7 +5,9 @@ import { apiClient } from "../lib/api-client";
 import styles from "./MixedMediaGrid.module.css";
 
 interface RecentlyPlayedGamesProps {
-  username: string;
+  // "/api/users/:username" (perfil público) ou "/api" (home, dados
+  // próprios) — mesmo componente serve os dois, só troca o prefixo.
+  basePath: string;
 }
 
 type LoadStatus = "loading" | "ready" | "error";
@@ -19,7 +21,7 @@ const FETCH_PAGE_SIZE = 20;
 // cobre vários ("playing"/"completed"/"platinum", nunca "not_started") —
 // busca as mais recentemente atualizadas e filtra aqui, em vez de mudar o
 // filtro genérico de status pra aceitar múltiplos valores.
-export function RecentlyPlayedGames({ username }: RecentlyPlayedGamesProps) {
+export function RecentlyPlayedGames({ basePath }: RecentlyPlayedGamesProps) {
   const [data, setData] = useState<PaginatedGameEntriesResponse | null>(null);
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
 
@@ -28,7 +30,7 @@ export function RecentlyPlayedGames({ username }: RecentlyPlayedGamesProps) {
 
     apiClient
       .get<PaginatedGameEntriesResponse>(
-        `/api/users/${username}/games/entries?sortBy=updatedAt&order=desc&pageSize=${FETCH_PAGE_SIZE}`,
+        `${basePath}/games/entries?sortBy=updatedAt&order=desc&pageSize=${FETCH_PAGE_SIZE}`,
       )
       .then((response) => {
         if (!cancelled) {
@@ -43,7 +45,7 @@ export function RecentlyPlayedGames({ username }: RecentlyPlayedGamesProps) {
     return () => {
       cancelled = true;
     };
-  }, [username]);
+  }, [basePath]);
 
   if (loadStatus !== "ready" || !data) {
     return null;

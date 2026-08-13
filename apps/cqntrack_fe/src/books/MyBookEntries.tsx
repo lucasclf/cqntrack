@@ -1,5 +1,10 @@
-import type { BookStatus, PaginatedBookEntriesResponse } from "@cqntrack/shared";
+import {
+  BOOK_STATUSES,
+  type BookStatus,
+  type PaginatedBookEntriesResponse,
+} from "@cqntrack/shared";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router";
 import { apiClient } from "../lib/api-client";
 import { BookCard } from "./BookCard";
 import { BookEntryFilters, type BookEntrySortField } from "./BookEntryFilters";
@@ -7,8 +12,19 @@ import styles from "./MyBookEntries.module.css";
 
 type LoadStatus = "loading" | "ready" | "error";
 
+// Lida só uma vez, na montagem — valor inicial do filtro quando se chega
+// aqui por um link com ?status= (estatística clicável da home, ver
+// BookStats); depois vira estado local normal.
+function initialStatusFromUrl(searchParams: URLSearchParams): BookStatus | "" {
+  const raw = searchParams.get("status");
+  return raw !== null && (BOOK_STATUSES as readonly string[]).includes(raw)
+    ? (raw as BookStatus)
+    : "";
+}
+
 export function MyBookEntries() {
-  const [status, setStatus] = useState<BookStatus | "">("");
+  const [searchParams] = useSearchParams();
+  const [status, setStatus] = useState<BookStatus | "">(() => initialStatusFromUrl(searchParams));
   const [favoriteOnly, setFavoriteOnly] = useState(false);
   const [sortBy, setSortBy] = useState<BookEntrySortField>("updatedAt");
   const [order, setOrder] = useState<"asc" | "desc">("desc");
@@ -71,7 +87,9 @@ export function MyBookEntries() {
       />
 
       {loadStatus === "loading" && !data && <p className={styles.hint}>Carregando...</p>}
-      {loadStatus === "error" && <p role="alert">Falha ao carregar suas marcações. Tente novamente.</p>}
+      {loadStatus === "error" && (
+        <p role="alert">Falha ao carregar suas marcações. Tente novamente.</p>
+      )}
       {loadStatus === "ready" && data?.items.length === 0 && (
         <p className={styles.hint}>Nenhuma marcação encontrada com esses filtros.</p>
       )}
@@ -84,7 +102,11 @@ export function MyBookEntries() {
             ))}
           </div>
           <div className={styles.pagination}>
-            <button type="button" disabled={page <= 1} onClick={() => setPage((current) => current - 1)}>
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => setPage((current) => current - 1)}
+            >
               Anterior
             </button>
             <span className={styles.pageInfo}>

@@ -8,7 +8,10 @@ const { getMock } = vi.hoisted(() => ({ getMock: vi.fn() }));
 
 vi.mock("../lib/api-client", async () => {
   const actual = await vi.importActual<typeof import("../lib/api-client")>("../lib/api-client");
-  return { ...actual, apiClient: { get: getMock, post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() } };
+  return {
+    ...actual,
+    apiClient: { get: getMock, post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn() },
+  };
 });
 
 const DETAIL = {

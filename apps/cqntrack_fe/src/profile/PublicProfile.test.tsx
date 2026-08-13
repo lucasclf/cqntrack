@@ -1,8 +1,12 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router";
+import { MemoryRouter, Navigate, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../lib/api-client";
+import { BookTabPanel } from "./BookTabPanel";
+import { GameTabPanel } from "./GameTabPanel";
+import { MovieTabPanel } from "./MovieTabPanel";
 import { PublicProfile } from "./PublicProfile";
+import { SeriesTabPanel } from "./SeriesTabPanel";
 
 const { getMock } = vi.hoisted(() => ({ getMock: vi.fn() }));
 
@@ -67,11 +71,19 @@ const BOOK = {
 const EMPTY_ITEMS = { items: [] };
 const EMPTY_ENTRIES = { items: [], page: 1, pageSize: 24, total: 0 };
 
-function renderProfile(username = "gamer_1") {
+// Mesma estrutura de router.tsx: PublicProfile é a casca (header/abas/
+// lateral), as 4 abas são rotas filhas renderizadas via <Outlet/>.
+function renderProfile(username = "gamer_1", initialPath?: string) {
   render(
-    <MemoryRouter initialEntries={[`/@${username}`]}>
+    <MemoryRouter initialEntries={[initialPath ?? `/@${username}`]}>
       <Routes>
-        <Route path="/:handle" element={<PublicProfile />} />
+        <Route path="/:handle" element={<PublicProfile />}>
+          <Route index element={<Navigate to="filmes" replace />} />
+          <Route path="filmes" element={<MovieTabPanel />} />
+          <Route path="series" element={<SeriesTabPanel />} />
+          <Route path="jogos" element={<GameTabPanel />} />
+          <Route path="livros" element={<BookTabPanel />} />
+        </Route>
       </Routes>
     </MemoryRouter>,
   );
@@ -88,7 +100,12 @@ const GAME_STATUS_TOTALS: Record<string, number> = {
   completed: 4,
   platinum: 0,
 };
-const BOOK_STATUS_TOTALS: Record<string, number> = { want_to_read: 1, reading: 0, read: 5, dropped: 0 };
+const BOOK_STATUS_TOTALS: Record<string, number> = {
+  want_to_read: 1,
+  reading: 0,
+  read: 5,
+  dropped: 0,
+};
 const SERIES_WATCHED_TOTAL = 7;
 
 // Mock com dado real em todas as 8 rotas (favoritos + recente x4 mídias) —
@@ -249,21 +266,25 @@ describe("PublicProfile", () => {
     expect(await screen.findByRole("heading", { name: "Gamer_1" })).toBeInTheDocument();
     expect(screen.getByText("@gamer_1")).toBeInTheDocument();
 
-    expect(screen.getByRole("tab", { name: "Filmes" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Séries" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Jogos" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Livros" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Filmes" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Séries" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Jogos" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Livros" })).toBeInTheDocument();
 
-    // Aba padrão é Filmes.
-    expect(screen.getByRole("tab", { name: "Filmes" })).toHaveAttribute("aria-selected", "true");
+    // Aba padrão é Filmes (index redireciona pra /filmes).
+    expect(
+      await screen.findByRole("link", { name: "Filmes", current: "page" }),
+    ).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Filmes favoritos" })).toBeInTheDocument();
-    expect(await screen.findByRole("heading", { name: "Assistido recentemente" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Assistido recentemente" }),
+    ).toBeInTheDocument();
     expect(screen.getAllByText("Inception")).not.toHaveLength(0);
     expect(screen.queryByText("Breaking Bad")).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Séries favoritas" })).not.toBeInTheDocument();
 
     // Estatísticas na lateral: uma por status, clicável pra listagem
-    // completa filtrada (ver PublicMovieEntries).
+    // completa filtrada (ver MovieTabPanel).
     expect(await screen.findByRole("link", { name: /Já vi.*3/ })).toHaveAttribute(
       "href",
       "/@gamer_1/filmes?status=watched",
@@ -273,17 +294,17 @@ describe("PublicProfile", () => {
       "/@gamer_1/filmes?status=want_to_watch",
     );
 
-    fireEvent.click(screen.getByRole("tab", { name: "Séries" }));
+    fireEvent.click(screen.getByRole("link", { name: "Séries" }));
     expect(await screen.findByRole("heading", { name: "Séries favoritas" })).toBeInTheDocument();
     expect(screen.getAllByText("Breaking Bad")).not.toHaveLength(0);
     expect(screen.queryByRole("heading", { name: "Filmes favoritos" })).not.toBeInTheDocument();
     // Série não tem status — só um total agregado, clicável.
     expect(await screen.findByRole("link", { name: /Séries acompanhadas.*7/ })).toHaveAttribute(
       "href",
-      "/@gamer_1/series",
+      "/@gamer_1/series?view=all",
     );
 
-    fireEvent.click(screen.getByRole("tab", { name: "Jogos" }));
+    fireEvent.click(screen.getByRole("link", { name: "Jogos" }));
     expect(await screen.findByRole("heading", { name: "Jogos favoritos" })).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Jogado recentemente" })).toBeInTheDocument();
     expect(screen.getAllByText("The Witcher 3: Wild Hunt")).not.toHaveLength(0);
@@ -292,7 +313,7 @@ describe("PublicProfile", () => {
       "/@gamer_1/jogos?status=completed",
     );
 
-    fireEvent.click(screen.getByRole("tab", { name: "Livros" }));
+    fireEvent.click(screen.getByRole("link", { name: "Livros" }));
     expect(await screen.findByRole("heading", { name: "Livros favoritos" })).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Lido recentemente" })).toBeInTheDocument();
     expect(screen.getAllByText("Dom Casmurro")).not.toHaveLength(0);
@@ -306,6 +327,31 @@ describe("PublicProfile", () => {
     expect(screen.queryByRole("heading", { name: "Marcações" })).not.toBeInTheDocument();
   });
 
+  it("clicar numa estatística navega pro filtro sem desmontar header/abas/lateral", async () => {
+    mockAllTabsWithData();
+    renderProfile();
+
+    await screen.findByRole("heading", { name: "Filmes favoritos" });
+    const statLink = await screen.findByRole("link", { name: /Já vi.*3/ });
+    fireEvent.click(statLink);
+
+    // Header, abas e lateral continuam montados — só o painel principal
+    // trocou pra listagem filtrada.
+    expect(screen.getByRole("heading", { name: "Gamer_1" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("link", { name: "Filmes", current: "page" }),
+    ).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Já vi" })).toBeInTheDocument();
+    expect(screen.getAllByText("Inception")).not.toHaveLength(0);
+    expect(screen.queryByRole("heading", { name: "Filmes favoritos" })).not.toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: /Já vi.*3/ })).toBeInTheDocument();
+
+    // "Limpar filtro" volta pra favoritos + recente da mesma aba.
+    fireEvent.click(screen.getByRole("link", { name: "Limpar filtro" }));
+    expect(await screen.findByRole("heading", { name: "Filmes favoritos" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Já vi" })).not.toBeInTheDocument();
+  });
+
   it("não mostra uma seção quando ela está vazia", async () => {
     getMock.mockImplementation((path: string) => {
       if (path === "/api/users/gamer_1") return Promise.resolve(PROFILE);
@@ -313,12 +359,15 @@ describe("PublicProfile", () => {
       if (path === "/api/users/gamer_1/series/favorites") return Promise.resolve(EMPTY_ITEMS);
       if (path === "/api/users/gamer_1/books/favorites") return Promise.resolve(EMPTY_ITEMS);
       if (path === "/api/users/gamer_1/games/favorites") return Promise.resolve(EMPTY_ITEMS);
-      if (path.startsWith("/api/users/gamer_1/movies/entries")) return Promise.resolve(EMPTY_ENTRIES);
+      if (path.startsWith("/api/users/gamer_1/movies/entries"))
+        return Promise.resolve(EMPTY_ENTRIES);
       if (path.startsWith("/api/users/gamer_1/series/recently-watched")) {
         return Promise.resolve({ items: [], page: 1, pageSize: 12, total: 0 });
       }
-      if (path.startsWith("/api/users/gamer_1/books/entries")) return Promise.resolve(EMPTY_ENTRIES);
-      if (path.startsWith("/api/users/gamer_1/games/entries")) return Promise.resolve(EMPTY_ENTRIES);
+      if (path.startsWith("/api/users/gamer_1/books/entries"))
+        return Promise.resolve(EMPTY_ENTRIES);
+      if (path.startsWith("/api/users/gamer_1/games/entries"))
+        return Promise.resolve(EMPTY_ENTRIES);
       return Promise.reject(new Error("rota inesperada: " + path));
     });
 
@@ -326,9 +375,14 @@ describe("PublicProfile", () => {
 
     expect(await screen.findByRole("heading", { name: "Gamer_1" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Filmes favoritos" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Assistido recentemente" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Assistido recentemente" }),
+    ).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("tab", { name: "Livros" }));
+    fireEvent.click(screen.getByRole("link", { name: "Livros" }));
+    expect(
+      await screen.findByRole("link", { name: "Livros", current: "page" }),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Livros favoritos" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Lido recentemente" })).not.toBeInTheDocument();
   });

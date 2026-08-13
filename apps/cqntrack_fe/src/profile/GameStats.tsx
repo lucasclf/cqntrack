@@ -1,18 +1,25 @@
-import { GAME_STATUSES, GAME_STATUS_LABELS, type PaginatedGameEntriesResponse } from "@cqntrack/shared";
+import {
+  GAME_STATUSES,
+  GAME_STATUS_LABELS,
+  type PaginatedGameEntriesResponse,
+} from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { apiClient } from "../lib/api-client";
 import styles from "./ProfileStats.module.css";
 
 interface GameStatsProps {
-  username: string;
+  // "/api/users/:username" (perfil público) ou "/api" (home).
+  basePath: string;
+  // "/@username/jogos" (perfil público) ou "/jogos/marcacoes" (home).
+  linkBase: string;
 }
 
 type LoadStatus = "loading" | "ready" | "error";
 
 // Mesmo padrão de MovieStats — uma contagem por status, clicável pra
-// listagem completa filtrada (ver PublicGameEntries).
-export function GameStats({ username }: GameStatsProps) {
+// listagem completa filtrada.
+export function GameStats({ basePath, linkBase }: GameStatsProps) {
   const [counts, setCounts] = useState<Record<string, number> | null>(null);
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
 
@@ -22,7 +29,9 @@ export function GameStats({ username }: GameStatsProps) {
     Promise.all(
       GAME_STATUSES.map((status) =>
         apiClient
-          .get<PaginatedGameEntriesResponse>(`/api/users/${username}/games/entries?status=${status}&pageSize=1`)
+          .get<PaginatedGameEntriesResponse>(
+            `${basePath}/games/entries?status=${status}&pageSize=1`,
+          )
           .then((res) => [status, res.total] as const),
       ),
     )
@@ -38,7 +47,7 @@ export function GameStats({ username }: GameStatsProps) {
     return () => {
       cancelled = true;
     };
-  }, [username]);
+  }, [basePath]);
 
   if (loadStatus !== "ready" || !counts) {
     return null;
@@ -50,7 +59,7 @@ export function GameStats({ username }: GameStatsProps) {
       <ul className={styles.list}>
         {GAME_STATUSES.map((status) => (
           <li key={status}>
-            <Link to={`/@${username}/jogos?status=${status}`} className={styles.stat}>
+            <Link to={`${linkBase}?status=${status}`} className={styles.stat}>
               <span>{GAME_STATUS_LABELS[status]}</span>
               <span className={styles.statCount}>{counts[status]}</span>
             </Link>

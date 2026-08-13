@@ -1,10 +1,13 @@
 import {
   BOOK_STATUS_LABELS,
   GAME_STATUS_LABELS,
+  MOVIE_STATUS_LABELS,
   type ActivityFeedResponse,
   type ActivityItem,
   type BookStatus,
   type GameStatus,
+  type MediaType,
+  type MovieStatus,
 } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
@@ -14,13 +17,11 @@ import styles from "./ActivityFeed.module.css";
 type LoadStatus = "loading" | "ready" | "error";
 
 // `type`/`metadata` são genéricos entre seções (ver activity.schema.ts no
-// backend), mas cada seção tem seu próprio vocabulário de `type` — jogos e
-// livros emitem "status_changed" (os dois são status-based; série/filme não
-// tem status), só séries emite "season_watched" e só filmes emite "watched"
-// (marcar um filme assistido é uma unidade só, sem o "episódio isolado x
-// temporada inteira" de série). Como duas seções emitem "status_changed" com
-// mapas de label diferentes, o case abaixo escolhe o mapa certo por
-// `item.mediaType`.
+// backend), mas cada seção tem seu próprio vocabulário de `type` — jogos,
+// livros e filmes emitem "status_changed" (são status-based; só série não
+// tem status), série emite "season_watched". Como três seções emitem
+// "status_changed" com mapas de label diferentes, o case abaixo escolhe o
+// mapa certo por `item.mediaType`.
 function describeActivity(item: ActivityItem): string {
   const metadata = item.metadata ?? {};
   switch (item.type) {
@@ -28,6 +29,10 @@ function describeActivity(item: ActivityItem): string {
       if (item.mediaType === "books") {
         const status = metadata.status as BookStatus | undefined;
         return status ? `Marcou como "${BOOK_STATUS_LABELS[status]}"` : "Mudou o status";
+      }
+      if (item.mediaType === "movies") {
+        const status = metadata.status as MovieStatus | undefined;
+        return status ? `Marcou como "${MOVIE_STATUS_LABELS[status]}"` : "Mudou o status";
       }
       const status = metadata.status as GameStatus | undefined;
       return status ? `Marcou como "${GAME_STATUS_LABELS[status]}"` : "Mudou o status";
@@ -67,9 +72,17 @@ function formatActivityDate(iso: string): string {
   });
 }
 
+interface ActivityFeedProps {
+  // Filtra o feed por seção (aba "Atividades" da home) — ausente mostra
+  // todas. O pai deve trocar a `key` do componente quando o filtro muda
+  // (em vez de reagir a uma prop instável aqui), pra reaproveitar o mesmo
+  // reset "remonta do zero" já usado noutras trocas de identidade no app.
+  mediaType?: MediaType;
+}
+
 // Feed de atividade recente do próprio usuário — usado só na home, sem
 // outro consumidor (por isso vive junto do Commit que reescreve a Home).
-export function ActivityFeed() {
+export function ActivityFeed({ mediaType }: ActivityFeedProps) {
   const [items, setItems] = useState<ActivityItem[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
@@ -77,9 +90,10 @@ export function ActivityFeed() {
 
   useEffect(() => {
     let cancelled = false;
+    const query = mediaType ? `?mediaType=${mediaType}` : "";
 
     apiClient
-      .get<ActivityFeedResponse>("/api/activity")
+      .get<ActivityFeedResponse>(`/api/activity${query}`)
       .then((data) => {
         if (cancelled) return;
         setItems(data.items);
@@ -95,15 +109,15 @@ export function ActivityFeed() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [mediaType]);
 
   async function loadMore() {
     if (!cursor) return;
     setLoadingMore(true);
     try {
-      const data = await apiClient.get<ActivityFeedResponse>(
-        `/api/activity?before=${encodeURIComponent(cursor)}`,
-      );
+      const params = new URLSearchParams({ before: cursor });
+      if (mediaType) params.set("mediaType", mediaType);
+      const data = await apiClient.get<ActivityFeedResponse>(`/api/activity?${params}`);
       setItems((current) => [...current, ...data.items]);
       setCursor(data.nextCursor);
     } catch {
@@ -120,7 +134,7 @@ export function ActivityFeed() {
     return <p role="alert">Falha ao carregar sua atividade recente.</p>;
   }
   if (items.length === 0) {
-    return <p className={styles.hint}>Nenhuma atividade ainda — busque um jogo pra começar.</p>;
+    return <p className={styles.hint}>Nenhuma atividade por aqui ainda.</p>;
   }
 
   return (

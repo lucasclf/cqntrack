@@ -5,14 +5,16 @@ import { apiClient } from "../lib/api-client";
 import styles from "./MixedMediaGrid.module.css";
 
 interface RecentlyReadBooksProps {
-  username: string;
+  // "/api/users/:username" (perfil público) ou "/api" (home, dados
+  // próprios) — mesmo componente serve os dois, só troca o prefixo.
+  basePath: string;
 }
 
 type LoadStatus = "loading" | "ready" | "error";
 
 const RECENT_LIMIT = 12;
 
-export function RecentlyReadBooks({ username }: RecentlyReadBooksProps) {
+export function RecentlyReadBooks({ basePath }: RecentlyReadBooksProps) {
   const [data, setData] = useState<PaginatedBookEntriesResponse | null>(null);
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
 
@@ -21,7 +23,7 @@ export function RecentlyReadBooks({ username }: RecentlyReadBooksProps) {
 
     apiClient
       .get<PaginatedBookEntriesResponse>(
-        `/api/users/${username}/books/entries?status=read&sortBy=updatedAt&order=desc&pageSize=${RECENT_LIMIT}`,
+        `${basePath}/books/entries?status=read&sortBy=updatedAt&order=desc&pageSize=${RECENT_LIMIT}`,
       )
       .then((response) => {
         if (!cancelled) {
@@ -36,7 +38,7 @@ export function RecentlyReadBooks({ username }: RecentlyReadBooksProps) {
     return () => {
       cancelled = true;
     };
-  }, [username]);
+  }, [basePath]);
 
   if (loadStatus !== "ready" || !data || data.items.length === 0) {
     return null;

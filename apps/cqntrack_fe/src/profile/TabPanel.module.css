@@ -1,17 +1,22 @@
-.page {
-  max-width: 1100px;
-  margin: 0 auto;
+.filterHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
-.back {
-  display: inline-block;
-  margin-bottom: 16px;
+.filterHeader h2 {
+  margin: 0;
+}
+
+.clear {
+  font-size: 13px;
   color: var(--text-secondary);
   text-decoration: none;
-  font-size: 13px;
 }
 
-.back:hover {
+.clear:hover {
   color: var(--accent);
 }
 

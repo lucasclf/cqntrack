@@ -5,16 +5,21 @@ import { apiClient } from "../lib/api-client";
 import styles from "./ProfileStats.module.css";
 
 interface SeriesStatsProps {
-  username: string;
+  // "/api/users/:username" (perfil público) ou "/api" (home).
+  basePath: string;
+  // Destino completo do link (série não tem status, então não há um
+  // "linkBase + ?status=" comum às outras 3 mídias): "/@username/series
+  // ?view=all" (perfil público, ver SeriesTabPanel) ou "/series/marcacoes"
+  // (home — já mostra todas, sem precisar de filtro).
+  linkTo: string;
 }
 
 type LoadStatus = "loading" | "ready" | "error";
 
 // Série não tem status (ver RecentlyWatchedSeriesResponse) — em vez de uma
 // contagem por status como as outras 3 mídias, mostra só o total de séries
-// com pelo menos 1 episódio assistido, clicável pra listagem completa (ver
-// PublicSeriesEntries).
-export function SeriesStats({ username }: SeriesStatsProps) {
+// com pelo menos 1 episódio assistido, clicável pra listagem completa.
+export function SeriesStats({ basePath, linkTo }: SeriesStatsProps) {
   const [total, setTotal] = useState<number | null>(null);
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
 
@@ -22,7 +27,7 @@ export function SeriesStats({ username }: SeriesStatsProps) {
     let cancelled = false;
 
     apiClient
-      .get<RecentlyWatchedSeriesResponse>(`/api/users/${username}/series/recently-watched?page=1&pageSize=1`)
+      .get<RecentlyWatchedSeriesResponse>(`${basePath}/series/recently-watched?page=1&pageSize=1`)
       .then((res) => {
         if (!cancelled) {
           setTotal(res.total);
@@ -36,7 +41,7 @@ export function SeriesStats({ username }: SeriesStatsProps) {
     return () => {
       cancelled = true;
     };
-  }, [username]);
+  }, [basePath]);
 
   if (loadStatus !== "ready" || total === null) {
     return null;
@@ -47,7 +52,7 @@ export function SeriesStats({ username }: SeriesStatsProps) {
       <h2 className={styles.title}>Estatísticas</h2>
       <ul className={styles.list}>
         <li>
-          <Link to={`/@${username}/series`} className={styles.stat}>
+          <Link to={linkTo} className={styles.stat}>
             <span>Séries acompanhadas</span>
             <span className={styles.statCount}>{total}</span>
           </Link>

@@ -1,5 +1,10 @@
-import type { GameStatus, PaginatedGameEntriesResponse } from "@cqntrack/shared";
+import {
+  GAME_STATUSES,
+  type GameStatus,
+  type PaginatedGameEntriesResponse,
+} from "@cqntrack/shared";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router";
 import { apiClient } from "../lib/api-client";
 import { EntryFilters, type EntrySortField } from "./EntryFilters";
 import { GameCard } from "./GameCard";
@@ -8,8 +13,19 @@ import { useDebouncedValue } from "../lib/useDebouncedValue";
 
 type LoadStatus = "loading" | "ready" | "error";
 
+// Lida só uma vez, na montagem — valor inicial do filtro quando se chega
+// aqui por um link com ?status= (estatística clicável da home, ver
+// GameStats); depois vira estado local normal.
+function initialStatusFromUrl(searchParams: URLSearchParams): GameStatus | "" {
+  const raw = searchParams.get("status");
+  return raw !== null && (GAME_STATUSES as readonly string[]).includes(raw)
+    ? (raw as GameStatus)
+    : "";
+}
+
 export function MyEntries() {
-  const [status, setStatus] = useState<GameStatus | "">("");
+  const [searchParams] = useSearchParams();
+  const [status, setStatus] = useState<GameStatus | "">(() => initialStatusFromUrl(searchParams));
   const [favoriteOnly, setFavoriteOnly] = useState(false);
   const [platform, setPlatform] = useState("");
   const debouncedPlatform = useDebouncedValue(platform, 300).trim();
@@ -77,7 +93,9 @@ export function MyEntries() {
       />
 
       {loadStatus === "loading" && !data && <p className={styles.hint}>Carregando...</p>}
-      {loadStatus === "error" && <p role="alert">Falha ao carregar suas marcações. Tente novamente.</p>}
+      {loadStatus === "error" && (
+        <p role="alert">Falha ao carregar suas marcações. Tente novamente.</p>
+      )}
       {loadStatus === "ready" && data?.items.length === 0 && (
         <p className={styles.hint}>Nenhuma marcação encontrada com esses filtros.</p>
       )}
@@ -90,7 +108,11 @@ export function MyEntries() {
             ))}
           </div>
           <div className={styles.pagination}>
-            <button type="button" disabled={page <= 1} onClick={() => setPage((current) => current - 1)}>
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => setPage((current) => current - 1)}
+            >
               Anterior
             </button>
             <span className={styles.pageInfo}>

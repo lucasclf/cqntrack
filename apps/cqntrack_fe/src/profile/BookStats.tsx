@@ -1,18 +1,25 @@
-import { BOOK_STATUSES, BOOK_STATUS_LABELS, type PaginatedBookEntriesResponse } from "@cqntrack/shared";
+import {
+  BOOK_STATUSES,
+  BOOK_STATUS_LABELS,
+  type PaginatedBookEntriesResponse,
+} from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { apiClient } from "../lib/api-client";
 import styles from "./ProfileStats.module.css";
 
 interface BookStatsProps {
-  username: string;
+  // "/api/users/:username" (perfil público) ou "/api" (home).
+  basePath: string;
+  // "/@username/livros" (perfil público) ou "/livros/marcacoes" (home).
+  linkBase: string;
 }
 
 type LoadStatus = "loading" | "ready" | "error";
 
 // Mesmo padrão de MovieStats — uma contagem por status, clicável pra
-// listagem completa filtrada (ver PublicBookEntries).
-export function BookStats({ username }: BookStatsProps) {
+// listagem completa filtrada.
+export function BookStats({ basePath, linkBase }: BookStatsProps) {
   const [counts, setCounts] = useState<Record<string, number> | null>(null);
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
 
@@ -22,7 +29,9 @@ export function BookStats({ username }: BookStatsProps) {
     Promise.all(
       BOOK_STATUSES.map((status) =>
         apiClient
-          .get<PaginatedBookEntriesResponse>(`/api/users/${username}/books/entries?status=${status}&pageSize=1`)
+          .get<PaginatedBookEntriesResponse>(
+            `${basePath}/books/entries?status=${status}&pageSize=1`,
+          )
           .then((res) => [status, res.total] as const),
       ),
     )
@@ -38,7 +47,7 @@ export function BookStats({ username }: BookStatsProps) {
     return () => {
       cancelled = true;
     };
-  }, [username]);
+  }, [basePath]);
 
   if (loadStatus !== "ready" || !counts) {
     return null;
@@ -50,7 +59,7 @@ export function BookStats({ username }: BookStatsProps) {
       <ul className={styles.list}>
         {BOOK_STATUSES.map((status) => (
           <li key={status}>
-            <Link to={`/@${username}/livros?status=${status}`} className={styles.stat}>
+            <Link to={`${linkBase}?status=${status}`} className={styles.stat}>
               <span>{BOOK_STATUS_LABELS[status]}</span>
               <span className={styles.statCount}>{counts[status]}</span>
             </Link>

@@ -1,35 +1,37 @@
 import type { PublicProfile as PublicProfileDto } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
-import { useParams } from "react-router";
-import { BookFavoritesSection } from "../books/BookFavoritesSection";
-import { FavoritesSection } from "../games/FavoritesSection";
+import { Outlet, useLocation, useParams } from "react-router";
 import { PublicLayout } from "../layouts/PublicLayout";
 import { ApiError, apiClient } from "../lib/api-client";
 import { BookStats } from "./BookStats";
 import { GameStats } from "./GameStats";
-import { MovieFavorites } from "./MovieFavorites";
 import { MovieStats } from "./MovieStats";
 import { type ProfileTab, ProfileTabs } from "./ProfileTabs";
 import styles from "./PublicProfile.module.css";
-import { RecentlyPlayedGames } from "./RecentlyPlayedGames";
-import { RecentlyReadBooks } from "./RecentlyReadBooks";
-import { RecentlyWatchedMovies } from "./RecentlyWatchedMovies";
-import { RecentlyWatchedSeries } from "./RecentlyWatchedSeries";
-import { SeriesFavorites } from "./SeriesFavorites";
 import { SeriesStats } from "./SeriesStats";
 
 type LoadStatus = "loading" | "ready" | "not-found" | "error";
 
+function tabFromPathname(pathname: string): ProfileTab {
+  if (pathname.endsWith("/series")) return "series";
+  if (pathname.endsWith("/jogos")) return "games";
+  if (pathname.endsWith("/livros")) return "books";
+  return "movies";
+}
+
+// Casca PERSISTENTE do perfil público (/@:username/...): header (avatar +
+// nome), abas por mídia e a lateral de estatísticas continuam montados
+// enquanto o visitante navega entre abas ou entre estatísticas filtradas
+// (?status=X) — só o conteúdo principal troca, via <Outlet/> (rotas filhas
+// em router.tsx: filmes/series/jogos/livros). Antes cada troca de aba
+// era só estado local dentro deste componente, o que forçava rebuscar tudo
+// (inclusive a lateral) e não dava pra voltar/compartilhar a URL de uma
+// aba específica — agora é navegação de verdade, então F5 e o botão
+// "voltar" do navegador mantêm a aba certa.
+//
 // Sempre renderiza dentro de PublicLayout, mesmo quando o visitante é o
 // próprio dono do perfil — AppShell não tem aba "Perfil" ainda (só o
 // dropdown de conta linka pra cá), essa distinção fica pra quando existir.
-//
-// Conteúdo organizado em abas por mídia (Filmes/Séries/Jogos/Livros, estilo
-// Filmow) — cada aba mostra favoritos + recente daquela mídia. Substitui a
-// versão anterior, que empilhava as 6 seções (com filme+série favoritos e
-// assistidos misturados numa seção só). Listas e marcações completas
-// continuam existindo como rotas, só que agora só acessíveis pelo próprio
-// usuário logado.
 export function PublicProfile() {
   // A rota é "/:handle" (não "/@:username") — react-router não casa texto
   // literal + parâmetro no mesmo segmento, então o "@" vem junto no valor
@@ -38,19 +40,19 @@ export function PublicProfile() {
   // que não existe.
   const { handle } = useParams<{ handle: string }>();
   const username = handle?.startsWith("@") ? handle.slice(1) : null;
+  const location = useLocation();
+  const activeTab = tabFromPathname(location.pathname);
+
   const [profile, setProfile] = useState<PublicProfileDto | null>(null);
   const [loadStatus, setLoadStatus] = useState<LoadStatus>(username ? "loading" : "not-found");
-  const [activeTab, setActiveTab] = useState<ProfileTab>("movies");
 
   // Reseta assim que o :handle da rota muda — feito durante o render (mesmo
   // padrão já usado em MovieDetail/SeriesDetail/etc. pra "adjusting state
-  // when props change"), não dentro do efeito abaixo. Volta pra aba padrão
-  // também, senão navegar de um perfil pra outro mantém a aba de antes.
+  // when props change"), não dentro do efeito abaixo.
   const [trackedUsername, setTrackedUsername] = useState(username);
   if (username !== trackedUsername) {
     setTrackedUsername(username);
     setLoadStatus(username ? "loading" : "not-found");
-    setActiveTab("movies");
   }
 
   useEffect(() => {
@@ -122,41 +124,29 @@ export function PublicProfile() {
           </div>
         </header>
 
-        <ProfileTabs active={activeTab} onChange={setActiveTab} />
+        <ProfileTabs sectionPrefix={`/@${username}`} />
 
         <div className={styles.layout}>
           <div className={styles.main}>
-            {activeTab === "movies" && (
-              <>
-                <MovieFavorites username={username} />
-                <RecentlyWatchedMovies username={username} />
-              </>
-            )}
-            {activeTab === "series" && (
-              <>
-                <SeriesFavorites username={username} />
-                <RecentlyWatchedSeries username={username} />
-              </>
-            )}
-            {activeTab === "games" && (
-              <>
-                <FavoritesSection favoritesEndpoint={`/api/users/${username}/games/favorites`} />
-                <RecentlyPlayedGames username={username} />
-              </>
-            )}
-            {activeTab === "books" && (
-              <>
-                <BookFavoritesSection favoritesEndpoint={`/api/users/${username}/books/favorites`} />
-                <RecentlyReadBooks username={username} />
-              </>
-            )}
+            <Outlet />
           </div>
 
           <aside className={styles.sidebar}>
-            {activeTab === "movies" && <MovieStats username={username} />}
-            {activeTab === "series" && <SeriesStats username={username} />}
-            {activeTab === "games" && <GameStats username={username} />}
-            {activeTab === "books" && <BookStats username={username} />}
+            {activeTab === "movies" && (
+              <MovieStats basePath={`/api/users/${username}`} linkBase={`/@${username}/filmes`} />
+            )}
+            {activeTab === "series" && (
+              <SeriesStats
+                basePath={`/api/users/${username}`}
+                linkTo={`/@${username}/series?view=all`}
+              />
+            )}
+            {activeTab === "games" && (
+              <GameStats basePath={`/api/users/${username}`} linkBase={`/@${username}/jogos`} />
+            )}
+            {activeTab === "books" && (
+              <BookStats basePath={`/api/users/${username}`} linkBase={`/@${username}/livros`} />
+            )}
           </aside>
         </div>
       </div>

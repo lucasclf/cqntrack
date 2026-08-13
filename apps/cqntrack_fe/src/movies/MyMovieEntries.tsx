@@ -1,5 +1,10 @@
-import type { MovieStatus, PaginatedMovieEntriesResponse } from "@cqntrack/shared";
+import {
+  MOVIE_STATUSES,
+  type MovieStatus,
+  type PaginatedMovieEntriesResponse,
+} from "@cqntrack/shared";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router";
 import { apiClient } from "../lib/api-client";
 import { MovieCard } from "./MovieCard";
 import { MovieEntryFilters, type MovieEntrySortField } from "./MovieEntryFilters";
@@ -7,9 +12,21 @@ import styles from "./MyMovieEntries.module.css";
 
 type LoadStatus = "loading" | "ready" | "error";
 
+// Lida só uma vez, na montagem — é o valor inicial do filtro quando se
+// chega aqui por um link com ?status= (ex.: estatística clicável da home,
+// ver MovieStats); depois disso o filtro vira estado local normal, como
+// sempre foi.
+function initialStatusFromUrl(searchParams: URLSearchParams): MovieStatus | "" {
+  const raw = searchParams.get("status");
+  return raw !== null && (MOVIE_STATUSES as readonly string[]).includes(raw)
+    ? (raw as MovieStatus)
+    : "";
+}
+
 export function MyMovieEntries() {
+  const [searchParams] = useSearchParams();
   const [favoriteOnly, setFavoriteOnly] = useState(false);
-  const [status, setStatus] = useState<MovieStatus | "">("");
+  const [status, setStatus] = useState<MovieStatus | "">(() => initialStatusFromUrl(searchParams));
   const [sortBy, setSortBy] = useState<MovieEntrySortField>("updatedAt");
   const [order, setOrder] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
