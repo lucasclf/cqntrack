@@ -11,7 +11,8 @@
     "build": "pnpm -r --if-present run build",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "test": "pnpm -r --if-present run test"
+    "test": "pnpm -r --if-present run test",
+    "prepare": "simple-git-hooks"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
@@ -20,8 +21,16 @@
     "eslint-plugin-react-hooks": "7.1.1",
     "eslint-plugin-react-refresh": "0.5.3",
     "globals": "17.9.0",
+    "lint-staged": "17.3.0",
     "prettier": "3.9.6",
+    "simple-git-hooks": "2.13.1",
     "typescript": "5.9.3",
     "typescript-eslint": "8.66.0"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm exec lint-staged"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,json,css,md}": "prettier --write"
   }
 }

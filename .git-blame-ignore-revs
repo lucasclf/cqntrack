@@ -1,0 +1,6 @@
+# Commits de reformatação pura (sem mudança de comportamento) — ignorados
+# pelo `git blame` quando configurado via:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# chore: aplica prettier em todo o repo
+19d95a0
