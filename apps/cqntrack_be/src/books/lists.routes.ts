@@ -101,7 +101,13 @@ bookListsRouter.delete("/:listId", async (c) => {
 bookListsRouter.put("/:listId/items/:googleBooksId", async (c) => {
   const db = createDb(c.env);
   try {
-    await addBookToList(c.env, db, c.get("userId"), c.req.param("listId"), c.req.param("googleBooksId"));
+    await addBookToList(
+      c.env,
+      db,
+      c.get("userId"),
+      c.req.param("listId"),
+      c.req.param("googleBooksId"),
+    );
     return c.body(null, 204);
   } catch (error) {
     if (error instanceof BookListNotFoundError) {
@@ -117,7 +123,12 @@ bookListsRouter.put("/:listId/items/:googleBooksId", async (c) => {
 bookListsRouter.delete("/:listId/items/:googleBooksId", async (c) => {
   const db = createDb(c.env);
   try {
-    await removeBookFromList(db, c.get("userId"), c.req.param("listId"), c.req.param("googleBooksId"));
+    await removeBookFromList(
+      db,
+      c.get("userId"),
+      c.req.param("listId"),
+      c.req.param("googleBooksId"),
+    );
     return c.body(null, 204);
   } catch (error) {
     if (error instanceof BookListNotFoundError) {

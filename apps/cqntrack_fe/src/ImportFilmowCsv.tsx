@@ -167,7 +167,8 @@ export function ImportFilmowCsv() {
                 className={styles.downloadButton}
                 onClick={() => downloadErroredCsv(errored.map((result) => result.title))}
               >
-                Baixar CSV com {errored.length === 1 ? "o título que falhou" : "os títulos que falharam"}
+                Baixar CSV com{" "}
+                {errored.length === 1 ? "o título que falhou" : "os títulos que falharam"}
               </button>
               <details>
                 <summary>

@@ -50,7 +50,9 @@ export function MyLists() {
       </div>
 
       {loadStatus === "loading" && <p className={styles.hint}>Carregando...</p>}
-      {loadStatus === "error" && <p role="alert">Falha ao carregar suas listas. Tente novamente.</p>}
+      {loadStatus === "error" && (
+        <p role="alert">Falha ao carregar suas listas. Tente novamente.</p>
+      )}
       {loadStatus === "ready" && lists.length === 0 && (
         <p className={styles.hint}>Você ainda não criou nenhuma lista.</p>
       )}
@@ -63,7 +65,11 @@ export function MyLists() {
               <span className={styles.count}>{list.itemCount} jogo(s)</span>
               {list.description && <p className={styles.description}>{list.description}</p>}
             </Link>
-            <button type="button" className={styles.deleteBtn} onClick={() => handleDelete(list.id)}>
+            <button
+              type="button"
+              className={styles.deleteBtn}
+              onClick={() => handleDelete(list.id)}
+            >
               Remover
             </button>
           </li>

@@ -20,7 +20,11 @@ describe("AddToListMenu", () => {
   });
 
   it("busca e mostra as listas ao abrir, adiciona ao clicar e fecha o submenu", async () => {
-    getMock.mockResolvedValue({ lists: [{ id: "1", name: "Backlog", description: null, itemCount: 0, createdAt: "", updatedAt: "" }] });
+    getMock.mockResolvedValue({
+      lists: [
+        { id: "1", name: "Backlog", description: null, itemCount: 0, createdAt: "", updatedAt: "" },
+      ],
+    });
     putMock.mockResolvedValue(undefined);
     render(<AddToListMenu igdbId={1942} />);
 

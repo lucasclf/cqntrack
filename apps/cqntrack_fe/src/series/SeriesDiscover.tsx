@@ -46,7 +46,9 @@ export function SeriesDiscover() {
   return (
     <div className={styles.page}>
       <h1>Descobrir séries</h1>
-      {status === "error" && <p role="alert">Falha ao carregar séries populares. Tente novamente.</p>}
+      {status === "error" && (
+        <p role="alert">Falha ao carregar séries populares. Tente novamente.</p>
+      )}
 
       <div className={styles.grid}>
         {results.map((series) => (

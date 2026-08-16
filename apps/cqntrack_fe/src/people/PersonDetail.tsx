@@ -1,4 +1,8 @@
-import { MEDIA_TYPE_PATH, type PersonCreditItem, type PersonCreditsResponse } from "@cqntrack/shared";
+import {
+  MEDIA_TYPE_PATH,
+  type PersonCreditItem,
+  type PersonCreditsResponse,
+} from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 import { ApiError, apiClient } from "../lib/api-client";

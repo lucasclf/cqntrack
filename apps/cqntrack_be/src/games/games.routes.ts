@@ -13,7 +13,13 @@ import {
 import { Hono } from "hono";
 import { type AuthedEnv, requireSession } from "../auth/require-session";
 import { createDb } from "../db/client";
-import { deleteGameEntry, getFavorites, getGameEntryForUser, listGameEntries, upsertGameEntry } from "./entries.service";
+import {
+  deleteGameEntry,
+  getFavorites,
+  getGameEntryForUser,
+  listGameEntries,
+  upsertGameEntry,
+} from "./entries.service";
 import {
   GameNotFoundError,
   getOrCacheGame,

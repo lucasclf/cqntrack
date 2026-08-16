@@ -55,13 +55,18 @@ describe("GameDetail", () => {
     });
     renderDetail();
 
-    expect(await screen.findByRole("heading", { name: "The Witcher 3: Wild Hunt" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "The Witcher 3: Wild Hunt" }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Jogando" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("checkbox", { name: "PS5" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "PC (Microsoft Windows)" })).not.toBeChecked();
     expect(screen.getByDisplayValue("Muito bom")).toBeInTheDocument();
     expect(getMock).toHaveBeenCalledWith("/api/games/1942");
-    expect(screen.getByRole("button", { name: "Desfavoritar" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Desfavoritar" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
   });
 
   it("favorita ao clicar no coração", async () => {

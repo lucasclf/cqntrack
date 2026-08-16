@@ -21,7 +21,16 @@ describe("AddToSeriesListMenu", () => {
 
   it("busca e mostra as listas ao abrir, adiciona ao clicar e fecha o submenu", async () => {
     getMock.mockResolvedValue({
-      lists: [{ id: "1", name: "Maratonadas", description: null, itemCount: 0, createdAt: "", updatedAt: "" }],
+      lists: [
+        {
+          id: "1",
+          name: "Maratonadas",
+          description: null,
+          itemCount: 0,
+          createdAt: "",
+          updatedAt: "",
+        },
+      ],
     });
     putMock.mockResolvedValue(undefined);
     render(<AddToSeriesListMenu tmdbId={1396} />);

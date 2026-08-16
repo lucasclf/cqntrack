@@ -1,4 +1,9 @@
-import { GAME_ENTRY_SORT_FIELDS, GAME_STATUSES, GAME_STATUS_LABELS, type GameStatus } from "@cqntrack/shared";
+import {
+  GAME_ENTRY_SORT_FIELDS,
+  GAME_STATUSES,
+  GAME_STATUS_LABELS,
+  type GameStatus,
+} from "@cqntrack/shared";
 import styles from "./EntryFilters.module.css";
 
 export type EntrySortField = (typeof GAME_ENTRY_SORT_FIELDS)[number];
@@ -40,7 +45,10 @@ export function EntryFilters({
     <div className={styles.filters}>
       <label className={styles.field}>
         <span>Status</span>
-        <select value={status} onChange={(event) => onStatusChange(event.target.value as GameStatus | "")}>
+        <select
+          value={status}
+          onChange={(event) => onStatusChange(event.target.value as GameStatus | "")}
+        >
           <option value="">Todos</option>
           {GAME_STATUSES.map((option) => (
             <option key={option} value={option}>
@@ -62,7 +70,10 @@ export function EntryFilters({
 
       <label className={styles.field}>
         <span>Ordenar por</span>
-        <select value={sortBy} onChange={(event) => onSortByChange(event.target.value as EntrySortField)}>
+        <select
+          value={sortBy}
+          onChange={(event) => onSortByChange(event.target.value as EntrySortField)}
+        >
           {GAME_ENTRY_SORT_FIELDS.map((field) => (
             <option key={field} value={field}>
               {SORT_FIELD_LABELS[field]}

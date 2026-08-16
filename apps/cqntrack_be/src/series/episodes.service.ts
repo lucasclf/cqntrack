@@ -1,4 +1,8 @@
-import type { CrewMember, SeriesEpisodeDetail, SeriesSeasonEpisodesResponse } from "@cqntrack/shared";
+import type {
+  CrewMember,
+  SeriesEpisodeDetail,
+  SeriesSeasonEpisodesResponse,
+} from "@cqntrack/shared";
 import { and, eq } from "drizzle-orm";
 import type { createDb } from "../db/client";
 import { activity, seriesEpisodeWatch } from "../db/schema";

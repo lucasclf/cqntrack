@@ -150,9 +150,14 @@ export function MovieDetail() {
         </div>
 
         <div className={styles.watchedRow}>
-          <MovieStatusBadge status={entry?.status ?? null} onChange={(status) => savePatch({ status })} />
+          <MovieStatusBadge
+            status={entry?.status ?? null}
+            onChange={(status) => savePatch({ status })}
+          />
           {entry?.watchedAt && (
-            <span className={styles.watchedDate}>Assistido em {formatWatchedDate(entry.watchedAt)}</span>
+            <span className={styles.watchedDate}>
+              Assistido em {formatWatchedDate(entry.watchedAt)}
+            </span>
           )}
         </div>
 

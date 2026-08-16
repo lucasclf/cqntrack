@@ -44,7 +44,9 @@ export function MovieCard({ movie, entry }: MovieCardProps) {
             vizinhos que têm, quebrando o alinhamento da fileira no grid. */}
         {entry && (
           <p className={styles.entryMeta}>
-            {entry.status && <span className={styles.statusPill}>{MOVIE_STATUS_LABELS[entry.status]}</span>}
+            {entry.status && (
+              <span className={styles.statusPill}>{MOVIE_STATUS_LABELS[entry.status]}</span>
+            )}
             {entry.rating !== null && (
               <span className={styles.personalRating}>★ {entry.rating.toFixed(1)}</span>
             )}

@@ -1,4 +1,9 @@
-import type { CreateGameListRequest, GameList, GameListDetail, UpdateGameListRequest } from "@cqntrack/shared";
+import type {
+  CreateGameListRequest,
+  GameList,
+  GameListDetail,
+  UpdateGameListRequest,
+} from "@cqntrack/shared";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import type { createDb } from "../db/client";
 import { activity, gameList, gameListItem } from "../db/schema";

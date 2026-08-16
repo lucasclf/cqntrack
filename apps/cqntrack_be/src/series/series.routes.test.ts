@@ -659,7 +659,11 @@ describe("GET /api/series/favorites", () => {
     stubSeriesCacheFetch(622, "Chernobyl");
     await app.request(
       "/api/series/622/entry",
-      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ favorited: true }) },
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ favorited: true }),
+      },
       env,
     );
     vi.unstubAllGlobals();
@@ -674,14 +678,22 @@ describe("GET /api/series/favorites", () => {
     stubSeriesCacheFetch(621, "The Wire");
     await app.request(
       "/api/series/621/entry",
-      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ favorited: true }) },
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ favorited: true }),
+      },
       env,
     );
     vi.unstubAllGlobals();
 
     await app.request(
       "/api/series/621/entry",
-      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ favorited: false }) },
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ favorited: false }),
+      },
       env,
     );
 
@@ -699,14 +711,22 @@ describe("GET /api/series/favorites", () => {
 
     await app.request(
       "/api/series/624/entry",
-      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ favorited: true }) },
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ favorited: true }),
+      },
       env,
     );
     vi.unstubAllGlobals();
 
     await app.request(
       "/api/series/624/entry",
-      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ favorited: false }) },
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ favorited: false }),
+      },
       env,
     );
 
@@ -768,7 +788,11 @@ describe("GET /api/series/:tmdbId/seasons/:seasonNumber", () => {
   });
 });
 
-function tmdbEpisodeDetail(seasonNumber: number, episodeNumber: number, overrides: Record<string, unknown> = {}) {
+function tmdbEpisodeDetail(
+  seasonNumber: number,
+  episodeNumber: number,
+  overrides: Record<string, unknown> = {},
+) {
   return {
     episode_number: episodeNumber,
     season_number: seasonNumber,

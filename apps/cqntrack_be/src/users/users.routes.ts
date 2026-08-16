@@ -30,13 +30,21 @@ import { createDb } from "../db/client";
 import { getFavorites as getGameFavorites, listGameEntries } from "../games/entries.service";
 import { GameListNotFoundError, getGameListDetail, listGameLists } from "../games/lists.service";
 import { getFavorites as getMovieFavorites, listMovieEntries } from "../movies/entries.service";
-import { getMovieListDetail, listMovieLists, MovieListNotFoundError } from "../movies/lists.service";
+import {
+  getMovieListDetail,
+  listMovieLists,
+  MovieListNotFoundError,
+} from "../movies/lists.service";
 import {
   getFavorites as getSeriesFavorites,
   getRecentlyWatchedSeries,
   listSeriesEntries,
 } from "../series/entries.service";
-import { getSeriesListDetail, listSeriesLists, SeriesListNotFoundError } from "../series/lists.service";
+import {
+  getSeriesListDetail,
+  listSeriesLists,
+  SeriesListNotFoundError,
+} from "../series/lists.service";
 import { getPublicProfile, resolveUserIdByUsername, UserNotFoundError } from "./users.service";
 
 // Rotas públicas do perfil (/@:username) — sem requireSession de propósito:
@@ -182,9 +190,19 @@ usersRouter.get("/:username/series/recently-watched", async (c) => {
   const db = createDb(c.env);
   try {
     const userId = await resolveUserIdByUsername(db, c.req.param("username"));
-    const { items, total } = await getRecentlyWatchedSeries(db, userId, parsed.data.page, parsed.data.pageSize);
+    const { items, total } = await getRecentlyWatchedSeries(
+      db,
+      userId,
+      parsed.data.page,
+      parsed.data.pageSize,
+    );
     return c.json(
-      RecentlyWatchedSeriesResponseSchema.parse({ items, page: parsed.data.page, pageSize: parsed.data.pageSize, total }),
+      RecentlyWatchedSeriesResponseSchema.parse({
+        items,
+        page: parsed.data.page,
+        pageSize: parsed.data.pageSize,
+        total,
+      }),
     );
   } catch (error) {
     if (error instanceof UserNotFoundError) {

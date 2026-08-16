@@ -31,11 +31,7 @@ describe("parseCsv", () => {
     // engoliria todas as linhas seguintes até achar outra aspa — foi
     // exatamente isso que corrompeu boa parte de um CSV real do Filmow com
     // encoding quebrado.
-    expect(parseCsv('Title\nAlien 3"\nBacurau')).toEqual([
-      ["Title"],
-      ['Alien 3"'],
-      ["Bacurau"],
-    ]);
+    expect(parseCsv('Title\nAlien 3"\nBacurau')).toEqual([["Title"], ['Alien 3"'], ["Bacurau"]]);
   });
 
   it("lida com múltiplas colunas", () => {

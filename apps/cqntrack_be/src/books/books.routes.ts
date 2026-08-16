@@ -13,8 +13,19 @@ import { Hono } from "hono";
 import { type AuthedEnv, requireSession } from "../auth/require-session";
 import { createDb } from "../db/client";
 import { getAuthorBooks } from "./authors.service";
-import { BookNotFoundError, getOrCacheBook, mapCachedBookToSummary, searchBooksForUser } from "./books.service";
-import { deleteBookEntry, getBookEntryForUser, getFavorites, listBookEntries, upsertBookEntry } from "./entries.service";
+import {
+  BookNotFoundError,
+  getOrCacheBook,
+  mapCachedBookToSummary,
+  searchBooksForUser,
+} from "./books.service";
+import {
+  deleteBookEntry,
+  getBookEntryForUser,
+  getFavorites,
+  listBookEntries,
+  upsertBookEntry,
+} from "./entries.service";
 
 export const booksRouter = new Hono<AuthedEnv>();
 

@@ -135,7 +135,12 @@ describe("GET /api/people/:personId", () => {
 
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
-      person: { personId: number; name: string; profileUrl: string | null; biography: string | null };
+      person: {
+        personId: number;
+        name: string;
+        profileUrl: string | null;
+        biography: string | null;
+      };
       actingCredits: { mediaType: string; id: number; title: string; roleLabel: string }[];
       directingCredits: { mediaType: string; id: number; title: string; roleLabel: string }[];
     };

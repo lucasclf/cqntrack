@@ -26,7 +26,9 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 describe("integrations/googlebooks", () => {
   it("busca livros com a API key na query string, sem etapa de OAuth", async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse({ items: [BOOK_VOLUME], totalItems: 1 }));
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ items: [BOOK_VOLUME], totalItems: 1 }));
     vi.stubGlobal("fetch", fetchMock);
 
     const results = await searchBooks(env, "dom casmurro");
@@ -83,7 +85,9 @@ describe("stripHtml", () => {
     const raw =
       "<p> <b>Com texto estabelecido</b> a partir de edições revistas.</p><p>Segundo parágrafo &amp; mais.</p>";
 
-    expect(stripHtml(raw)).toBe("Com texto estabelecido a partir de edições revistas.\n\nSegundo parágrafo & mais.");
+    expect(stripHtml(raw)).toBe(
+      "Com texto estabelecido a partir de edições revistas.\n\nSegundo parágrafo & mais.",
+    );
   });
 
   it("converte <br> em quebra de linha simples", () => {

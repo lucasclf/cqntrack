@@ -23,7 +23,10 @@ export async function searchSeries(
 
 // Mesmo espírito de getPopularMovies — devolve o mesmo formato de item da
 // busca (TmdbSeriesSearchResult), sem request extra.
-export async function getPopularSeries(env: Env, page = 1): Promise<TmdbSearchResponse<TmdbSeriesSearchResult>> {
+export async function getPopularSeries(
+  env: Env,
+  page = 1,
+): Promise<TmdbSearchResponse<TmdbSeriesSearchResult>> {
   return tmdbFetch<TmdbSearchResponse<TmdbSeriesSearchResult>>(env, `/tv/popular?page=${page}`);
 }
 

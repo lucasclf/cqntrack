@@ -82,10 +82,7 @@
       "indexes": {
         "activity_user_created_idx": {
           "name": "activity_user_created_idx",
-          "columns": [
-            "user_id",
-            "created_at"
-          ],
+          "columns": ["user_id", "created_at"],
           "isUnique": false
         }
       },
@@ -94,12 +91,8 @@
           "name": "activity_user_id_user_id_fk",
           "tableFrom": "activity",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -207,9 +200,7 @@
       "indexes": {
         "account_userId_idx": {
           "name": "account_userId_idx",
-          "columns": [
-            "user_id"
-          ],
+          "columns": ["user_id"],
           "isUnique": false
         }
       },
@@ -218,12 +209,8 @@
           "name": "account_user_id_user_id_fk",
           "tableFrom": "account",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -296,16 +283,12 @@
       "indexes": {
         "session_token_unique": {
           "name": "session_token_unique",
-          "columns": [
-            "token"
-          ],
+          "columns": ["token"],
           "isUnique": true
         },
         "session_userId_idx": {
           "name": "session_userId_idx",
-          "columns": [
-            "user_id"
-          ],
+          "columns": ["user_id"],
           "isUnique": false
         }
       },
@@ -314,12 +297,8 @@
           "name": "session_user_id_user_id_fk",
           "tableFrom": "session",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -401,16 +380,12 @@
       "indexes": {
         "user_email_unique": {
           "name": "user_email_unique",
-          "columns": [
-            "email"
-          ],
+          "columns": ["email"],
           "isUnique": true
         },
         "user_username_unique": {
           "name": "user_username_unique",
-          "columns": [
-            "username"
-          ],
+          "columns": ["username"],
           "isUnique": true
         }
       },
@@ -470,9 +445,7 @@
       "indexes": {
         "verification_identifier_idx": {
           "name": "verification_identifier_idx",
-          "columns": [
-            "identifier"
-          ],
+          "columns": ["identifier"],
           "isUnique": false
         }
       },
@@ -642,26 +615,17 @@
       "indexes": {
         "book_entry_user_book_unique": {
           "name": "book_entry_user_book_unique",
-          "columns": [
-            "user_id",
-            "book_id"
-          ],
+          "columns": ["user_id", "book_id"],
           "isUnique": true
         },
         "book_entry_user_status_idx": {
           "name": "book_entry_user_status_idx",
-          "columns": [
-            "user_id",
-            "status"
-          ],
+          "columns": ["user_id", "status"],
           "isUnique": false
         },
         "book_entry_user_favorite_slot_unique": {
           "name": "book_entry_user_favorite_slot_unique",
-          "columns": [
-            "user_id",
-            "favorite_slot"
-          ],
+          "columns": ["user_id", "favorite_slot"],
           "isUnique": true,
           "where": "\"book_entry\".\"favorite_slot\" is not null"
         }
@@ -671,12 +635,8 @@
           "name": "book_entry_user_id_user_id_fk",
           "tableFrom": "book_entry",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -684,12 +644,8 @@
           "name": "book_entry_book_id_book_google_books_id_fk",
           "tableFrom": "book_entry",
           "tableTo": "book",
-          "columnsFrom": [
-            "book_id"
-          ],
-          "columnsTo": [
-            "google_books_id"
-          ],
+          "columnsFrom": ["book_id"],
+          "columnsTo": ["google_books_id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -749,17 +705,12 @@
       "indexes": {
         "book_list_user_idx": {
           "name": "book_list_user_idx",
-          "columns": [
-            "user_id"
-          ],
+          "columns": ["user_id"],
           "isUnique": false
         },
         "book_list_user_name_unique": {
           "name": "book_list_user_name_unique",
-          "columns": [
-            "user_id",
-            "name"
-          ],
+          "columns": ["user_id", "name"],
           "isUnique": true
         }
       },
@@ -768,12 +719,8 @@
           "name": "book_list_user_id_user_id_fk",
           "tableFrom": "book_list",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -818,10 +765,7 @@
       "indexes": {
         "book_list_item_list_book_unique": {
           "name": "book_list_item_list_book_unique",
-          "columns": [
-            "list_id",
-            "book_id"
-          ],
+          "columns": ["list_id", "book_id"],
           "isUnique": true
         }
       },
@@ -830,12 +774,8 @@
           "name": "book_list_item_list_id_book_list_id_fk",
           "tableFrom": "book_list_item",
           "tableTo": "book_list",
-          "columnsFrom": [
-            "list_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["list_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -843,12 +783,8 @@
           "name": "book_list_item_book_id_book_google_books_id_fk",
           "tableFrom": "book_list_item",
           "tableTo": "book",
-          "columnsFrom": [
-            "book_id"
-          ],
-          "columnsTo": [
-            "google_books_id"
-          ],
+          "columnsFrom": ["book_id"],
+          "columnsTo": ["google_books_id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1025,26 +961,17 @@
       "indexes": {
         "game_entry_user_game_unique": {
           "name": "game_entry_user_game_unique",
-          "columns": [
-            "user_id",
-            "game_id"
-          ],
+          "columns": ["user_id", "game_id"],
           "isUnique": true
         },
         "game_entry_user_status_idx": {
           "name": "game_entry_user_status_idx",
-          "columns": [
-            "user_id",
-            "status"
-          ],
+          "columns": ["user_id", "status"],
           "isUnique": false
         },
         "game_entry_user_favorite_slot_unique": {
           "name": "game_entry_user_favorite_slot_unique",
-          "columns": [
-            "user_id",
-            "favorite_slot"
-          ],
+          "columns": ["user_id", "favorite_slot"],
           "isUnique": true,
           "where": "\"game_entry\".\"favorite_slot\" is not null"
         }
@@ -1054,12 +981,8 @@
           "name": "game_entry_user_id_user_id_fk",
           "tableFrom": "game_entry",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1067,12 +990,8 @@
           "name": "game_entry_game_id_game_igdb_id_fk",
           "tableFrom": "game_entry",
           "tableTo": "game",
-          "columnsFrom": [
-            "game_id"
-          ],
-          "columnsTo": [
-            "igdb_id"
-          ],
+          "columnsFrom": ["game_id"],
+          "columnsTo": ["igdb_id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1132,17 +1051,12 @@
       "indexes": {
         "game_list_user_idx": {
           "name": "game_list_user_idx",
-          "columns": [
-            "user_id"
-          ],
+          "columns": ["user_id"],
           "isUnique": false
         },
         "game_list_user_name_unique": {
           "name": "game_list_user_name_unique",
-          "columns": [
-            "user_id",
-            "name"
-          ],
+          "columns": ["user_id", "name"],
           "isUnique": true
         }
       },
@@ -1151,12 +1065,8 @@
           "name": "game_list_user_id_user_id_fk",
           "tableFrom": "game_list",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1201,10 +1111,7 @@
       "indexes": {
         "game_list_item_list_game_unique": {
           "name": "game_list_item_list_game_unique",
-          "columns": [
-            "list_id",
-            "game_id"
-          ],
+          "columns": ["list_id", "game_id"],
           "isUnique": true
         }
       },
@@ -1213,12 +1120,8 @@
           "name": "game_list_item_list_id_game_list_id_fk",
           "tableFrom": "game_list_item",
           "tableTo": "game_list",
-          "columnsFrom": [
-            "list_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["list_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1226,12 +1129,8 @@
           "name": "game_list_item_game_id_game_igdb_id_fk",
           "tableFrom": "game_list_item",
           "tableTo": "game",
-          "columnsFrom": [
-            "game_id"
-          ],
-          "columnsTo": [
-            "igdb_id"
-          ],
+          "columnsFrom": ["game_id"],
+          "columnsTo": ["igdb_id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1434,18 +1333,12 @@
       "indexes": {
         "movie_entry_user_movie_unique": {
           "name": "movie_entry_user_movie_unique",
-          "columns": [
-            "user_id",
-            "movie_id"
-          ],
+          "columns": ["user_id", "movie_id"],
           "isUnique": true
         },
         "movie_entry_user_favorite_slot_unique": {
           "name": "movie_entry_user_favorite_slot_unique",
-          "columns": [
-            "user_id",
-            "favorite_slot"
-          ],
+          "columns": ["user_id", "favorite_slot"],
           "isUnique": true,
           "where": "\"movie_entry\".\"favorite_slot\" is not null"
         }
@@ -1455,12 +1348,8 @@
           "name": "movie_entry_user_id_user_id_fk",
           "tableFrom": "movie_entry",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1468,12 +1357,8 @@
           "name": "movie_entry_movie_id_movie_tmdb_id_fk",
           "tableFrom": "movie_entry",
           "tableTo": "movie",
-          "columnsFrom": [
-            "movie_id"
-          ],
-          "columnsTo": [
-            "tmdb_id"
-          ],
+          "columnsFrom": ["movie_id"],
+          "columnsTo": ["tmdb_id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1533,17 +1418,12 @@
       "indexes": {
         "movie_list_user_idx": {
           "name": "movie_list_user_idx",
-          "columns": [
-            "user_id"
-          ],
+          "columns": ["user_id"],
           "isUnique": false
         },
         "movie_list_user_name_unique": {
           "name": "movie_list_user_name_unique",
-          "columns": [
-            "user_id",
-            "name"
-          ],
+          "columns": ["user_id", "name"],
           "isUnique": true
         }
       },
@@ -1552,12 +1432,8 @@
           "name": "movie_list_user_id_user_id_fk",
           "tableFrom": "movie_list",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1602,10 +1478,7 @@
       "indexes": {
         "movie_list_item_list_movie_unique": {
           "name": "movie_list_item_list_movie_unique",
-          "columns": [
-            "list_id",
-            "movie_id"
-          ],
+          "columns": ["list_id", "movie_id"],
           "isUnique": true
         }
       },
@@ -1614,12 +1487,8 @@
           "name": "movie_list_item_list_id_movie_list_id_fk",
           "tableFrom": "movie_list_item",
           "tableTo": "movie_list",
-          "columnsFrom": [
-            "list_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["list_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1627,12 +1496,8 @@
           "name": "movie_list_item_movie_id_movie_tmdb_id_fk",
           "tableFrom": "movie_list_item",
           "tableTo": "movie",
-          "columnsFrom": [
-            "movie_id"
-          ],
-          "columnsTo": [
-            "tmdb_id"
-          ],
+          "columnsFrom": ["movie_id"],
+          "columnsTo": ["tmdb_id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1802,18 +1667,12 @@
       "indexes": {
         "series_entry_user_series_unique": {
           "name": "series_entry_user_series_unique",
-          "columns": [
-            "user_id",
-            "series_id"
-          ],
+          "columns": ["user_id", "series_id"],
           "isUnique": true
         },
         "series_entry_user_favorite_slot_unique": {
           "name": "series_entry_user_favorite_slot_unique",
-          "columns": [
-            "user_id",
-            "favorite_slot"
-          ],
+          "columns": ["user_id", "favorite_slot"],
           "isUnique": true,
           "where": "\"series_entry\".\"favorite_slot\" is not null"
         }
@@ -1823,12 +1682,8 @@
           "name": "series_entry_user_id_user_id_fk",
           "tableFrom": "series_entry",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1836,12 +1691,8 @@
           "name": "series_entry_series_id_series_tmdb_id_fk",
           "tableFrom": "series_entry",
           "tableTo": "series",
-          "columnsFrom": [
-            "series_id"
-          ],
-          "columnsTo": [
-            "tmdb_id"
-          ],
+          "columnsFrom": ["series_id"],
+          "columnsTo": ["tmdb_id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1900,20 +1751,12 @@
       "indexes": {
         "series_episode_watch_user_series_episode_unique": {
           "name": "series_episode_watch_user_series_episode_unique",
-          "columns": [
-            "user_id",
-            "series_id",
-            "season_number",
-            "episode_number"
-          ],
+          "columns": ["user_id", "series_id", "season_number", "episode_number"],
           "isUnique": true
         },
         "series_episode_watch_user_series_idx": {
           "name": "series_episode_watch_user_series_idx",
-          "columns": [
-            "user_id",
-            "series_id"
-          ],
+          "columns": ["user_id", "series_id"],
           "isUnique": false
         }
       },
@@ -1922,12 +1765,8 @@
           "name": "series_episode_watch_user_id_user_id_fk",
           "tableFrom": "series_episode_watch",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1935,12 +1774,8 @@
           "name": "series_episode_watch_series_id_series_tmdb_id_fk",
           "tableFrom": "series_episode_watch",
           "tableTo": "series",
-          "columnsFrom": [
-            "series_id"
-          ],
-          "columnsTo": [
-            "tmdb_id"
-          ],
+          "columnsFrom": ["series_id"],
+          "columnsTo": ["tmdb_id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2000,17 +1835,12 @@
       "indexes": {
         "series_list_user_idx": {
           "name": "series_list_user_idx",
-          "columns": [
-            "user_id"
-          ],
+          "columns": ["user_id"],
           "isUnique": false
         },
         "series_list_user_name_unique": {
           "name": "series_list_user_name_unique",
-          "columns": [
-            "user_id",
-            "name"
-          ],
+          "columns": ["user_id", "name"],
           "isUnique": true
         }
       },
@@ -2019,12 +1849,8 @@
           "name": "series_list_user_id_user_id_fk",
           "tableFrom": "series_list",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2069,10 +1895,7 @@
       "indexes": {
         "series_list_item_list_series_unique": {
           "name": "series_list_item_list_series_unique",
-          "columns": [
-            "list_id",
-            "series_id"
-          ],
+          "columns": ["list_id", "series_id"],
           "isUnique": true
         }
       },
@@ -2081,12 +1904,8 @@
           "name": "series_list_item_list_id_series_list_id_fk",
           "tableFrom": "series_list_item",
           "tableTo": "series_list",
-          "columnsFrom": [
-            "list_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["list_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -2094,12 +1913,8 @@
           "name": "series_list_item_series_id_series_tmdb_id_fk",
           "tableFrom": "series_list_item",
           "tableTo": "series",
-          "columnsFrom": [
-            "series_id"
-          ],
-          "columnsTo": [
-            "tmdb_id"
-          ],
+          "columnsFrom": ["series_id"],
+          "columnsTo": ["tmdb_id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }

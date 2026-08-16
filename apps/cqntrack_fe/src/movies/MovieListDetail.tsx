@@ -1,4 +1,8 @@
-import type { MovieList, MovieListDetail as MovieListDetailDto, MovieSummary } from "@cqntrack/shared";
+import type {
+  MovieList,
+  MovieListDetail as MovieListDetailDto,
+  MovieSummary,
+} from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { ListFormModal } from "../components/ListFormModal";

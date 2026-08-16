@@ -89,7 +89,11 @@ describe("/api/books-lists", () => {
   it("lista inexistente (ou de outro usuário) retorna 404", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
 
-    const res = await app.request("/api/books-lists/id-que-nao-existe", { headers: { cookie } }, env);
+    const res = await app.request(
+      "/api/books-lists/id-que-nao-existe",
+      { headers: { cookie } },
+      env,
+    );
 
     expect(res.status).toBe(404);
   });
@@ -119,7 +123,9 @@ describe("/api/books-lists", () => {
     const detailRes = await app.request(`/api/books-lists/${listId}`, { headers: { cookie } }, env);
     const detail = (await detailRes.json()) as BookListDetail;
     expect(detail.itemCount).toBe(1);
-    expect(detail.items).toEqual([expect.objectContaining({ googleBooksId: "book-801", title: "Parasita" })]);
+    expect(detail.items).toEqual([
+      expect.objectContaining({ googleBooksId: "book-801", title: "Parasita" }),
+    ]);
 
     const removeRes = await app.request(
       `/api/books-lists/${listId}/items/book-801`,
@@ -128,7 +134,11 @@ describe("/api/books-lists", () => {
     );
     expect(removeRes.status).toBe(204);
 
-    const afterRemoveRes = await app.request(`/api/books-lists/${listId}`, { headers: { cookie } }, env);
+    const afterRemoveRes = await app.request(
+      `/api/books-lists/${listId}`,
+      { headers: { cookie } },
+      env,
+    );
     const afterRemove = (await afterRemoveRes.json()) as BookListDetail;
     expect(afterRemove.itemCount).toBe(0);
   });
@@ -147,10 +157,16 @@ describe("/api/books-lists", () => {
     const { id: listId } = (await createRes.json()) as BookList;
 
     stubGoogleBooksFetchOnce(googleBooksVolume("book-802", "Uísque"));
-    await app.request(`/api/books-lists/${listId}/items/book-802`, { method: "PUT", headers: { cookie } }, env);
+    await app.request(
+      `/api/books-lists/${listId}/items/book-802`,
+      { method: "PUT", headers: { cookie } },
+      env,
+    );
     vi.unstubAllGlobals();
 
-    const throwingFetch = vi.fn().mockRejectedValue(new Error("não deveria chamar a Google Books de novo"));
+    const throwingFetch = vi
+      .fn()
+      .mockRejectedValue(new Error("não deveria chamar a Google Books de novo"));
     vi.stubGlobal("fetch", throwingFetch);
     const secondAddRes = await app.request(
       `/api/books-lists/${listId}/items/book-802`,

@@ -22,7 +22,14 @@ describe("AddToMovieListMenu", () => {
   it("busca e mostra as listas ao abrir, adiciona ao clicar e fecha o submenu", async () => {
     getMock.mockResolvedValue({
       lists: [
-        { id: "1", name: "Vistos em 2026", description: null, itemCount: 0, createdAt: "", updatedAt: "" },
+        {
+          id: "1",
+          name: "Vistos em 2026",
+          description: null,
+          itemCount: 0,
+          createdAt: "",
+          updatedAt: "",
+        },
       ],
     });
     putMock.mockResolvedValue(undefined);

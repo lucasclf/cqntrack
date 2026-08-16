@@ -256,7 +256,9 @@ export async function listSeriesEntries(
 ): Promise<{ items: SeriesEntryWithSeries[]; total: number }> {
   const conditions = [eq(seriesEntry.userId, userId)];
   if (query.favorite !== undefined) {
-    conditions.push(query.favorite ? isNotNull(seriesEntry.favoritedAt) : isNull(seriesEntry.favoritedAt));
+    conditions.push(
+      query.favorite ? isNotNull(seriesEntry.favoritedAt) : isNull(seriesEntry.favoritedAt),
+    );
   }
   const where = and(...conditions);
 

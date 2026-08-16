@@ -235,7 +235,12 @@ describe("CRUD de marcação (/api/games/:igdbId/entry)", () => {
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toMatchObject({ status: "playing", platforms: ["PC"], favoritedAt: null, rating: null });
+    expect(body).toMatchObject({
+      status: "playing",
+      platforms: ["PC"],
+      favoritedAt: null,
+      rating: null,
+    });
     vi.unstubAllGlobals();
   });
 
@@ -284,7 +289,11 @@ describe("CRUD de marcação (/api/games/:igdbId/entry)", () => {
 
     const res = await app.request(
       "/api/games/605/entry",
-      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ status: null }) },
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ status: null }),
+      },
       env,
     );
 
@@ -323,7 +332,6 @@ describe("CRUD de marcação (/api/games/:igdbId/entry)", () => {
     const detailRes = await app.request("/api/games/603", { headers: { cookie } }, env);
     await expect(detailRes.json()).resolves.toMatchObject({ entry: null });
   });
-
 });
 
 describe("GET /api/games/favorites", () => {
@@ -370,7 +378,11 @@ describe("GET /api/games/favorites", () => {
 
     await app.request(
       "/api/games/622/entry",
-      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ favorited: true }) },
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ favorited: true }),
+      },
       env,
     );
     vi.unstubAllGlobals();
@@ -386,14 +398,22 @@ describe("GET /api/games/favorites", () => {
 
     await app.request(
       "/api/games/623/entry",
-      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ favorited: true }) },
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ favorited: true }),
+      },
       env,
     );
     vi.unstubAllGlobals();
 
     await app.request(
       "/api/games/623/entry",
-      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ favorited: false }) },
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ favorited: false }),
+      },
       env,
     );
 

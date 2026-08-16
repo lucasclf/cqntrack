@@ -3,7 +3,11 @@ import { eq } from "drizzle-orm";
 import type { createDb } from "../db/client";
 import { book } from "../db/schema";
 import { getBookById, searchBooks as googleBooksSearch } from "../integrations/googlebooks/books";
-import { stripHtml, toSecureImageUrl, type GoogleBooksVolume } from "../integrations/googlebooks/types";
+import {
+  stripHtml,
+  toSecureImageUrl,
+  type GoogleBooksVolume,
+} from "../integrations/googlebooks/types";
 
 type Db = ReturnType<typeof createDb>;
 export type CachedBook = typeof book.$inferSelect;
@@ -73,7 +77,11 @@ export function mapCachedBookToSummary(row: CachedBook): BookSummary {
   };
 }
 
-export async function searchBooksForUser(env: Env, query: string, limit: number): Promise<BookSummary[]> {
+export async function searchBooksForUser(
+  env: Env,
+  query: string,
+  limit: number,
+): Promise<BookSummary[]> {
   const results = await googleBooksSearch(env, query, limit);
   return results.map(mapVolumeToSummary);
 }

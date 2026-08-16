@@ -4,7 +4,11 @@ import {
   getPersonMovieCredits,
   getPersonTvCredits,
 } from "../integrations/tmdb/credits";
-import { buildPosterUrl, type TmdbPersonMovieCredit, type TmdbPersonTvCredit } from "../integrations/tmdb/types";
+import {
+  buildPosterUrl,
+  type TmdbPersonMovieCredit,
+  type TmdbPersonTvCredit,
+} from "../integrations/tmdb/types";
 
 export class PersonNotFoundError extends Error {
   constructor(public readonly personId: number) {
@@ -102,7 +106,9 @@ export async function getPersonDetail(env: Env, personId: number): Promise<Perso
     ...dedupeById(movieCredits?.cast ?? []).map((credit) =>
       mapMovieCreditToItem(credit, credit.character ?? ""),
     ),
-    ...dedupeById(tvCredits?.cast ?? []).map((credit) => mapTvCreditToItem(credit, credit.character ?? "")),
+    ...dedupeById(tvCredits?.cast ?? []).map((credit) =>
+      mapTvCreditToItem(credit, credit.character ?? ""),
+    ),
   ]);
 
   const directingMovies = dedupeById(

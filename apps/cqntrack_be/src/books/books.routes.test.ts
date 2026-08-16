@@ -110,13 +110,21 @@ describe("GET /api/books/authors/:name", () => {
         },
         {
           id: "id-2",
-          volumeInfo: { title: "Livro sem relação", authors: ["Outro Autor"], publishedDate: "2020-01-01" },
+          volumeInfo: {
+            title: "Livro sem relação",
+            authors: ["Outro Autor"],
+            publishedDate: "2020-01-01",
+          },
         },
       ],
       totalItems: 2,
     });
 
-    const res = await app.request("/api/books/authors/Frank%20Herbert", { headers: { cookie } }, env);
+    const res = await app.request(
+      "/api/books/authors/Frank%20Herbert",
+      { headers: { cookie } },
+      env,
+    );
 
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({
@@ -141,7 +149,11 @@ describe("GET /api/books/authors/:name", () => {
     const { cookie } = await createAuthenticatedUser(app, env);
     stubGoogleBooksFetchOnce({ totalItems: 0 });
 
-    const res = await app.request("/api/books/authors/Autor%20Inexistente", { headers: { cookie } }, env);
+    const res = await app.request(
+      "/api/books/authors/Autor%20Inexistente",
+      { headers: { cookie } },
+      env,
+    );
 
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({ name: "Autor Inexistente", books: [] });
@@ -152,7 +164,10 @@ describe("GET /api/books/authors/:name", () => {
 describe("GET /api/books/:googleBooksId", () => {
   it("livro inexistente na Google Books retorna 404", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(jsonResponse({ error: { code: 404 } }, 404)));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValueOnce(jsonResponse({ error: { code: 404 } }, 404)),
+    );
 
     const res = await app.request("/api/books/id-inexistente", { headers: { cookie } }, env);
 
@@ -190,7 +205,9 @@ describe("GET /api/books/:googleBooksId", () => {
     await app.request("/api/books/book-502", { headers: { cookie } }, env);
     vi.unstubAllGlobals();
 
-    const throwingFetch = vi.fn().mockRejectedValue(new Error("não deveria chamar a Google Books de novo"));
+    const throwingFetch = vi
+      .fn()
+      .mockRejectedValue(new Error("não deveria chamar a Google Books de novo"));
     vi.stubGlobal("fetch", throwingFetch);
 
     const res = await app.request("/api/books/book-502", { headers: { cookie } }, env);
@@ -214,7 +231,10 @@ describe("GET /api/books/:googleBooksId", () => {
 
     stubGoogleBooksFetchOnce({
       ...googleBooksVolume("book-503", "Grande Sertão: Veredas"),
-      volumeInfo: { ...googleBooksVolume("book-503", "Grande Sertão: Veredas").volumeInfo, averageRating: 5 },
+      volumeInfo: {
+        ...googleBooksVolume("book-503", "Grande Sertão: Veredas").volumeInfo,
+        averageRating: 5,
+      },
     });
 
     const res = await app.request("/api/books/book-503", { headers: { cookie } }, env);
@@ -237,7 +257,10 @@ describe("GET /api/books/:googleBooksId", () => {
       .set({ updatedAt: new Date(Date.now() - 25 * 60 * 60 * 1000) })
       .where(eq(book.googleBooksId, "book-504"));
 
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(jsonResponse({ error: { code: 404 } }, 404)));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValueOnce(jsonResponse({ error: { code: 404 } }, 404)),
+    );
 
     const res = await app.request("/api/books/book-504", { headers: { cookie } }, env);
 
@@ -389,7 +412,11 @@ describe("CRUD de marcação (/api/books/:googleBooksId/entry)", () => {
   it("sem sessão retorna 401", async () => {
     const res = await app.request(
       "/api/books/book-601/entry",
-      { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rating: 3 }) },
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rating: 3 }),
+      },
       env,
     );
 
@@ -476,7 +503,11 @@ describe("GET /api/books/favorites", () => {
     stubGoogleBooksFetchOnce(googleBooksVolume("book-803", "A Revolução dos Bichos"));
     await app.request(
       "/api/books/book-803/entry",
-      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ favorited: true }) },
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ favorited: true }),
+      },
       env,
     );
     vi.unstubAllGlobals();
@@ -491,14 +522,22 @@ describe("GET /api/books/favorites", () => {
     stubGoogleBooksFetchOnce(googleBooksVolume("book-802", "Ensaio sobre a Cegueira"));
     await app.request(
       "/api/books/book-802/entry",
-      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ favorited: true }) },
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ favorited: true }),
+      },
       env,
     );
     vi.unstubAllGlobals();
 
     await app.request(
       "/api/books/book-802/entry",
-      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ favorited: false }) },
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ favorited: false }),
+      },
       env,
     );
 
@@ -516,19 +555,29 @@ describe("GET /api/books/favorites", () => {
 
     await app.request(
       "/api/books/book-805/entry",
-      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ favorited: true }) },
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ favorited: true }),
+      },
       env,
     );
     vi.unstubAllGlobals();
 
     await app.request(
       "/api/books/book-805/entry",
-      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: JSON.stringify({ favorited: false }) },
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ favorited: false }),
+      },
       env,
     );
 
     const activities = await createDb(env).query.activity.findMany();
-    const favorited = activities.filter((item) => item.itemId === "book-805" && item.type === "favorited");
+    const favorited = activities.filter(
+      (item) => item.itemId === "book-805" && item.type === "favorited",
+    );
     expect(favorited).toHaveLength(1);
   });
 });

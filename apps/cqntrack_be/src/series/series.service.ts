@@ -3,7 +3,11 @@ import { eq } from "drizzle-orm";
 import type { createDb } from "../db/client";
 import { series } from "../db/schema";
 import { getSeriesAggregateCredits } from "../integrations/tmdb/credits";
-import { getPopularSeries, getSeriesById, searchSeries as tmdbSearchSeries } from "../integrations/tmdb/series";
+import {
+  getPopularSeries,
+  getSeriesById,
+  searchSeries as tmdbSearchSeries,
+} from "../integrations/tmdb/series";
 import {
   buildPosterUrl,
   TV_GENRE_NAMES,
@@ -88,7 +92,11 @@ function mapCastRowToDto(entry: NonNullable<CachedSeries["cast"]>[number]): Cast
   };
 }
 
-function mapCrewRowToDto(entry: { personId: number; name: string; profilePath: string | null }): CrewMember {
+function mapCrewRowToDto(entry: {
+  personId: number;
+  name: string;
+  profilePath: string | null;
+}): CrewMember {
   return {
     personId: entry.personId,
     name: entry.name,
@@ -178,8 +186,12 @@ function mapAggregateCreditsToDirectorRows(credits: TmdbAggregateCredits | null)
       directorJob: member.jobs.find((job) => job.job === "Director"),
     }))
     .filter(
-      (entry): entry is { member: (typeof credits.crew)[number]; directorJob: { job: string; episode_count: number } } =>
-        entry.directorJob !== undefined,
+      (
+        entry,
+      ): entry is {
+        member: (typeof credits.crew)[number];
+        directorJob: { job: string; episode_count: number };
+      } => entry.directorJob !== undefined,
     )
     .sort((a, b) => b.directorJob.episode_count - a.directorJob.episode_count)
     .slice(0, MAX_DIRECTORS)

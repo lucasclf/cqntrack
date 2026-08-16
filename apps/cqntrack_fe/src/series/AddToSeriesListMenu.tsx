@@ -41,7 +41,11 @@ export function AddToSeriesListMenu({ tmdbId }: AddToSeriesListMenuProps) {
 
   return (
     <div className={styles.wrapper}>
-      <button type="button" className={styles.toggle} onClick={() => setOpen((current) => !current)}>
+      <button
+        type="button"
+        className={styles.toggle}
+        onClick={() => setOpen((current) => !current)}
+      >
         Adicionar a uma lista
       </button>
       {open && (

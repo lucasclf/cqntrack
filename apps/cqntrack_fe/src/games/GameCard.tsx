@@ -23,7 +23,9 @@ export function GameCard({ game, entry }: GameCardProps) {
         ) : (
           <div className={styles.coverPlaceholder} aria-hidden="true" />
         )}
-        {game.rating !== null && <span className={styles.ratingBadge}>{Math.round(game.rating)}</span>}
+        {game.rating !== null && (
+          <span className={styles.ratingBadge}>{Math.round(game.rating)}</span>
+        )}
         {entry?.favoritedAt != null && (
           <span className={styles.favoriteBadge} aria-label="Favoritado">
             ♥
@@ -42,7 +44,9 @@ export function GameCard({ game, entry }: GameCardProps) {
             vizinhos que têm, quebrando o alinhamento da fileira no grid. */}
         {entry && (
           <p className={styles.entryMeta}>
-            {entry.status && <span className={styles.statusPill}>{GAME_STATUS_LABELS[entry.status]}</span>}
+            {entry.status && (
+              <span className={styles.statusPill}>{GAME_STATUS_LABELS[entry.status]}</span>
+            )}
             {entry.rating !== null && (
               <span className={styles.personalRating}>★ {entry.rating.toFixed(1)}</span>
             )}

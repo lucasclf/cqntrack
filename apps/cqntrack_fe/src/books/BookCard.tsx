@@ -23,7 +23,9 @@ export function BookCard({ book, entry }: BookCardProps) {
         ) : (
           <div className={styles.coverPlaceholder} aria-hidden="true" />
         )}
-        {book.rating !== null && <span className={styles.ratingBadge}>{book.rating.toFixed(1)}</span>}
+        {book.rating !== null && (
+          <span className={styles.ratingBadge}>{book.rating.toFixed(1)}</span>
+        )}
         {entry?.favoritedAt != null && (
           <span className={styles.favoriteBadge} aria-label="Favoritado">
             ♥
@@ -34,14 +36,17 @@ export function BookCard({ book, entry }: BookCardProps) {
         <p className={styles.name}>{book.title}</p>
         <p className={styles.meta}>
           {year ?? "Data desconhecida"}
-          {book.authors.length > 0 && ` · ${book.authors[0]}${extraAuthors > 0 ? ` +${extraAuthors}` : ""}`}
+          {book.authors.length > 0 &&
+            ` · ${book.authors[0]}${extraAuthors > 0 ? ` +${extraAuthors}` : ""}`}
         </p>
         {/* Sempre reserva a linha quando há entry, com status/nota ou vazia —
             senão os cards sem nenhum dos dois ficam mais baixos que os
             vizinhos que têm, quebrando o alinhamento da fileira no grid. */}
         {entry && (
           <p className={styles.entryMeta}>
-            {entry.status && <span className={styles.statusPill}>{BOOK_STATUS_LABELS[entry.status]}</span>}
+            {entry.status && (
+              <span className={styles.statusPill}>{BOOK_STATUS_LABELS[entry.status]}</span>
+            )}
             {entry.rating !== null && (
               <span className={styles.personalRating}>★ {entry.rating.toFixed(1)}</span>
             )}

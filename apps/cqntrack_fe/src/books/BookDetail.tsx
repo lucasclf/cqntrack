@@ -127,7 +127,10 @@ export function BookDetail() {
         <h2>Sua marcação</h2>
         {saveError && <p role="alert">{saveError}</p>}
 
-        <BookStatusBadge status={entry?.status ?? null} onChange={(status) => savePatch({ status })} />
+        <BookStatusBadge
+          status={entry?.status ?? null}
+          onChange={(status) => savePatch({ status })}
+        />
 
         <AddToBookListMenu googleBooksId={book.googleBooksId} />
 

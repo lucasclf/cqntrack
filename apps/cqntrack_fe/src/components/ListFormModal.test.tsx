@@ -10,7 +10,9 @@ describe("ListFormModal", () => {
     render(<ListFormModal mode="create" onSubmit={onSubmit} onClose={onClose} />);
 
     fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "Quero jogar" } });
-    fireEvent.change(screen.getByLabelText("Descrição (opcional)"), { target: { value: "Backlog" } });
+    fireEvent.change(screen.getByLabelText("Descrição (opcional)"), {
+      target: { value: "Backlog" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
 
     expect(onSubmit).toHaveBeenCalledWith({ name: "Quero jogar", description: "Backlog" });
@@ -40,7 +42,9 @@ describe("ListFormModal", () => {
     fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "Odiei" } });
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Já existe uma lista com esse nome.");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Já existe uma lista com esse nome.",
+    );
   });
 
   it("cancelar fecha o modal sem chamar onSubmit", () => {

@@ -21,7 +21,10 @@ describe("MovieStatusBadge", () => {
     render(<MovieStatusBadge status="watched" onChange={onChange} />);
 
     expect(screen.getByRole("button", { name: "Já vi" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("button", { name: "Quero ver" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: "Quero ver" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "Quero ver" }));
     expect(onChange).toHaveBeenCalledWith("want_to_watch");

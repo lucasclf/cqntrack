@@ -51,7 +51,9 @@ describe("AuthorDetail", () => {
     getMock.mockResolvedValue({ name: "Autor Inexistente", books: [] });
     renderDetail();
 
-    expect(await screen.findByText("Nenhum outro livro encontrado desse autor.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Nenhum outro livro encontrado desse autor."),
+    ).toBeInTheDocument();
   });
 
   it("mostra mensagem de erro genérica quando a busca falha", async () => {

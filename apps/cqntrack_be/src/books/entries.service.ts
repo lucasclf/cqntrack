@@ -8,7 +8,12 @@ import { and, asc, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import type { createDb } from "../db/client";
 import { activity, bookEntry } from "../db/schema";
 import { withoutUndefined } from "../lib/without-undefined";
-import { type CachedBook, getOrCacheBook, mapCachedBookToSummary, toActivitySnapshot } from "./books.service";
+import {
+  type CachedBook,
+  getOrCacheBook,
+  mapCachedBookToSummary,
+  toActivitySnapshot,
+} from "./books.service";
 
 type Db = ReturnType<typeof createDb>;
 type BookEntryRow = typeof bookEntry.$inferSelect;
@@ -44,7 +49,12 @@ async function logBookEntryActivities(
   // como desfavoritar, não vira atividade no feed. Mesmo tipo de jogo
   // ("status_changed") — livro também é status-based.
   if (input.status !== undefined && input.status !== null) {
-    activities.push({ userId, ...snapshot, type: "status_changed", metadata: { status: input.status } });
+    activities.push({
+      userId,
+      ...snapshot,
+      type: "status_changed",
+      metadata: { status: input.status },
+    });
   }
   if (input.rating !== undefined && input.rating !== null) {
     activities.push({ userId, ...snapshot, type: "rated", metadata: { rating: input.rating } });
@@ -96,7 +106,10 @@ export async function upsertBookEntry(
 
   const [row] = existing
     ? await db.update(bookEntry).set(patch).where(eq(bookEntry.id, existing.id)).returning()
-    : await db.insert(bookEntry).values({ userId, bookId: googleBooksId, ...patch }).returning();
+    : await db
+        .insert(bookEntry)
+        .values({ userId, bookId: googleBooksId, ...patch })
+        .returning();
 
   if (!row) {
     throw new Error("Falha ao gravar a marcação do livro");
@@ -119,8 +132,14 @@ export async function getFavorites(db: Db, userId: string): Promise<BookEntryWit
   return rows.map((row) => ({ ...toBookEntry(row), book: mapCachedBookToSummary(row.book) }));
 }
 
-export async function deleteBookEntry(db: Db, userId: string, googleBooksId: string): Promise<void> {
-  await db.delete(bookEntry).where(and(eq(bookEntry.userId, userId), eq(bookEntry.bookId, googleBooksId)));
+export async function deleteBookEntry(
+  db: Db,
+  userId: string,
+  googleBooksId: string,
+): Promise<void> {
+  await db
+    .delete(bookEntry)
+    .where(and(eq(bookEntry.userId, userId), eq(bookEntry.bookId, googleBooksId)));
 }
 
 export async function listBookEntries(
@@ -133,7 +152,9 @@ export async function listBookEntries(
     conditions.push(eq(bookEntry.status, query.status));
   }
   if (query.favorite !== undefined) {
-    conditions.push(query.favorite ? isNotNull(bookEntry.favoritedAt) : isNull(bookEntry.favoritedAt));
+    conditions.push(
+      query.favorite ? isNotNull(bookEntry.favoritedAt) : isNull(bookEntry.favoritedAt),
+    );
   }
   const where = and(...conditions);
 
@@ -148,7 +169,10 @@ export async function listBookEntries(
       offset: (query.page - 1) * query.pageSize,
       with: { book: true },
     }),
-    db.select({ count: sql<number>`count(*)` }).from(bookEntry).where(where),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(bookEntry)
+      .where(where),
   ]);
 
   return {

@@ -61,7 +61,9 @@ describe("MyBookEntries", () => {
     getMock.mockResolvedValue({ items: [], page: 1, pageSize: 24, total: 0 });
     renderPage();
 
-    expect(await screen.findByText("Nenhuma marcação encontrada com esses filtros.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Nenhuma marcação encontrada com esses filtros."),
+    ).toBeInTheDocument();
   });
 
   it("mostra erro quando a busca falha", async () => {

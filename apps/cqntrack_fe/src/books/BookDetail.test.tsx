@@ -59,7 +59,10 @@ describe("BookDetail", () => {
     expect(screen.getByRole("button", { name: "Lendo" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByDisplayValue("Muito bom")).toBeInTheDocument();
     expect(getMock).toHaveBeenCalledWith("/api/books/PCq3AAAAQBAJ");
-    expect(screen.getByRole("button", { name: "Desfavoritar" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Desfavoritar" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     // Autor linka pra própria página do autor (livros/autores/:name).
     expect(screen.getByRole("link", { name: "Machado de Assis" })).toHaveAttribute(
       "href",
@@ -105,7 +108,10 @@ describe("BookDetail", () => {
     fireEvent.click(screen.getByRole("button", { name: "Lendo" }));
 
     expect(putMock).toHaveBeenCalledWith("/api/books/PCq3AAAAQBAJ/entry", { status: "reading" });
-    expect(await screen.findByRole("button", { name: "Lendo" })).toHaveAttribute("aria-pressed", "true");
+    expect(await screen.findByRole("button", { name: "Lendo" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
   });
 
   it("remove a marcação existente", async () => {
@@ -127,7 +133,10 @@ describe("BookDetail", () => {
     fireEvent.click(screen.getByRole("button", { name: "Remover marcação" }));
 
     expect(deleteMock).toHaveBeenCalledWith("/api/books/PCq3AAAAQBAJ/entry");
-    expect(await screen.findByRole("button", { name: "Lendo" })).toHaveAttribute("aria-pressed", "false");
+    expect(await screen.findByRole("button", { name: "Lendo" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
     expect(screen.queryByRole("button", { name: "Remover marcação" })).not.toBeInTheDocument();
   });
 

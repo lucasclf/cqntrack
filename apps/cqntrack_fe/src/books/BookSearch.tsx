@@ -66,7 +66,9 @@ export function BookSearch() {
         onChange={(event) => setQuery(event.target.value)}
         aria-label="Buscar livros"
       />
-      {hasQuery && status === "error" && <p role="alert">Falha ao buscar livros. Tente novamente.</p>}
+      {hasQuery && status === "error" && (
+        <p role="alert">Falha ao buscar livros. Tente novamente.</p>
+      )}
       {hasQuery && status === "loading" && <p className={styles.hint}>Buscando...</p>}
       {hasQuery && status === "idle" && results.length === 0 && (
         <p className={styles.hint}>Nenhum livro encontrado para &quot;{debouncedQuery}&quot;.</p>

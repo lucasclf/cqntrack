@@ -27,9 +27,7 @@ const MOVIE = {
   runtime: 148,
   rating: 8.4,
   overview: "Um ladrão que rouba segredos corporativos através do uso de tecnologia de sonhos.",
-  cast: [
-    { personId: 6193, name: "Leonardo DiCaprio", character: "Dom Cobb", profileUrl: null },
-  ],
+  cast: [{ personId: 6193, name: "Leonardo DiCaprio", character: "Dom Cobb", profileUrl: null }],
   directors: [{ personId: 525, name: "Christopher Nolan", profileUrl: null }],
 };
 
@@ -64,9 +62,15 @@ describe("MovieDetail", () => {
     expect(screen.getByText("2h 28min")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Muito bom")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Já vi" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("button", { name: "Quero ver" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: "Quero ver" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
     expect(screen.getByText(/Assistido em/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Desfavoritar" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Desfavoritar" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     expect(getMock).toHaveBeenCalledWith("/api/movies/27205");
 
     // Direção e elenco, com link pra página da pessoa.
@@ -99,7 +103,10 @@ describe("MovieDetail", () => {
     fireEvent.click(screen.getByRole("button", { name: "Já vi" }));
 
     expect(putMock).toHaveBeenCalledWith("/api/movies/27205/entry", { status: "watched" });
-    expect(await screen.findByRole("button", { name: "Já vi" })).toHaveAttribute("aria-pressed", "true");
+    expect(await screen.findByRole("button", { name: "Já vi" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
   });
 
   it("favorita ao clicar no coração", async () => {

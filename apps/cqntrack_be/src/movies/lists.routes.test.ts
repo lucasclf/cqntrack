@@ -86,7 +86,11 @@ describe("/api/movies-lists", () => {
   it("lista inexistente (ou de outro usuário) retorna 404", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
 
-    const res = await app.request("/api/movies-lists/id-que-nao-existe", { headers: { cookie } }, env);
+    const res = await app.request(
+      "/api/movies-lists/id-que-nao-existe",
+      { headers: { cookie } },
+      env,
+    );
 
     expect(res.status).toBe(404);
   });
@@ -113,7 +117,11 @@ describe("/api/movies-lists", () => {
     expect(addRes.status).toBe(204);
     vi.unstubAllGlobals();
 
-    const detailRes = await app.request(`/api/movies-lists/${listId}`, { headers: { cookie } }, env);
+    const detailRes = await app.request(
+      `/api/movies-lists/${listId}`,
+      { headers: { cookie } },
+      env,
+    );
     const detail = (await detailRes.json()) as MovieListDetail;
     expect(detail.itemCount).toBe(1);
     expect(detail.items).toEqual([expect.objectContaining({ tmdbId: 801, name: "Parasite" })]);
@@ -125,7 +133,11 @@ describe("/api/movies-lists", () => {
     );
     expect(removeRes.status).toBe(204);
 
-    const afterRemoveRes = await app.request(`/api/movies-lists/${listId}`, { headers: { cookie } }, env);
+    const afterRemoveRes = await app.request(
+      `/api/movies-lists/${listId}`,
+      { headers: { cookie } },
+      env,
+    );
     const afterRemove = (await afterRemoveRes.json()) as MovieListDetail;
     expect(afterRemove.itemCount).toBe(0);
   });
@@ -144,7 +156,11 @@ describe("/api/movies-lists", () => {
     const { id: listId } = (await createRes.json()) as MovieList;
 
     stubTmdbFetchOnce(tmdbMovieDetail(802, "Whiplash"));
-    await app.request(`/api/movies-lists/${listId}/items/802`, { method: "PUT", headers: { cookie } }, env);
+    await app.request(
+      `/api/movies-lists/${listId}/items/802`,
+      { method: "PUT", headers: { cookie } },
+      env,
+    );
     vi.unstubAllGlobals();
 
     const throwingFetch = vi.fn().mockRejectedValue(new Error("não deveria chamar a TMDB de novo"));

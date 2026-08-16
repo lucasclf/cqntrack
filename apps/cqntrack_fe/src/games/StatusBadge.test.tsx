@@ -20,8 +20,14 @@ describe("StatusBadge", () => {
     const onChange = vi.fn();
     render(<StatusBadge status="completed" onChange={onChange} />);
 
-    expect(screen.getByRole("button", { name: "Finalizado" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("button", { name: "Jogando" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: "Finalizado" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "Jogando" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "Platinado" }));
     expect(onChange).toHaveBeenCalledWith("platinum");

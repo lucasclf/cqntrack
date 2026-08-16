@@ -55,7 +55,10 @@ describe("PersonDetail", () => {
 
     expect(screen.getByRole("heading", { name: "Como diretor" })).toBeInTheDocument();
     expect(screen.getByText("Inception")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Inception/ })).toHaveAttribute("href", "/filmes/27205");
+    expect(screen.getByRole("link", { name: /Inception/ })).toHaveAttribute(
+      "href",
+      "/filmes/27205",
+    );
     // Sem créditos de ator — a seção não aparece.
     expect(screen.queryByRole("heading", { name: "Como ator" })).not.toBeInTheDocument();
   });
@@ -93,7 +96,9 @@ describe("PersonDetail", () => {
     });
     renderDetail("1");
 
-    expect(await screen.findByText("Nenhum crédito de ator ou diretor encontrado.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Nenhum crédito de ator ou diretor encontrado."),
+    ).toBeInTheDocument();
   });
 
   it("mostra 'pessoa não encontrada' quando a API retorna 404", async () => {

@@ -68,6 +68,8 @@ describe("SeriesDiscover", () => {
     getMock.mockRejectedValue(new Error("falha de rede"));
     renderPage();
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Falha ao carregar séries populares");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Falha ao carregar séries populares",
+    );
   });
 });

@@ -8,7 +8,12 @@ import { and, asc, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import type { createDb } from "../db/client";
 import { activity, gameEntry } from "../db/schema";
 import { withoutUndefined } from "../lib/without-undefined";
-import { type CachedGame, getOrCacheGame, mapCachedGameToSummary, toActivitySnapshot } from "./games.service";
+import {
+  type CachedGame,
+  getOrCacheGame,
+  mapCachedGameToSummary,
+  toActivitySnapshot,
+} from "./games.service";
 
 type Db = ReturnType<typeof createDb>;
 type GameEntryRow = typeof gameEntry.$inferSelect;
@@ -48,7 +53,12 @@ async function logGameEntryActivities(
   // Só loga quando um status real é definido — desmarcar (status: null),
   // como desfavoritar, não vira atividade no feed.
   if (input.status !== undefined && input.status !== null) {
-    activities.push({ userId, ...snapshot, type: "status_changed", metadata: { status: input.status } });
+    activities.push({
+      userId,
+      ...snapshot,
+      type: "status_changed",
+      metadata: { status: input.status },
+    });
   }
   if (input.rating !== undefined && input.rating !== null) {
     activities.push({ userId, ...snapshot, type: "rated", metadata: { rating: input.rating } });
@@ -100,7 +110,10 @@ export async function upsertGameEntry(
 
   const [row] = existing
     ? await db.update(gameEntry).set(patch).where(eq(gameEntry.id, existing.id)).returning()
-    : await db.insert(gameEntry).values({ userId, gameId: igdbId, ...patch }).returning();
+    : await db
+        .insert(gameEntry)
+        .values({ userId, gameId: igdbId, ...patch })
+        .returning();
 
   if (!row) {
     throw new Error("Falha ao gravar a marcação do jogo");
@@ -137,7 +150,9 @@ export async function listGameEntries(
     conditions.push(eq(gameEntry.status, query.status));
   }
   if (query.favorite !== undefined) {
-    conditions.push(query.favorite ? isNotNull(gameEntry.favoritedAt) : isNull(gameEntry.favoritedAt));
+    conditions.push(
+      query.favorite ? isNotNull(gameEntry.favoritedAt) : isNull(gameEntry.favoritedAt),
+    );
   }
   if (query.platform) {
     // platforms é uma lista JSON — filtra entries que contêm essa plataforma.
@@ -158,7 +173,10 @@ export async function listGameEntries(
       offset: (query.page - 1) * query.pageSize,
       with: { game: true },
     }),
-    db.select({ count: sql<number>`count(*)` }).from(gameEntry).where(where),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(gameEntry)
+      .where(where),
   ]);
 
   return {

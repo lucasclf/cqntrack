@@ -31,9 +31,7 @@ const SERIES = {
   overview: "Um professor de química vira fabricante de metanfetamina.",
   cast: [{ personId: 17419, name: "Bryan Cranston", character: "Walter White", profileUrl: null }],
   creators: [{ personId: 66633, name: "Vince Gilligan", profileUrl: null }],
-  directors: [
-    { personId: 29779, name: "Michelle MacLaren", profileUrl: null, episodeCount: 11 },
-  ],
+  directors: [{ personId: 29779, name: "Michelle MacLaren", profileUrl: null, episodeCount: 11 }],
 };
 
 function renderDetail() {
@@ -65,7 +63,10 @@ describe("SeriesDetail", () => {
     expect(screen.getByText("4.5")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Muito bom")).toBeInTheDocument();
     expect(getMock).toHaveBeenCalledWith("/api/series/1396");
-    expect(screen.getByRole("button", { name: "Desfavoritar" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Desfavoritar" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
 
     // Criado por, Direção (com contagem de episódios) e Elenco, cada um
     // linkando pra página da pessoa.

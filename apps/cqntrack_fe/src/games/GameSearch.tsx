@@ -66,7 +66,9 @@ export function GameSearch() {
         onChange={(event) => setQuery(event.target.value)}
         aria-label="Buscar jogos"
       />
-      {hasQuery && status === "error" && <p role="alert">Falha ao buscar jogos. Tente novamente.</p>}
+      {hasQuery && status === "error" && (
+        <p role="alert">Falha ao buscar jogos. Tente novamente.</p>
+      )}
       {hasQuery && status === "loading" && <p className={styles.hint}>Buscando...</p>}
       {hasQuery && status === "idle" && results.length === 0 && (
         <p className={styles.hint}>Nenhum jogo encontrado para &quot;{debouncedQuery}&quot;.</p>

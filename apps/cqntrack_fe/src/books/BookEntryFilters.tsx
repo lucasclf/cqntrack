@@ -1,4 +1,9 @@
-import { BOOK_ENTRY_SORT_FIELDS, BOOK_STATUSES, BOOK_STATUS_LABELS, type BookStatus } from "@cqntrack/shared";
+import {
+  BOOK_ENTRY_SORT_FIELDS,
+  BOOK_STATUSES,
+  BOOK_STATUS_LABELS,
+  type BookStatus,
+} from "@cqntrack/shared";
 import styles from "./BookEntryFilters.module.css";
 
 export type BookEntrySortField = (typeof BOOK_ENTRY_SORT_FIELDS)[number];
@@ -35,7 +40,10 @@ export function BookEntryFilters({
     <div className={styles.filters}>
       <label className={styles.field}>
         <span>Status</span>
-        <select value={status} onChange={(event) => onStatusChange(event.target.value as BookStatus | "")}>
+        <select
+          value={status}
+          onChange={(event) => onStatusChange(event.target.value as BookStatus | "")}
+        >
           <option value="">Todos</option>
           {BOOK_STATUSES.map((option) => (
             <option key={option} value={option}>
@@ -47,7 +55,10 @@ export function BookEntryFilters({
 
       <label className={styles.field}>
         <span>Ordenar por</span>
-        <select value={sortBy} onChange={(event) => onSortByChange(event.target.value as BookEntrySortField)}>
+        <select
+          value={sortBy}
+          onChange={(event) => onSortByChange(event.target.value as BookEntrySortField)}
+        >
           {BOOK_ENTRY_SORT_FIELDS.map((field) => (
             <option key={field} value={field}>
               {SORT_FIELD_LABELS[field]}

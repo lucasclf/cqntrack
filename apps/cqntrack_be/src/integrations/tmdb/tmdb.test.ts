@@ -216,7 +216,10 @@ describe("integrations/tmdb", () => {
       .fn()
       .mockResolvedValueOnce(jsonResponse(episodeDetail))
       .mockResolvedValueOnce(
-        jsonResponse({ ...episodeDetail, overview: "A chemistry teacher is diagnosed with cancer." }),
+        jsonResponse({
+          ...episodeDetail,
+          overview: "A chemistry teacher is diagnosed with cancer.",
+        }),
       );
     vi.stubGlobal("fetch", fetchMock);
 

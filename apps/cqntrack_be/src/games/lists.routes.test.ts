@@ -154,7 +154,11 @@ describe("/api/lists", () => {
     const { id: listId } = (await createRes.json()) as GameList;
 
     stubIgdbFetchOnce([igdbGame(802, "Celeste")]);
-    await app.request(`/api/lists/${listId}/items/802`, { method: "PUT", headers: { cookie } }, env);
+    await app.request(
+      `/api/lists/${listId}/items/802`,
+      { method: "PUT", headers: { cookie } },
+      env,
+    );
     vi.unstubAllGlobals();
 
     const throwingFetch = vi.fn().mockRejectedValue(new Error("não deveria chamar a IGDB de novo"));

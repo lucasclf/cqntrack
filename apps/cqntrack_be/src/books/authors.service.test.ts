@@ -17,7 +17,7 @@ function volume(id: string, title: string, authors: string[], publishedDate: str
 }
 
 describe("getAuthorBooks", () => {
-  it("busca com inauthor:\"nome\" e devolve os livros ordenados por data decrescente", async () => {
+  it('busca com inauthor:"nome" e devolve os livros ordenados por data decrescente', async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(
       jsonResponse({
         items: [

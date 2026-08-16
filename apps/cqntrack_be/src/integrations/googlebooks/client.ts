@@ -16,7 +16,9 @@ export class GoogleBooksRequestError extends Error {
 // diária de projeto, não req/s.
 export async function googleBooksFetch<T>(env: Env, path: string): Promise<T> {
   const separator = path.includes("?") ? "&" : "?";
-  const res = await fetch(`${GOOGLE_BOOKS_BASE_URL}${path}${separator}key=${env.GOOGLE_BOOKS_API_KEY}`);
+  const res = await fetch(
+    `${GOOGLE_BOOKS_BASE_URL}${path}${separator}key=${env.GOOGLE_BOOKS_API_KEY}`,
+  );
 
   if (!res.ok) {
     throw new GoogleBooksRequestError(res.status, await res.text());

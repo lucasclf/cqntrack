@@ -3,7 +3,11 @@ import { eq } from "drizzle-orm";
 import type { createDb } from "../db/client";
 import { movie } from "../db/schema";
 import { getMovieCredits } from "../integrations/tmdb/credits";
-import { getMovieById, getPopularMovies, searchMovies as tmdbSearchMovies } from "../integrations/tmdb/movies";
+import {
+  getMovieById,
+  getPopularMovies,
+  searchMovies as tmdbSearchMovies,
+} from "../integrations/tmdb/movies";
 import {
   buildPosterUrl,
   MOVIE_GENRE_NAMES,
@@ -41,8 +45,7 @@ export function mapTmdbSearchResultToSummary(result: TmdbMovieSearchResult): Mov
     tmdbId: result.id,
     name: result.title,
     posterUrl: result.poster_path ? buildPosterUrl(result.poster_path, "w342") : null,
-    releaseDate:
-      result.release_date && result.release_date.length > 0 ? result.release_date : null,
+    releaseDate: result.release_date && result.release_date.length > 0 ? result.release_date : null,
     genres: (result.genre_ids ?? [])
       .map((id) => MOVIE_GENRE_NAMES[id])
       .filter((name): name is string => Boolean(name)),

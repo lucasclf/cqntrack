@@ -2,7 +2,13 @@ import { z } from "zod";
 
 // Fonte única de verdade dos 5 status — importado tanto pelo schema Drizzle
 // (enum da coluna) quanto pelo z.enum abaixo.
-export const GAME_STATUSES = ["not_started", "playing", "dropped", "completed", "platinum"] as const;
+export const GAME_STATUSES = [
+  "not_started",
+  "playing",
+  "dropped",
+  "completed",
+  "platinum",
+] as const;
 
 export const GameStatusSchema = z.enum(GAME_STATUSES);
 
@@ -122,7 +128,13 @@ export type FavoritesResponse = z.infer<typeof FavoritesResponseSchema>;
 // "platform" (singular) continua sendo o nome do campo de ordenação/filtro —
 // filtra/ordena por conter essa plataforma na lista `platforms` da entry.
 // "favorite" ordena/filtra por favoritedAt (null = não favoritado).
-export const GAME_ENTRY_SORT_FIELDS = ["status", "rating", "favorite", "platform", "updatedAt"] as const;
+export const GAME_ENTRY_SORT_FIELDS = [
+  "status",
+  "rating",
+  "favorite",
+  "platform",
+  "updatedAt",
+] as const;
 
 export const ListGameEntriesQuerySchema = z.object({
   status: GameStatusSchema.optional(),

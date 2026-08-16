@@ -47,10 +47,7 @@ describe("CrewList", () => {
   });
 
   it("usa o título informado (ex.: 'Criado por' pra série)", () => {
-    renderList(
-      [{ personId: 66633, name: "Vince Gilligan", profileUrl: null }],
-      "Criado por",
-    );
+    renderList([{ personId: 66633, name: "Vince Gilligan", profileUrl: null }], "Criado por");
 
     expect(screen.getByRole("heading", { name: "Criado por" })).toBeInTheDocument();
   });

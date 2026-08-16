@@ -2,7 +2,11 @@ import type { GameSummary } from "@cqntrack/shared";
 import { eq } from "drizzle-orm";
 import type { createDb } from "../db/client";
 import { game } from "../db/schema";
-import { getGameById, getPopularGames, searchGames as igdbSearchGames } from "../integrations/igdb/games";
+import {
+  getGameById,
+  getPopularGames,
+  searchGames as igdbSearchGames,
+} from "../integrations/igdb/games";
 import { buildCoverUrl, type IgdbGame } from "../integrations/igdb/types";
 
 type Db = ReturnType<typeof createDb>;
@@ -17,7 +21,9 @@ export function toActivitySnapshot(cachedGame: CachedGame) {
     itemId: String(cachedGame.igdbId),
     itemTitle: cachedGame.name,
     itemHref: `/jogos/${cachedGame.igdbId}`,
-    itemCoverUrl: cachedGame.coverImageId ? buildCoverUrl(cachedGame.coverImageId, "cover_big") : null,
+    itemCoverUrl: cachedGame.coverImageId
+      ? buildCoverUrl(cachedGame.coverImageId, "cover_big")
+      : null,
   };
 }
 

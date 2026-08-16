@@ -1,4 +1,9 @@
-import { MOVIE_ENTRY_SORT_FIELDS, MOVIE_STATUSES, MOVIE_STATUS_LABELS, type MovieStatus } from "@cqntrack/shared";
+import {
+  MOVIE_ENTRY_SORT_FIELDS,
+  MOVIE_STATUSES,
+  MOVIE_STATUS_LABELS,
+  type MovieStatus,
+} from "@cqntrack/shared";
 import styles from "./MovieEntryFilters.module.css";
 
 export type MovieEntrySortField = (typeof MOVIE_ENTRY_SORT_FIELDS)[number];
@@ -35,7 +40,10 @@ export function MovieEntryFilters({
     <div className={styles.filters}>
       <label className={styles.field}>
         <span>Status</span>
-        <select value={status} onChange={(event) => onStatusChange(event.target.value as MovieStatus | "")}>
+        <select
+          value={status}
+          onChange={(event) => onStatusChange(event.target.value as MovieStatus | "")}
+        >
           <option value="">Todos</option>
           {MOVIE_STATUSES.map((option) => (
             <option key={option} value={option}>

@@ -71,7 +71,8 @@ const PERSON_DETAIL = {
   id: 525,
   name: "Christopher Nolan",
   profile_path: "/xuAIuYSmsUzKlUMBFGVZaWsY3DZ.jpg",
-  biography: "Sir Christopher Edward Nolan (born 30 July 1970) is a British and American filmmaker.",
+  biography:
+    "Sir Christopher Edward Nolan (born 30 July 1970) is a British and American filmmaker.",
 };
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -98,7 +99,9 @@ describe("integrations/tmdb/credits", () => {
   });
 
   it("getMovieCredits retorna null quando a TMDB responde 404", async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse({ status_message: "not found" }, 404));
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ status_message: "not found" }, 404));
     vi.stubGlobal("fetch", fetchMock);
 
     const result = await getMovieCredits(env, 999999999);
@@ -123,7 +126,9 @@ describe("integrations/tmdb/credits", () => {
   });
 
   it("getSeriesAggregateCredits retorna null quando a TMDB responde 404", async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse({ status_message: "not found" }, 404));
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ status_message: "not found" }, 404));
     vi.stubGlobal("fetch", fetchMock);
 
     const result = await getSeriesAggregateCredits(env, 999999999);
@@ -148,7 +153,9 @@ describe("integrations/tmdb/credits", () => {
   });
 
   it("getPersonById retorna null quando a TMDB responde 404", async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse({ status_message: "not found" }, 404));
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ status_message: "not found" }, 404));
     vi.stubGlobal("fetch", fetchMock);
 
     const result = await getPersonById(env, 999999999);

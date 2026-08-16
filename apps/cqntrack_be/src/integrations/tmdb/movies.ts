@@ -17,7 +17,10 @@ export async function searchMovies(
 
 // Confirmado contra a API real durante o planejamento: devolve o mesmo
 // formato de item da busca (TmdbMovieSearchResult), sem request extra.
-export async function getPopularMovies(env: Env, page = 1): Promise<TmdbSearchResponse<TmdbMovieSearchResult>> {
+export async function getPopularMovies(
+  env: Env,
+  page = 1,
+): Promise<TmdbSearchResponse<TmdbMovieSearchResult>> {
   return tmdbFetch<TmdbSearchResponse<TmdbMovieSearchResult>>(env, `/movie/popular?page=${page}`);
 }
 

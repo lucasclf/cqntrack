@@ -146,7 +146,11 @@ export async function deleteBookList(db: Db, userId: string, listId: string): Pr
   await db.delete(bookList).where(eq(bookList.id, listId));
 }
 
-export async function getBookListDetail(db: Db, userId: string, listId: string): Promise<BookListDetail> {
+export async function getBookListDetail(
+  db: Db,
+  userId: string,
+  listId: string,
+): Promise<BookListDetail> {
   const row = await getOwnedBookList(db, userId, listId);
 
   const items = await db.query.bookListItem.findMany({

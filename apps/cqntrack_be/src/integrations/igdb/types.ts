@@ -14,13 +14,7 @@ export interface IgdbGame {
 }
 
 export type IgdbImageSize =
-  | "thumb"
-  | "cover_small"
-  | "cover_big"
-  | "screenshot_med"
-  | "screenshot_big"
-  | "720p"
-  | "1080p";
+  "thumb" | "cover_small" | "cover_big" | "screenshot_med" | "screenshot_big" | "720p" | "1080p";
 
 export function buildCoverUrl(imageId: string, size: IgdbImageSize = "cover_big"): string {
   return `https://images.igdb.com/igdb/image/upload/t_${size}/${imageId}.jpg`;

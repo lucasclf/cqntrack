@@ -47,7 +47,9 @@ export function MovieDiscover() {
   return (
     <div className={styles.page}>
       <h1>Descobrir filmes</h1>
-      {status === "error" && <p role="alert">Falha ao carregar filmes populares. Tente novamente.</p>}
+      {status === "error" && (
+        <p role="alert">Falha ao carregar filmes populares. Tente novamente.</p>
+      )}
 
       <div className={styles.grid}>
         {results.map((movie) => (

@@ -55,13 +55,21 @@ describe("/api/users", () => {
     const gameListsRes = await app.request("/api/users/nao-existe/games/lists", undefined, env);
     expect(gameListsRes.status).toBe(404);
 
-    const seriesEntriesRes = await app.request("/api/users/nao-existe/series/entries", undefined, env);
+    const seriesEntriesRes = await app.request(
+      "/api/users/nao-existe/series/entries",
+      undefined,
+      env,
+    );
     expect(seriesEntriesRes.status).toBe(404);
 
     const seriesListsRes = await app.request("/api/users/nao-existe/series/lists", undefined, env);
     expect(seriesListsRes.status).toBe(404);
 
-    const movieEntriesRes = await app.request("/api/users/nao-existe/movies/entries", undefined, env);
+    const movieEntriesRes = await app.request(
+      "/api/users/nao-existe/movies/entries",
+      undefined,
+      env,
+    );
     expect(movieEntriesRes.status).toBe(404);
 
     const movieListsRes = await app.request("/api/users/nao-existe/movies/lists", undefined, env);
@@ -79,7 +87,11 @@ describe("/api/users", () => {
 
     const res = await app.request(`/api/users/${username}`, undefined, env);
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { username: string; displayUsername: string; memberSince: string };
+    const body = (await res.json()) as {
+      username: string;
+      displayUsername: string;
+      memberSince: string;
+    };
     expect(body.username).toBe(username);
     expect(body.memberSince).toEqual(expect.any(String));
   });
@@ -122,14 +134,20 @@ describe("/api/users", () => {
     const entriesRes = await app.request(`/api/users/${username}/games/entries`, undefined, env);
     expect(entriesRes.status).toBe(200);
     const entriesBody = (await entriesRes.json()) as { items: Array<{ game: { igdbId: number } }> };
-    expect(entriesBody.items).toEqual([expect.objectContaining({ game: expect.objectContaining({ igdbId: 701 }) })]);
+    expect(entriesBody.items).toEqual([
+      expect.objectContaining({ game: expect.objectContaining({ igdbId: 701 }) }),
+    ]);
 
     const listsRes = await app.request(`/api/users/${username}/games/lists`, undefined, env);
     expect(listsRes.status).toBe(200);
     const listsBody = (await listsRes.json()) as { lists: Array<{ id: string; name: string }> };
     expect(listsBody.lists).toEqual([expect.objectContaining({ id: listId, name: "Platinados" })]);
 
-    const listDetailRes = await app.request(`/api/users/${username}/games/lists/${listId}`, undefined, env);
+    const listDetailRes = await app.request(
+      `/api/users/${username}/games/lists/${listId}`,
+      undefined,
+      env,
+    );
     expect(listDetailRes.status).toBe(200);
 
     const otherUserListDetailRes = await app.request(
@@ -157,7 +175,9 @@ describe("/api/users", () => {
     const res = await app.request(`/api/users/${username}/games/favorites`, undefined, env);
     expect(res.status).toBe(200);
     const body = (await res.json()) as { items: Array<{ game: { igdbId: number } }> };
-    expect(body.items).toEqual([expect.objectContaining({ game: expect.objectContaining({ igdbId: 702 }) })]);
+    expect(body.items).toEqual([
+      expect.objectContaining({ game: expect.objectContaining({ igdbId: 702 }) }),
+    ]);
   });
 
   it("lista as marcações, favoritos e listas públicas de séries do usuário", async () => {
@@ -175,7 +195,10 @@ describe("/api/users", () => {
       vote_average: 8.9,
     });
 
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(jsonResponse(tmdbDetail(1396, "Breaking Bad"))));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValueOnce(jsonResponse(tmdbDetail(1396, "Breaking Bad"))),
+    );
     await app.request(
       "/api/series/1396/entry",
       {
@@ -187,7 +210,10 @@ describe("/api/users", () => {
     );
     vi.unstubAllGlobals();
 
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(jsonResponse(tmdbDetail(1396, "Breaking Bad"))));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValueOnce(jsonResponse(tmdbDetail(1396, "Breaking Bad"))),
+    );
     await app.request(
       "/api/series/1396/entry",
       {
@@ -212,14 +238,22 @@ describe("/api/users", () => {
 
     const entriesRes = await app.request(`/api/users/${username}/series/entries`, undefined, env);
     expect(entriesRes.status).toBe(200);
-    const entriesBody = (await entriesRes.json()) as { items: Array<{ series: { tmdbId: number } }> };
+    const entriesBody = (await entriesRes.json()) as {
+      items: Array<{ series: { tmdbId: number } }>;
+    };
     expect(entriesBody.items).toEqual([
       expect.objectContaining({ series: expect.objectContaining({ tmdbId: 1396 }) }),
     ]);
 
-    const favoritesRes = await app.request(`/api/users/${username}/series/favorites`, undefined, env);
+    const favoritesRes = await app.request(
+      `/api/users/${username}/series/favorites`,
+      undefined,
+      env,
+    );
     expect(favoritesRes.status).toBe(200);
-    const favoritesBody = (await favoritesRes.json()) as { items: Array<{ series: { tmdbId: number } }> };
+    const favoritesBody = (await favoritesRes.json()) as {
+      items: Array<{ series: { tmdbId: number } }>;
+    };
     expect(favoritesBody.items).toEqual([
       expect.objectContaining({ series: expect.objectContaining({ tmdbId: 1396 }) }),
     ]);
@@ -229,7 +263,11 @@ describe("/api/users", () => {
     const listsBody = (await listsRes.json()) as { lists: Array<{ id: string; name: string }> };
     expect(listsBody.lists).toEqual([expect.objectContaining({ id: listId, name: "Maratonadas" })]);
 
-    const listDetailRes = await app.request(`/api/users/${username}/series/lists/${listId}`, undefined, env);
+    const listDetailRes = await app.request(
+      `/api/users/${username}/series/lists/${listId}`,
+      undefined,
+      env,
+    );
     expect(listDetailRes.status).toBe(200);
   });
 
@@ -257,9 +295,10 @@ describe("/api/users", () => {
     ] as const) {
       vi.stubGlobal(
         "fetch",
-        vi.fn().mockResolvedValueOnce(jsonResponse(tmdbSeriesDetail(id, name))).mockResolvedValueOnce(
-          jsonResponse({ cast: [], crew: [] }),
-        ),
+        vi
+          .fn()
+          .mockResolvedValueOnce(jsonResponse(tmdbSeriesDetail(id, name)))
+          .mockResolvedValueOnce(jsonResponse({ cast: [], crew: [] })),
       );
       const res = await app.request(
         `/api/series/${id}/episodes/1/1`,
@@ -292,7 +331,10 @@ describe("/api/users", () => {
       undefined,
       env,
     );
-    const page2Body = (await page2Res.json()) as { items: Array<{ series: { name: string } }>; total: number };
+    const page2Body = (await page2Res.json()) as {
+      items: Array<{ series: { name: string } }>;
+      total: number;
+    };
     expect(page2Body.total).toBe(3);
     expect(page2Body.items.map((item) => item.series.name)).toEqual(["Série A"]);
   });
@@ -354,14 +396,22 @@ describe("/api/users", () => {
 
     const entriesRes = await app.request(`/api/users/${username}/movies/entries`, undefined, env);
     expect(entriesRes.status).toBe(200);
-    const entriesBody = (await entriesRes.json()) as { items: Array<{ movie: { tmdbId: number } }> };
+    const entriesBody = (await entriesRes.json()) as {
+      items: Array<{ movie: { tmdbId: number } }>;
+    };
     expect(entriesBody.items).toEqual([
       expect.objectContaining({ movie: expect.objectContaining({ tmdbId: 27205 }) }),
     ]);
 
-    const favoritesRes = await app.request(`/api/users/${username}/movies/favorites`, undefined, env);
+    const favoritesRes = await app.request(
+      `/api/users/${username}/movies/favorites`,
+      undefined,
+      env,
+    );
     expect(favoritesRes.status).toBe(200);
-    const favoritesBody = (await favoritesRes.json()) as { items: Array<{ movie: { tmdbId: number } }> };
+    const favoritesBody = (await favoritesRes.json()) as {
+      items: Array<{ movie: { tmdbId: number } }>;
+    };
     expect(favoritesBody.items).toEqual([
       expect.objectContaining({ movie: expect.objectContaining({ tmdbId: 27205 }) }),
     ]);
@@ -369,9 +419,15 @@ describe("/api/users", () => {
     const listsRes = await app.request(`/api/users/${username}/movies/lists`, undefined, env);
     expect(listsRes.status).toBe(200);
     const listsBody = (await listsRes.json()) as { lists: Array<{ id: string; name: string }> };
-    expect(listsBody.lists).toEqual([expect.objectContaining({ id: listId, name: "Vistos em 2026" })]);
+    expect(listsBody.lists).toEqual([
+      expect.objectContaining({ id: listId, name: "Vistos em 2026" }),
+    ]);
 
-    const listDetailRes = await app.request(`/api/users/${username}/movies/lists/${listId}`, undefined, env);
+    const listDetailRes = await app.request(
+      `/api/users/${username}/movies/lists/${listId}`,
+      undefined,
+      env,
+    );
     expect(listDetailRes.status).toBe(200);
   });
 
@@ -435,14 +491,22 @@ describe("/api/users", () => {
 
     const entriesRes = await app.request(`/api/users/${username}/books/entries`, undefined, env);
     expect(entriesRes.status).toBe(200);
-    const entriesBody = (await entriesRes.json()) as { items: Array<{ book: { googleBooksId: string } }> };
+    const entriesBody = (await entriesRes.json()) as {
+      items: Array<{ book: { googleBooksId: string } }>;
+    };
     expect(entriesBody.items).toEqual([
       expect.objectContaining({ book: expect.objectContaining({ googleBooksId: "book-901" }) }),
     ]);
 
-    const favoritesRes = await app.request(`/api/users/${username}/books/favorites`, undefined, env);
+    const favoritesRes = await app.request(
+      `/api/users/${username}/books/favorites`,
+      undefined,
+      env,
+    );
     expect(favoritesRes.status).toBe(200);
-    const favoritesBody = (await favoritesRes.json()) as { items: Array<{ book: { googleBooksId: string } }> };
+    const favoritesBody = (await favoritesRes.json()) as {
+      items: Array<{ book: { googleBooksId: string } }>;
+    };
     expect(favoritesBody.items).toEqual([
       expect.objectContaining({ book: expect.objectContaining({ googleBooksId: "book-901" }) }),
     ]);
@@ -450,9 +514,15 @@ describe("/api/users", () => {
     const listsRes = await app.request(`/api/users/${username}/books/lists`, undefined, env);
     expect(listsRes.status).toBe(200);
     const listsBody = (await listsRes.json()) as { lists: Array<{ id: string; name: string }> };
-    expect(listsBody.lists).toEqual([expect.objectContaining({ id: listId, name: "Lidos em 2026" })]);
+    expect(listsBody.lists).toEqual([
+      expect.objectContaining({ id: listId, name: "Lidos em 2026" }),
+    ]);
 
-    const listDetailRes = await app.request(`/api/users/${username}/books/lists/${listId}`, undefined, env);
+    const listDetailRes = await app.request(
+      `/api/users/${username}/books/lists/${listId}`,
+      undefined,
+      env,
+    );
     expect(listDetailRes.status).toBe(200);
   });
 });

@@ -51,7 +51,10 @@ describe("MyLists", () => {
 
     expect(await screen.findByText("Quero jogar")).toBeInTheDocument();
     expect(screen.getByText("3 jogo(s)")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Quero jogar/ })).toHaveAttribute("href", "/jogos/listas/1");
+    expect(screen.getByRole("link", { name: /Quero jogar/ })).toHaveAttribute(
+      "href",
+      "/jogos/listas/1",
+    );
   });
 
   it("mostra mensagem quando não há listas", async () => {
@@ -72,7 +75,10 @@ describe("MyLists", () => {
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
 
     expect(await screen.findByText("Jogado em 2026")).toBeInTheDocument();
-    expect(postMock).toHaveBeenCalledWith("/api/lists", { name: "Jogado em 2026", description: null });
+    expect(postMock).toHaveBeenCalledWith("/api/lists", {
+      name: "Jogado em 2026",
+      description: null,
+    });
   });
 
   it("remove uma lista após confirmação", async () => {

@@ -1,4 +1,8 @@
-import type { SeriesList, SeriesListDetail as SeriesListDetailDto, SeriesSummary } from "@cqntrack/shared";
+import type {
+  SeriesList,
+  SeriesListDetail as SeriesListDetailDto,
+  SeriesSummary,
+} from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { ListFormModal } from "../components/ListFormModal";
@@ -135,7 +139,10 @@ export function SeriesListDetail() {
           mode="edit"
           initialValues={{ name: detail.name, description: detail.description }}
           onSubmit={async (values) => {
-            const updated = await apiClient.patch<SeriesList>(`/api/series-lists/${listId}`, values);
+            const updated = await apiClient.patch<SeriesList>(
+              `/api/series-lists/${listId}`,
+              values,
+            );
             setDetail((current) => (current ? { ...current, ...updated } : current));
           }}
           onClose={() => setEditModalOpen(false)}

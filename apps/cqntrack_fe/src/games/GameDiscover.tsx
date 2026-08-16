@@ -46,7 +46,9 @@ export function GameDiscover() {
   return (
     <div className={styles.page}>
       <h1>Descobrir jogos</h1>
-      {status === "error" && <p role="alert">Falha ao carregar jogos aclamados. Tente novamente.</p>}
+      {status === "error" && (
+        <p role="alert">Falha ao carregar jogos aclamados. Tente novamente.</p>
+      )}
 
       <div className={styles.grid}>
         {results.map((game) => (

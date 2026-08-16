@@ -28,7 +28,9 @@ describe("apiClient", () => {
   it("serializa o body em POST/PUT/PATCH", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({ ok: true, status: 201, json: () => Promise.resolve({ id: "1" }) }),
+      vi
+        .fn()
+        .mockResolvedValue({ ok: true, status: 201, json: () => Promise.resolve({ id: "1" }) }),
     );
 
     await apiClient.post("/api/lists", { name: "Quero jogar" });
