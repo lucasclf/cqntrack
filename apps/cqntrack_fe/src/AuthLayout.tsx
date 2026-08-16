@@ -13,7 +13,7 @@ interface AuthLayoutProps {
 export function AuthLayout({ children }: AuthLayoutProps) {
   return (
     <div className={styles.page}>
-      <ThemeToggle />
+      <ThemeToggle className={styles.themeToggle} />
 
       <aside className={styles.visualPanel}>
         <div className={styles.collage} aria-hidden="true">
@@ -30,9 +30,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
             <span className={styles.brandWord}>cqntrack</span>
           </div>
           <div className={styles.visualBottom}>
-            <p className={styles.tagline}>
-              Tudo que você jogou, assistiu e leu, em um só lugar.
-            </p>
+            <p className={styles.tagline}>Tudo que você jogou, assistiu e leu, em um só lugar.</p>
             <div className={styles.tags}>
               <span className={styles.tag}>Jogos</span>
               <span className={styles.tag}>Séries</span>

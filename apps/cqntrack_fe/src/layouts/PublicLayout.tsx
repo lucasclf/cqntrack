@@ -29,7 +29,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
 
   return (
     <div className={styles.page}>
-      <ThemeToggle />
+      <ThemeToggle className={styles.themeToggle} />
       <header className={styles.header}>
         <Link to="/login" className={styles.brand}>
           <span className={styles.brandMark}>

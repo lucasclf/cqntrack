@@ -3,6 +3,13 @@
   background: var(--bg);
 }
 
+.themeToggle {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 20;
+}
+
 .header {
   padding: 20px 24px;
 }

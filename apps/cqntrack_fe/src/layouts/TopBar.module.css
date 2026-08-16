@@ -23,9 +23,6 @@
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
-  /* Reserva espaço pro ThemeToggle, que se posiciona sozinho (fixed, canto
-     superior direito) — evita ele sobrepor o menu de conta. */
-  padding-right: 48px;
 }
 
 .brand {
@@ -123,9 +120,5 @@
 
   .left {
     gap: 12px;
-  }
-
-  .right {
-    padding-right: 0;
   }
 }

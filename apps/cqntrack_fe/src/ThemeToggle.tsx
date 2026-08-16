@@ -1,13 +1,20 @@
 import styles from "./ThemeToggle.module.css";
 import { useTheme } from "./useTheme";
 
-export function ThemeToggle() {
+interface ThemeToggleProps {
+  // Permite que layouts sem TopBar (auth, perfil público anônimo) apliquem
+  // seu próprio posicionamento (fixed no canto), já que nesses casos o
+  // botão não está dentro de um header com layout próprio.
+  className?: string;
+}
+
+export function ThemeToggle({ className }: ThemeToggleProps = {}) {
   const { toggleTheme } = useTheme();
 
   return (
     <button
       type="button"
-      className={styles.themeToggle}
+      className={className ? `${styles.themeToggle} ${className}` : styles.themeToggle}
       onClick={toggleTheme}
       aria-label="Alternar tema claro/escuro"
     >

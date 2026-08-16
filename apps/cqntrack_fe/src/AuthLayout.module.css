@@ -4,6 +4,13 @@
   min-height: 100vh;
 }
 
+.themeToggle {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 20;
+}
+
 /* ---- painel visual (esquerda) ---- */
 .visualPanel {
   position: relative;
