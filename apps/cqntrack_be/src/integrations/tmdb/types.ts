@@ -90,6 +90,14 @@ export interface TmdbMovieDetail {
   vote_average?: number;
 }
 
+// GET /find/{external_id}?external_source=tvdb_id — resolve um id de outra
+// fonte (aqui, TVDB, usado pelo export do tvtime) pro id interno da TMDB.
+// A resposta real também traz movie_results/person_results/etc., mas só
+// tv_results interessa aqui.
+export interface TmdbFindResponse {
+  tv_results: TmdbSeriesSearchResult[];
+}
+
 export interface TmdbSearchResponse<T> {
   results: T[];
   // Só populares (GET /movie|tv/popular) usam page/total_pages hoje — busca

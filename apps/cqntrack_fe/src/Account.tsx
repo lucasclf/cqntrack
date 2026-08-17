@@ -2,6 +2,7 @@ import { type FormEvent, useState } from "react";
 import { useNavigate } from "react-router";
 import styles from "./Account.module.css";
 import { ImportFilmowCsv } from "./ImportFilmowCsv";
+import { ImportTvTimeCsv } from "./ImportTvTimeCsv";
 import { authClient } from "./lib/auth-client";
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
@@ -122,7 +123,10 @@ export function Account() {
 
       <section className={styles.section}>
         <h2>Importar dados</h2>
-        <ImportFilmowCsv />
+        <div className={styles.importList}>
+          <ImportFilmowCsv />
+          <ImportTvTimeCsv />
+        </div>
       </section>
 
       <section className={styles.section}>

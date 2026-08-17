@@ -1111,3 +1111,147 @@ describe("PUT /api/series/:tmdbId/seasons/:seasonNumber", () => {
     expect(res.status).toBe(401);
   });
 });
+
+describe("POST /api/series/import/tvtime", () => {
+  function tmdbFindResponse(tmdbId: number | null) {
+    return { tv_results: tmdbId === null ? [] : [{ id: tmdbId, name: "Breaking Bad" }] };
+  }
+
+  it("sem sessão retorna 401", async () => {
+    const res = await app.request(
+      "/api/series/import/tvtime",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          seriesTvdbId: 81189,
+          title: "Breaking Bad",
+          episodes: [{ season: 1, episode: 1 }],
+        }),
+      },
+      env,
+    );
+
+    expect(res.status).toBe(401);
+  });
+
+  it("corpo inválido (sem episódios) retorna 400", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+
+    const res = await app.request(
+      "/api/series/import/tvtime",
+      {
+        method: "POST",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ seriesTvdbId: 81189, title: "Breaking Bad", episodes: [] }),
+      },
+      env,
+    );
+
+    expect(res.status).toBe(400);
+  });
+
+  it("resolve o tvdb_id na TMDB e marca os episódios assistidos em lote, sem buscar créditos", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    // Só 2 fetches: resolução por tvdb_id + detalhe da série — sem
+    // aggregate_credits nem fallback de sinopse en-US (fetchCredits/
+    // fetchOverviewFallback: false durante import em massa, ver
+    // import.service.ts). Se o código voltar a chamar um 3º fetch, o mock
+    // não tem resposta pra ele e o teste falha.
+    stubTmdbFetchOnce(tmdbFindResponse(1396), tmdbSeriesDetail(1396, "Breaking Bad"));
+
+    const res = await app.request(
+      "/api/series/import/tvtime",
+      {
+        method: "POST",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          seriesTvdbId: 81189,
+          title: "Breaking Bad",
+          episodes: [
+            { season: 1, episode: 1, watchedAt: "2020-03-05T03:05:10.000Z" },
+            { season: 1, episode: 2, watchedAt: "2020-03-05T03:05:10.000Z" },
+          ],
+        }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      seriesTvdbId: number;
+      status: string;
+      episodesImported: number;
+    };
+    expect(body).toMatchObject({ seriesTvdbId: 81189, status: "imported", episodesImported: 2 });
+
+    const db = createDb(env);
+    const watches = await db.query.seriesEpisodeWatch.findMany({
+      where: (table, { eq: eqOp }) => eqOp(table.seriesId, 1396),
+    });
+    expect(watches).toHaveLength(2);
+    expect(watches.map((w) => w.episodeNumber).sort()).toEqual([1, 2]);
+    expect(watches[0]?.watchedAt.toISOString()).toBe("2020-03-05T03:05:10.000Z");
+
+    const seriesRow = await db.query.series.findFirst({
+      where: (table, { eq: eqOp }) => eqOp(table.tmdbId, 1396),
+    });
+    // fetchCredits: false — cast fica null (== "nunca buscou"), não `[]`.
+    expect(seriesRow?.cast).toBeNull();
+  });
+
+  it("tvdb_id sem correspondência na TMDB vira not_found, sem gravar nada", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubTmdbFetchOnce(tmdbFindResponse(null));
+
+    const res = await app.request(
+      "/api/series/import/tvtime",
+      {
+        method: "POST",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          seriesTvdbId: 999999,
+          title: "Série Desconhecida",
+          episodes: [{ season: 1, episode: 1 }],
+        }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { status: string; episodesImported: number };
+    expect(body).toMatchObject({ status: "not_found", episodesImported: 0 });
+  });
+
+  it("série com centenas de episódios grava tudo, em vários INSERTs em lote", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubTmdbFetchOnce(tmdbFindResponse(1500), tmdbSeriesDetail(1500, "One Piece"));
+
+    const episodes = Array.from({ length: 320 }, (_, index) => ({
+      season: 1,
+      episode: index + 1,
+    }));
+    const res = await app.request(
+      "/api/series/import/tvtime",
+      {
+        method: "POST",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ seriesTvdbId: 12345, title: "One Piece", episodes }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { episodesImported: number };
+    expect(body.episodesImported).toBe(320);
+
+    const db = createDb(env);
+    const watches = await db.query.seriesEpisodeWatch.findMany({
+      where: (table, { eq: eqOp }) => eqOp(table.seriesId, 1500),
+    });
+    expect(watches).toHaveLength(320);
+  });
+});

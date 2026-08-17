@@ -108,13 +108,16 @@ export async function getSeriesEntryForUser(
 // interações que não passam por upsertSeriesEntry (favoritar já tinha seu
 // próprio caminho; assistir um episódio, ver episodes.service.ts, também
 // precisa que a série "apareça" em listSeriesEntries mesmo sem nota/review).
+// `options` repassado pra getOrCacheSeries — import em massa (ver
+// series/import.service.ts) usa fetchCredits/fetchOverviewFallback: false.
 export async function ensureSeriesEntry(
   env: Env,
   db: Db,
   userId: string,
   tmdbId: number,
+  options: { fetchCredits?: boolean; fetchOverviewFallback?: boolean } = {},
 ): Promise<{ cachedSeries: CachedSeries; row: SeriesEntryRow }> {
-  const cachedSeries = await getOrCacheSeries(env, db, tmdbId);
+  const cachedSeries = await getOrCacheSeries(env, db, tmdbId, options);
   const existing = await db.query.seriesEntry.findFirst({
     where: and(eq(seriesEntry.userId, userId), eq(seriesEntry.seriesId, tmdbId)),
   });

@@ -1,6 +1,7 @@
 import { TmdbRequestError, tmdbFetch } from "./client";
 import type {
   TmdbEpisodeDetail,
+  TmdbFindResponse,
   TmdbSearchResponse,
   TmdbSeasonDetail,
   TmdbSeriesDetail,
@@ -30,7 +31,37 @@ export async function getPopularSeries(
   return tmdbFetch<TmdbSearchResponse<TmdbSeriesSearchResult>>(env, `/tv/popular?page=${page}`);
 }
 
-export async function getSeriesById(env: Env, tmdbId: number): Promise<TmdbSeriesDetail | null> {
+// Resolve o id de uma série na TMDB a partir de um id de outra fonte (aqui,
+// TVDB — usado pelo importador de CSV do tvtime, ver series/import.service.ts).
+// null quando a TMDB não acha nenhuma série pra esse id (id inválido, ou
+// série que só existe no TVDB).
+export async function findSeriesByTvdbId(env: Env, tvdbId: number): Promise<number | null> {
+  try {
+    const response = await tmdbFetch<TmdbFindResponse>(
+      env,
+      `/find/${tvdbId}?external_source=tvdb_id`,
+    );
+    return response.tv_results[0]?.id ?? null;
+  } catch (error) {
+    if (error instanceof TmdbRequestError && error.status === 404) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+// `fetchOverviewFallback: false` (import em massa do CSV do tvtime, ver
+// series.service.ts/import.service.ts) pula o 2º request de sinopse em
+// inglês — mesmo racional de getMovieById: o plano Free de Workers só dá
+// 10ms de CPU por invocação, e cada request a mais custa round-trip + parse
+// de JSON.
+export async function getSeriesById(
+  env: Env,
+  tmdbId: number,
+  options: { fetchOverviewFallback?: boolean } = {},
+): Promise<TmdbSeriesDetail | null> {
+  const fetchOverviewFallback = options.fetchOverviewFallback ?? true;
+
   let detail: TmdbSeriesDetail;
   try {
     detail = await tmdbFetch<TmdbSeriesDetail>(env, `/tv/${tmdbId}`);
@@ -41,7 +72,7 @@ export async function getSeriesById(env: Env, tmdbId: number): Promise<TmdbSerie
     throw error;
   }
 
-  if (!detail.overview) {
+  if (!detail.overview && fetchOverviewFallback) {
     // Mesmo fallback de getMovieById — sem tradução pt-BR, refaz só a
     // sinopse em inglês; falha nesse segundo request não derruba o
     // detalhe que já veio certo.

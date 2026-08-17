@@ -1,6 +1,8 @@
 import {
   DiscoverSeriesQuerySchema,
   DiscoverSeriesResponseSchema,
+  ImportTvTimeRequestSchema,
+  ImportTvTimeResponseSchema,
   ListSeriesEntriesQuerySchema,
   PaginatedSeriesEntriesResponseSchema,
   RecentlyWatchedSeriesQuerySchema,
@@ -32,6 +34,7 @@ import {
   setEpisodeWatched,
   setSeasonWatched,
 } from "./episodes.service";
+import { importTvTimeSeries } from "./import.service";
 import {
   getOrCacheSeries,
   getPopularSeriesForUser,
@@ -100,6 +103,28 @@ seriesRouter.get("/favorites", async (c) => {
   const db = createDb(c.env);
   const items = await getFavorites(db, c.get("userId"));
   return c.json(SeriesFavoritesResponseSchema.parse({ items }));
+});
+
+// "Conta" > "Importar dados" > CSV do tvtime — 1 série por request (o front
+// já agrupa por série, ver ImportTvTimeCsv.tsx) pra não estourar o teto de
+// CPU do plano Free de Workers processando episódio por episódio.
+seriesRouter.post("/import/tvtime", async (c) => {
+  const json = await c.req.json().catch(() => null);
+  const parsed = ImportTvTimeRequestSchema.safeParse(json);
+  if (!parsed.success) {
+    return c.json({ error: "invalid_body" }, 400);
+  }
+
+  const db = createDb(c.env);
+  const result = await importTvTimeSeries(
+    c.env,
+    db,
+    c.get("userId"),
+    parsed.data.seriesTvdbId,
+    parsed.data.title,
+    parsed.data.episodes,
+  );
+  return c.json(ImportTvTimeResponseSchema.parse(result));
 });
 
 // Mesma lógica da rota pública equivalente (/api/users/:username/series/

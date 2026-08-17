@@ -260,3 +260,36 @@ export const RecentlyWatchedSeriesResponseSchema = z.object({
 });
 
 export type RecentlyWatchedSeriesResponse = z.infer<typeof RecentlyWatchedSeriesResponseSchema>;
+
+// Importação de CSV do tvtime ("Conta" > "Importar dados") — diferente do
+// Filmow (1 linha = 1 filme), o export do tvtime é por EPISÓDIO (uma linha
+// por episódio de cada série), então o front agrupa por série antes de
+// mandar: 1 request = 1 série inteira, com todos os episódios assistidos
+// dela. `season`/`episode` vêm direto do CSV, sem validar contra a TMDB
+// (mesma confiança que setEpisodeWatched já deposita no toggle manual de 1
+// episódio). `watchedAt` vem do `watched_at` do tvtime — ausente/omitido
+// cai no default do banco (momento do import, ver series_episode_watch).
+export const ImportTvTimeEpisodeSchema = z.object({
+  season: z.number().int().min(0),
+  episode: z.number().int().min(1),
+  watchedAt: z.iso.datetime().nullable().optional(),
+});
+
+export type ImportTvTimeEpisode = z.infer<typeof ImportTvTimeEpisodeSchema>;
+
+export const ImportTvTimeRequestSchema = z.object({
+  seriesTvdbId: z.number().int().positive(),
+  title: z.string().min(1).max(300),
+  episodes: z.array(ImportTvTimeEpisodeSchema).min(1).max(5000),
+});
+
+export type ImportTvTimeRequest = z.infer<typeof ImportTvTimeRequestSchema>;
+
+export const ImportTvTimeResponseSchema = z.object({
+  seriesTvdbId: z.number().int(),
+  title: z.string(),
+  status: z.enum(["imported", "not_found", "error"]),
+  episodesImported: z.number().int(),
+});
+
+export type ImportTvTimeResponse = z.infer<typeof ImportTvTimeResponseSchema>;

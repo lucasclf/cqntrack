@@ -148,8 +148,13 @@ export async function getPopularSeriesForUser(
 // dia nem em série semanal, e evita rechecar a TMDB a cada abertura de tela.
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
+// cast === null (nunca chegou a buscar créditos, ver getOrCacheSeries com
+// fetchCredits: false) força revalidação na próxima chamada, mesmo dentro
+// da janela de 24h — senão uma série importada em massa ficaria até um dia
+// inteiro sem elenco/direção na tela de detalhe. Mesmo padrão de
+// movies.service.ts.
 function isStale(row: CachedSeries): boolean {
-  return Date.now() - row.updatedAt.getTime() > CACHE_TTL_MS;
+  return row.cast === null || Date.now() - row.updatedAt.getTime() > CACHE_TTL_MS;
 }
 
 // Top billed cast, mesmo espírito de filme — não a lista completa (evita
@@ -203,10 +208,7 @@ function mapAggregateCreditsToDirectorRows(credits: TmdbAggregateCredits | null)
     }));
 }
 
-function mapSeriesDetailToRow(
-  detail: NonNullable<Awaited<ReturnType<typeof getSeriesById>>>,
-  credits: TmdbAggregateCredits | null,
-) {
+function mapSeriesDetailToRow(detail: NonNullable<Awaited<ReturnType<typeof getSeriesById>>>) {
   return {
     name: detail.name,
     posterPath: detail.poster_path ?? null,
@@ -226,14 +228,15 @@ function mapSeriesDetailToRow(
         airDate: season.air_date && season.air_date.length > 0 ? season.air_date : null,
         posterPath: season.poster_path ?? null,
       })) ?? [],
-    cast: mapAggregateCreditsToCastRows(credits),
+    // `creators` não depende do request de créditos (vem de graça do
+    // próprio `detail.created_by`) — sempre incluído, diferente de
+    // cast/directors abaixo.
     creators:
       detail.created_by?.map((creator) => ({
         personId: creator.id,
         name: creator.name,
         profilePath: creator.profile_path,
       })) ?? [],
-    directors: mapAggregateCreditsToDirectorRows(credits),
     rating: detail.vote_average ?? null,
   };
 }
@@ -242,13 +245,29 @@ function mapSeriesDetailToRow(
 // estiver velho, consulta a TMDB e grava (insert ou update) antes de
 // devolver. `onConflictDoNothing` torna o insert seguro sob requests
 // concorrentes cacheando a mesma série pela primeira vez.
-export async function getOrCacheSeries(env: Env, db: Db, tmdbId: number): Promise<CachedSeries> {
+//
+// `fetchCredits: false` (import em massa do CSV do tvtime, ver
+// import.service.ts) pula o request de elenco/direção — cada série nova já
+// bate o teto de CPU do Worker (JSON grande de aggregate_credits) num lote
+// com várias séries nunca vistas antes; o elenco fica null e backfila
+// sozinho na próxima vez que alguém abrir o detalhe da série de verdade
+// (fetchCredits volta a ser true por padrão), via o isStale acima.
+export async function getOrCacheSeries(
+  env: Env,
+  db: Db,
+  tmdbId: number,
+  options: { fetchCredits?: boolean; fetchOverviewFallback?: boolean } = {},
+): Promise<CachedSeries> {
+  const fetchCredits = options.fetchCredits ?? true;
+
   const [cached] = await db.select().from(series).where(eq(series.tmdbId, tmdbId));
   if (cached && !isStale(cached)) {
     return cached;
   }
 
-  const detail = await getSeriesById(env, tmdbId);
+  const detail = await getSeriesById(env, tmdbId, {
+    fetchOverviewFallback: options.fetchOverviewFallback,
+  });
   if (!detail) {
     // TMDB indisponível ou série removida de lá — melhor devolver o cache
     // velho (se existir) do que quebrar a tela por causa da revalidação.
@@ -260,11 +279,25 @@ export async function getOrCacheSeries(env: Env, db: Db, tmdbId: number): Promis
 
   // Elenco/direção vêm de um request separado — se falhar, não derruba a
   // revalidação da série em si, só fica sem cast/directors até a próxima
-  // janela de 24h. `creators` não depende desse request (vem do próprio
-  // `detail.created_by`).
-  const credits = await getSeriesAggregateCredits(env, tmdbId).catch(() => null);
+  // janela de 24h. `fetchCredits: false` pula esse request de propósito
+  // (ver comentário acima) — nesse caso cast/directors ficam de fora do
+  // payload (em vez de virarem `[]`), pra um update não apagar elenco que
+  // já tinha sido buscado antes, e um insert novo ficar com a coluna null
+  // (== "nunca buscou", ver isStale) em vez de "buscou e não achou ninguém".
+  const baseValues = mapSeriesDetailToRow(detail);
+  let values: typeof baseValues & {
+    cast?: ReturnType<typeof mapAggregateCreditsToCastRows>;
+    directors?: ReturnType<typeof mapAggregateCreditsToDirectorRows>;
+  } = baseValues;
 
-  const values = mapSeriesDetailToRow(detail, credits);
+  if (fetchCredits) {
+    const credits = await getSeriesAggregateCredits(env, tmdbId).catch(() => null);
+    values = {
+      ...baseValues,
+      cast: mapAggregateCreditsToCastRows(credits),
+      directors: mapAggregateCreditsToDirectorRows(credits),
+    };
+  }
 
   if (cached) {
     await db.update(series).set(values).where(eq(series.tmdbId, tmdbId));

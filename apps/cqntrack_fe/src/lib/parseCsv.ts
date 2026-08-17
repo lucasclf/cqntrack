@@ -63,18 +63,28 @@ export function parseCsv(text: string): string[][] {
 
 // Lado inverso do parser acima — só entre aspas (e dobra aspas internas)
 // quando o campo realmente precisa (contém vírgula, aspas ou quebra de
-// linha), pra gerar um CSV legível que o próprio parseCsv (e o Filmow) lê
-// de volta sem ambiguidade.
-function escapeCsvField(value: string): string {
+// linha), pra gerar um CSV legível que o próprio parseCsv (e o Filmow/
+// tvtime) lê de volta sem ambiguidade.
+export function escapeCsvField(value: string): string {
   if (/[",\r\n]/.test(value)) {
     return `"${value.replace(/"/g, '""')}"`;
   }
   return value;
 }
 
+// Serializa um header + linhas de volta pro formato CSV RFC 4180 — usado
+// pelos CSVs de reexportação de itens que falharam (Filmow e tvtime), sem
+// nenhuma transformação além do escape necessário.
+export function rowsToCsv(header: string[], rows: string[][]): string {
+  return [header, ...rows].map((row) => row.map(escapeCsvField).join(",")).join("\r\n");
+}
+
 // Formato de saída igual ao de entrada esperado por ImportFilmowCsv (uma
 // coluna "Title") — usado pra gerar o CSV de reexportação dos títulos que
 // falharam mesmo depois das tentativas de novo.
 export function titlesToCsv(titles: string[]): string {
-  return ["Title", ...titles.map(escapeCsvField)].join("\r\n");
+  return rowsToCsv(
+    ["Title"],
+    titles.map((title) => [title]),
+  );
 }

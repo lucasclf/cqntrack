@@ -95,14 +95,17 @@ describe("Account", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Senha atual incorreta");
   });
 
-  it("mostra a seção de importar dados com a opção de CSV do Filmow", () => {
+  it("mostra a seção de importar dados com as opções de CSV do Filmow e do tvtime", () => {
     renderAccount();
 
     expect(screen.getByRole("heading", { name: "Importar dados" })).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Filmes assistidos (Filmow, CSV)" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Escolher arquivo CSV")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Episódios assistidos (tvtime, CSV)" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("Escolher arquivo CSV")).toHaveLength(2);
   });
 
   it("desloga e navega pro login", async () => {
