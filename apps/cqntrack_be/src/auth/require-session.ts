@@ -26,6 +26,17 @@ export const requireSession = createMiddleware<AuthedEnv>(async (c, next) => {
     return c.json({ error: "unauthorized" }, 401);
   }
 
+  // Backstop pra rotas que fazem chamada a API externa por request (busca/
+  // descobrir de TMDB, Google Books) — sem isso, um bug de loop no front ou
+  // uma conta comprometida martela a cota compartilhada dessas APIs (a do
+  // Google Books é por projeto/dia) sem nada barrando. Por userId, não por
+  // IP (já autenticado aqui) — mesmo binding de rate limit "de verdade" do
+  // Cloudflare usado em rate-limit.ts, não storage em memória do Worker.
+  const { success } = await c.env.API_RATE_LIMITER.limit({ key: session.user.id });
+  if (!success) {
+    return c.json({ error: "rate_limited" }, 429);
+  }
+
   c.set("userId", session.user.id);
   c.set("userEmail", session.user.email);
   c.set("userName", session.user.name);

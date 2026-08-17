@@ -20,7 +20,10 @@ export async function getBookById(
   googleBooksId: string,
 ): Promise<GoogleBooksVolume | null> {
   try {
-    return await googleBooksFetch<GoogleBooksVolume>(env, `/volumes/${googleBooksId}`);
+    return await googleBooksFetch<GoogleBooksVolume>(
+      env,
+      `/volumes/${encodeURIComponent(googleBooksId)}`,
+    );
   } catch (error) {
     if (error instanceof GoogleBooksRequestError && error.status === 404) {
       return null;

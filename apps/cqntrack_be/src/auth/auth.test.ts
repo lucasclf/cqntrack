@@ -114,3 +114,30 @@ describe("autenticação", () => {
     });
   });
 });
+
+// Fica no fim do arquivo de propósito — depois desse teste o contador do
+// AUTH_RATE_LIMITER (chave "unknown", já que o ambiente de teste não manda
+// CF-Connecting-IP) fica no teto pro resto do arquivo. Nenhum outro teste
+// (nem neste arquivo, nem em outro) chama sign-in de novo depois deste.
+describe("rate limit de login (AUTH_RATE_LIMITER)", () => {
+  it("bloqueia login com 429 depois de passar do limite de tentativas", async () => {
+    const user = uniqueUser();
+    await signUp(user);
+
+    // Margem generosa acima do limite configurado (100/60s, ver
+    // wrangler.toml): a janela do rate limiter é por tempo, não por
+    // execução do teste, então um número justo (tipo 101-105) é frágil —
+    // dependendo de quando o teste roda dentro da janela, pode precisar
+    // de mais tentativas líquidas pra cruzar o teto de novo.
+    let sawRateLimited = false;
+    for (let attempt = 0; attempt < 300; attempt++) {
+      const res = await signIn(user.email, "senhaerrada");
+      if (res.status === 429) {
+        sawRateLimited = true;
+        break;
+      }
+    }
+
+    expect(sawRateLimited).toBe(true);
+  }, 30000);
+});

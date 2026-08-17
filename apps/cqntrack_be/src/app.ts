@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { activityRouter } from "./activity/activity.routes";
 import { createAuth } from "./auth/auth";
+import { authRateLimit } from "./auth/rate-limit";
 import { requireSession } from "./auth/require-session";
 import { booksRouter } from "./books/books.routes";
 import { bookListsRouter } from "./books/lists.routes";
@@ -25,6 +26,15 @@ app.use(
   }),
 );
 
+// Rate limit extra (ver rate-limit.ts) só em sign-in — é o endpoint que
+// importa contra força bruta (adivinhar senha de conta existente); sign-up
+// é criação de conta nova, ameaça diferente (fora de escopo aqui) e é
+// chamado o tempo todo pelos testes via createAuthenticatedUser, então
+// rate-limitar ele também quebraria a suíte inteira sob o mesmo IP
+// sintético. Registrado antes do catch-all abaixo; o Hono encadeia os dois
+// porque as rotas casam com o mesmo request (mesmo padrão do cors() em
+// "/api/*" + rotas específicas).
+app.post("/api/auth/sign-in/email", authRateLimit);
 app.on(["POST", "GET"], "/api/auth/*", (c) => createAuth(c.env).handler(c.req.raw));
 
 app.get("/api/health", (c) => {

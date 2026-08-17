@@ -25,8 +25,14 @@ export function createAuth(env: Env) {
             enabled: true,
             domain: env.COOKIE_DOMAIN,
           },
+          // "lax" basta: FE (tracker.cqn.xyz.br) e BE (api.track.cqn.xyz.br)
+          // são subdomínios do mesmo site registrável (cqn.xyz.br), e
+          // crossSubDomainCookies acima já cobre o compartilhamento entre
+          // eles — "none" exporia o cookie a mais cenários cross-site do
+          // que o necessário, dependendo só da allowlist de CORS como
+          // barreira contra CSRF.
           defaultCookieAttributes: {
-            sameSite: "none",
+            sameSite: "lax",
             secure: true,
             httpOnly: true,
           },
