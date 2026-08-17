@@ -3,15 +3,13 @@ import {
   type GameStatus,
   type PaginatedGameEntriesResponse,
 } from "@cqntrack/shared";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useSearchParams } from "react-router";
-import { apiClient } from "../lib/api-client";
+import { useDebouncedValue } from "../lib/useDebouncedValue";
+import { usePaginatedEntries } from "../lib/usePaginatedEntries";
 import { EntryFilters, type EntrySortField } from "./EntryFilters";
 import { GameCard } from "./GameCard";
 import styles from "./MyEntries.module.css";
-import { useDebouncedValue } from "../lib/useDebouncedValue";
-
-type LoadStatus = "loading" | "ready" | "error";
 
 // Lida só uma vez, na montagem — valor inicial do filtro quando se chega
 // aqui por um link com ?status= (estatística clicável da home, ver
@@ -31,50 +29,21 @@ export function MyEntries() {
   const debouncedPlatform = useDebouncedValue(platform, 300).trim();
   const [sortBy, setSortBy] = useState<EntrySortField>("updatedAt");
   const [order, setOrder] = useState<"asc" | "desc">("desc");
-  const [page, setPage] = useState(1);
 
-  // Volta pra página 1 sempre que um filtro/ordenação muda — ajustado durante
-  // o render (mesmo padrão de GameSearch/GameDetail), não dentro do efeito.
-  const filtersKey = JSON.stringify({ status, favoriteOnly, debouncedPlatform, sortBy, order });
-  const [trackedFiltersKey, setTrackedFiltersKey] = useState(filtersKey);
-  if (filtersKey !== trackedFiltersKey) {
-    setTrackedFiltersKey(filtersKey);
-    setPage(1);
-  }
-
-  const [data, setData] = useState<PaginatedGameEntriesResponse | null>(null);
-  const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
-
-  useEffect(() => {
-    let cancelled = false;
-    const params = new URLSearchParams();
-    if (status) params.set("status", status);
-    if (favoriteOnly) params.set("favorite", "true");
-    if (debouncedPlatform) params.set("platform", debouncedPlatform);
-    params.set("sortBy", sortBy);
-    params.set("order", order);
-    params.set("page", String(page));
-
-    apiClient
-      .get<PaginatedGameEntriesResponse>(`/api/games/entries?${params.toString()}`)
-      .then((response) => {
-        if (!cancelled) {
-          setData(response);
-          setLoadStatus("ready");
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setLoadStatus("error");
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [status, favoriteOnly, debouncedPlatform, sortBy, order, page]);
-
-  const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
+  const { data, loadStatus, page, setPage, totalPages } =
+    usePaginatedEntries<PaginatedGameEntriesResponse>(
+      (page) => {
+        const params = new URLSearchParams();
+        if (status) params.set("status", status);
+        if (favoriteOnly) params.set("favorite", "true");
+        if (debouncedPlatform) params.set("platform", debouncedPlatform);
+        params.set("sortBy", sortBy);
+        params.set("order", order);
+        params.set("page", String(page));
+        return `/api/games/entries?${params.toString()}`;
+      },
+      { status, favoriteOnly, debouncedPlatform, sortBy, order },
+    );
 
   return (
     <div className={styles.page}>

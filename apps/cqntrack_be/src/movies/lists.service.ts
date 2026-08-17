@@ -7,6 +7,7 @@ import type {
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import type { createDb } from "../db/client";
 import { activity, movieList, movieListItem } from "../db/schema";
+import { isUniqueConstraintError } from "../lib/is-unique-constraint-error";
 import { withoutUndefined } from "../lib/without-undefined";
 import { getOrCacheMovie, mapCachedMovieToSummary, toActivitySnapshot } from "./movies.service";
 
@@ -25,20 +26,6 @@ export class DuplicateMovieListNameError extends Error {
     super(`Já existe uma lista chamada "${name}"`);
     this.name = "DuplicateMovieListNameError";
   }
-}
-
-// O D1/drizzle envolve o erro real do SQLite numa cadeia de `cause`
-// (DrizzleQueryError -> D1_ERROR -> SQLITE_CONSTRAINT) — precisa percorrer
-// a cadeia toda, checar só error.message não é suficiente.
-function isUniqueConstraintError(error: unknown): boolean {
-  let current: unknown = error;
-  while (current instanceof Error) {
-    if (current.message.includes("UNIQUE constraint failed")) {
-      return true;
-    }
-    current = current.cause;
-  }
-  return false;
 }
 
 async function withItemCount(db: Db, rows: MovieListRow[]): Promise<MovieList[]> {

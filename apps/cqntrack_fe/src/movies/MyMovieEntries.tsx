@@ -3,14 +3,12 @@ import {
   type MovieStatus,
   type PaginatedMovieEntriesResponse,
 } from "@cqntrack/shared";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useSearchParams } from "react-router";
-import { apiClient } from "../lib/api-client";
+import { usePaginatedEntries } from "../lib/usePaginatedEntries";
 import { MovieCard } from "./MovieCard";
 import { MovieEntryFilters, type MovieEntrySortField } from "./MovieEntryFilters";
 import styles from "./MyMovieEntries.module.css";
-
-type LoadStatus = "loading" | "ready" | "error";
 
 // Lida só uma vez, na montagem — é o valor inicial do filtro quando se
 // chega aqui por um link com ?status= (ex.: estatística clicável da home,
@@ -29,49 +27,20 @@ export function MyMovieEntries() {
   const [status, setStatus] = useState<MovieStatus | "">(() => initialStatusFromUrl(searchParams));
   const [sortBy, setSortBy] = useState<MovieEntrySortField>("updatedAt");
   const [order, setOrder] = useState<"asc" | "desc">("desc");
-  const [page, setPage] = useState(1);
 
-  // Volta pra página 1 sempre que um filtro/ordenação muda — ajustado durante
-  // o render (mesmo padrão de MySeriesEntries), não dentro do efeito.
-  const filtersKey = JSON.stringify({ favoriteOnly, status, sortBy, order });
-  const [trackedFiltersKey, setTrackedFiltersKey] = useState(filtersKey);
-  if (filtersKey !== trackedFiltersKey) {
-    setTrackedFiltersKey(filtersKey);
-    setPage(1);
-  }
-
-  const [data, setData] = useState<PaginatedMovieEntriesResponse | null>(null);
-  const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
-
-  useEffect(() => {
-    let cancelled = false;
-    const params = new URLSearchParams();
-    if (favoriteOnly) params.set("favorite", "true");
-    if (status) params.set("status", status);
-    params.set("sortBy", sortBy);
-    params.set("order", order);
-    params.set("page", String(page));
-
-    apiClient
-      .get<PaginatedMovieEntriesResponse>(`/api/movies/entries?${params.toString()}`)
-      .then((response) => {
-        if (!cancelled) {
-          setData(response);
-          setLoadStatus("ready");
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setLoadStatus("error");
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [favoriteOnly, status, sortBy, order, page]);
-
-  const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
+  const { data, loadStatus, page, setPage, totalPages } =
+    usePaginatedEntries<PaginatedMovieEntriesResponse>(
+      (page) => {
+        const params = new URLSearchParams();
+        if (favoriteOnly) params.set("favorite", "true");
+        if (status) params.set("status", status);
+        params.set("sortBy", sortBy);
+        params.set("order", order);
+        params.set("page", String(page));
+        return `/api/movies/entries?${params.toString()}`;
+      },
+      { favoriteOnly, status, sortBy, order },
+    );
 
   return (
     <div className={styles.page}>
