@@ -42,7 +42,8 @@ cqntrack/
 ## Autenticação
 
 - better-auth cuida de sessão/login
-- Nenhuma rota que exponha dados pessoais (itens marcados como consumidos, listas, etc.) deve ficar acessível sem sessão válida
+- Rotas que alteram dado do usuário (marcar item como consumido, criar/editar lista, favoritar, etc.) exigem sessão válida
+- **Exceção deliberada:** o perfil público (`/@:username` e as rotas `/api/users/:username/*`) expõe marcações, favoritos, listas, review e nota pessoal **sem exigir sessão** — é a proposta do perfil público (no espírito de Letterboxd/Trakt: qualquer um pode ver o que o dono do perfil consumiu, avaliou e escreveu). Não é uma lacuna a corrigir; é o comportamento esperado dessas rotas especificamente.
 
 ## Integração com APIs externas
 
