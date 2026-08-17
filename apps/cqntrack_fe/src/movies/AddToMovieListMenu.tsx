@@ -1,6 +1,7 @@
 import type { MovieList, MovieListsResponse } from "@cqntrack/shared";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { apiClient } from "../lib/api-client";
+import { useCloseOnOutsideClick } from "../lib/useCloseOnOutsideClick";
 import styles from "./AddToMovieListMenu.module.css";
 
 interface AddToMovieListMenuProps {
@@ -17,6 +18,8 @@ export function AddToMovieListMenu({ tmdbId }: AddToMovieListMenuProps) {
   const [lists, setLists] = useState<MovieList[] | null>(null);
   const [addedIds, setAddedIds] = useState<ReadonlySet<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  useCloseOnOutsideClick(wrapperRef, open, () => setOpen(false));
 
   useEffect(() => {
     if (!open || lists !== null) {
@@ -40,7 +43,7 @@ export function AddToMovieListMenu({ tmdbId }: AddToMovieListMenuProps) {
   }
 
   return (
-    <div className={styles.wrapper}>
+    <div className={styles.wrapper} ref={wrapperRef}>
       <button
         type="button"
         className={styles.toggle}

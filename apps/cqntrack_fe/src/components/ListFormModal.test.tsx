@@ -57,4 +57,39 @@ describe("ListFormModal", () => {
     expect(onSubmit).not.toHaveBeenCalled();
     expect(onClose).toHaveBeenCalled();
   });
+
+  it("Esc fecha o modal", () => {
+    const onClose = vi.fn();
+    render(<ListFormModal mode="create" onSubmit={vi.fn()} onClose={onClose} />);
+
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("Tab no último elemento focável volta pro primeiro (focus trap)", () => {
+    render(<ListFormModal mode="create" onSubmit={vi.fn()} onClose={vi.fn()} />);
+
+    const nameInput = screen.getByLabelText("Nome");
+    const saveButton = screen.getByRole("button", { name: "Salvar" });
+    saveButton.focus();
+    expect(document.activeElement).toBe(saveButton);
+
+    fireEvent.keyDown(document, { key: "Tab" });
+
+    expect(document.activeElement).toBe(nameInput);
+  });
+
+  it("Shift+Tab no primeiro elemento focável vai pro último (focus trap)", () => {
+    render(<ListFormModal mode="create" onSubmit={vi.fn()} onClose={vi.fn()} />);
+
+    const nameInput = screen.getByLabelText("Nome");
+    const saveButton = screen.getByRole("button", { name: "Salvar" });
+    nameInput.focus();
+    expect(document.activeElement).toBe(nameInput);
+
+    fireEvent.keyDown(document, { key: "Tab", shiftKey: true });
+
+    expect(document.activeElement).toBe(saveButton);
+  });
 });

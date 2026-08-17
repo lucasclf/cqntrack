@@ -1,6 +1,11 @@
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { ApiError } from "../lib/api-client";
 import styles from "./ListFormModal.module.css";
+
+// Seletor de elementos focáveis pra restringir o Tab dentro do modal —
+// mesma lista de tags que qualquer implementação simples de focus trap usa.
+const FOCUSABLE_SELECTOR =
+  'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
 export interface ListFormValues {
   name: string;
@@ -22,6 +27,38 @@ export function ListFormModal({ mode, initialValues, onSubmit, onClose }: ListFo
   const [description, setDescription] = useState(initialValues?.description ?? "");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  // Esc fecha o modal; Tab/Shift+Tab ficam presos dentro dele (focus trap) —
+  // sem isso, apesar do aria-modal="true", dava pra sair do modal com Tab e
+  // interagir com o conteúdo por trás do overlay.
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (event.key !== "Tab" || !modalRef.current) {
+        return;
+      }
+      const focusable = modalRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
+      if (focusable.length === 0) {
+        return;
+      }
+      const first = focusable[0]!;
+      const last = focusable[focusable.length - 1]!;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -49,6 +86,7 @@ export function ListFormModal({ mode, initialValues, onSubmit, onClose }: ListFo
         aria-modal="true"
         aria-label={mode === "create" ? "Nova lista" : "Editar lista"}
         onClick={(event) => event.stopPropagation()}
+        ref={modalRef}
       >
         <h2>{mode === "create" ? "Nova lista" : "Editar lista"}</h2>
         <form onSubmit={handleSubmit}>

@@ -1,4 +1,4 @@
-import type { SVGProps } from "react";
+import type { FocusEvent, SVGProps } from "react";
 import { useState } from "react";
 import styles from "./StarRating.module.css";
 
@@ -33,8 +33,23 @@ export function StarRating({ value, onChange }: StarRatingProps) {
     onChange?.(clickedValue === value ? null : clickedValue);
   }
 
+  // onBlur no wrapper (não em cada botão) — só limpa o preview quando o foco
+  // sai do grupo de estrelas inteiro, não a cada troca de botão dentro dele
+  // (senão o preview piscaria apagado/aceso entre uma metade e outra ao
+  // navegar com Tab).
+  function handleBlur(event: FocusEvent<HTMLDivElement>) {
+    if (!event.currentTarget.contains(event.relatedTarget)) {
+      setHoverValue(null);
+    }
+  }
+
   return (
-    <div className={styles.stars} aria-label="Nota" onMouseLeave={() => setHoverValue(null)}>
+    <div
+      className={styles.stars}
+      aria-label="Nota"
+      onMouseLeave={() => setHoverValue(null)}
+      onBlur={handleBlur}
+    >
       {STARS.map((starIndex) => (
         <span key={starIndex} className={styles.starSlot}>
           <StarIcon className={styles.starBase} />
@@ -51,6 +66,7 @@ export function StarRating({ value, onChange }: StarRatingProps) {
                 className={styles.starHalfLeft}
                 aria-label={`${starIndex - 0.5} estrelas`}
                 onMouseEnter={() => setHoverValue(starIndex - 0.5)}
+                onFocus={() => setHoverValue(starIndex - 0.5)}
                 onClick={() => handleClick(starIndex - 0.5)}
               />
               <button
@@ -58,6 +74,7 @@ export function StarRating({ value, onChange }: StarRatingProps) {
                 className={styles.starHalfRight}
                 aria-label={`${starIndex} estrelas`}
                 onMouseEnter={() => setHoverValue(starIndex)}
+                onFocus={() => setHoverValue(starIndex)}
                 onClick={() => handleClick(starIndex)}
               />
             </>
