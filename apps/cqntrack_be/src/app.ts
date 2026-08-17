@@ -65,3 +65,15 @@ app.route("/api/movies-lists", movieListsRouter);
 app.route("/api/people", peopleRouter);
 app.route("/api/activity", activityRouter);
 app.route("/api/users", usersRouter);
+
+// Handler central pra qualquer exceção não tratada por uma rota (bug de
+// schema/validação, erro do D1, instabilidade de API externa não coberta
+// por um try/catch específico). Sem isso, o erro sobe cru até o handler
+// padrão do Hono, sem log nenhum — o próximo incidente de produção (como o
+// de estouro de CPU do import de CSV) só apareceria de novo via relato do
+// usuário. `console.error` é capturado pelos Workers Logs ([observability]
+// no wrangler.toml), visível via `wrangler tail`/dashboard.
+app.onError((err, c) => {
+  console.error("Erro não tratado:", err);
+  return c.json({ error: "internal_error" }, 500);
+});
