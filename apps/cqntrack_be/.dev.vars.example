@@ -6,3 +6,5 @@ IGDB_CLIENT_ID=client-id-do-app-criado-no-twitch-developer-console
 IGDB_CLIENT_SECRET=client-secret-do-mesmo-app
 TMDB_ACCESS_TOKEN=api-read-access-token-v4-gerado-em-themoviedb-org
 GOOGLE_BOOKS_API_KEY=api-key-gerada-no-google-cloud-console-com-books-api-habilitada
+RESEND_API_KEY=api-key-gerada-no-dashboard-do-resend-escopo-sending-access
+EMAIL_FROM=cqntrack <noreply@seu-dominio-verificado-no-resend>

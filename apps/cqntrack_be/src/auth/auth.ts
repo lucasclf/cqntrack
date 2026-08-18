@@ -2,6 +2,8 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { bearer, username } from "better-auth/plugins";
 import { createDb } from "../db/client";
+import { sendEmail } from "../integrations/resend/client";
+import { verificationEmailHtml } from "../integrations/resend/templates";
 
 // Montado por request: o binding env.DB só existe dentro do handler do Worker,
 // então a instância do better-auth não pode ser criada em escopo de módulo.
@@ -20,8 +22,24 @@ export function createAuth(env: Env) {
     trustedOrigins: [env.FRONTEND_ORIGIN, env.MOBILE_APP_ORIGIN],
     emailAndPassword: {
       enabled: true,
-      // Sem provedor de e-mail configurado ainda; débito técnico consciente.
-      requireEmailVerification: false,
+      requireEmailVerification: true,
+    },
+    // Confirmado em teste: nesse runtime (Cloudflare Workers/D1),
+    // sendVerificationEmail já roda em segundo plano por conta própria —
+    // o cadastro responde sem esperar o Resend, e se o envio falhar isso só
+    // vira log de erro (não derruba o request nem cria uma exceção visível).
+    // A conta fica criada normalmente, só sem o e-mail de verificação chegar.
+    emailVerification: {
+      sendVerificationEmail: async ({ user, url }) => {
+        await sendEmail(env, {
+          to: user.email,
+          subject: "Confirme seu e-mail — cqntrack",
+          html: verificationEmailHtml(url),
+        });
+      },
+      // Se alguém tentar logar antes de verificar, manda um link novo em vez
+      // de só bloquear — evita beco sem saída pra quem perdeu o e-mail original.
+      sendOnSignIn: true,
     },
     plugins: [
       username({ minUsernameLength: 3, maxUsernameLength: 30 }),

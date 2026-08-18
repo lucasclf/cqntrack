@@ -21,9 +21,9 @@ vi.mock("react-router", async (importOriginal) => {
   return { ...actual, useNavigate: () => navigateMock };
 });
 
-function renderLogin() {
+function renderLogin(initialEntry = "/login") {
   render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <Login />
     </MemoryRouter>,
   );
@@ -94,6 +94,33 @@ describe("Login", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("E-mail ou senha inválidos.");
     expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it("mostra mensagem específica quando o login falha por e-mail não verificado", async () => {
+    signInEmailMock.mockResolvedValue({ error: { code: "EMAIL_NOT_VERIFIED" } });
+    renderLogin();
+
+    fireEvent.change(screen.getByLabelText("E-mail"), {
+      target: { value: "teste@cqntrack.dev" },
+    });
+    fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "segredo123" } });
+    fireEvent.click(screen.getByRole("button", { name: "Entrar" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Confirme seu e-mail antes de entrar — reenviamos o link de confirmação.",
+    );
+  });
+
+  it("mostra banner de sucesso quando vem de ?verified=1 (link de confirmação clicado)", () => {
+    renderLogin("/login?verified=1");
+
+    expect(screen.getByText("E-mail confirmado! Faça login.")).toBeInTheDocument();
+  });
+
+  it("mostra mensagem de link expirado quando vem de ?error=TOKEN_EXPIRED", () => {
+    renderLogin("/login?error=TOKEN_EXPIRED");
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/link de confirmação expirou/);
   });
 
   it("mostra erro de validação sem chamar signIn.email quando a senha é curta demais", () => {

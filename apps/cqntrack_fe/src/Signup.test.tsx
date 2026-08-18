@@ -53,8 +53,8 @@ describe("Signup", () => {
     expect(screen.getByLabelText("Senha")).toBeInTheDocument();
   });
 
-  it("chama signUp.email com os dados do formulário e navega para / em caso de sucesso", async () => {
-    signUpEmailMock.mockResolvedValue({ error: null });
+  it("chama signUp.email com os dados do formulário, incluindo callbackURL de verificação", async () => {
+    signUpEmailMock.mockResolvedValue({ data: { token: null }, error: null });
     renderSignup();
 
     fillValidForm();
@@ -66,8 +66,30 @@ describe("Signup", () => {
         username: "teste_user",
         email: "teste@cqntrack.dev",
         password: "segredo123",
+        callbackURL: `${window.location.origin}/login?verified=1`,
       });
     });
+  });
+
+  it("com requireEmailVerification ligado (token: null), mostra tela de 'confirme seu e-mail' em vez de navegar", async () => {
+    signUpEmailMock.mockResolvedValue({ data: { token: null }, error: null });
+    renderSignup();
+
+    fillValidForm();
+    fireEvent.click(screen.getByRole("button", { name: "Criar conta" }));
+
+    expect(await screen.findByRole("heading", { name: "Quase lá!" })).toBeInTheDocument();
+    expect(navigateMock).not.toHaveBeenCalled();
+    expect(refetchSessionMock).not.toHaveBeenCalled();
+  });
+
+  it("se o cadastro já vier com sessão (token presente), navega para / normalmente", async () => {
+    signUpEmailMock.mockResolvedValue({ data: { token: "sessao-token" }, error: null });
+    renderSignup();
+
+    fillValidForm();
+    fireEvent.click(screen.getByRole("button", { name: "Criar conta" }));
+
     await waitFor(() => expect(navigateMock).toHaveBeenCalledWith("/"));
     expect(refetchSessionMock).toHaveBeenCalled();
   });

@@ -15,6 +15,7 @@ export function Signup() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [awaitingVerification, setAwaitingVerification] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -29,11 +30,12 @@ export function Signup() {
     }
 
     setSubmitting(true);
-    const { error: signUpError } = await authClient.signUp.email({
+    const { data, error: signUpError } = await authClient.signUp.email({
       name: parsed.data.name,
       username: parsed.data.username,
       email: parsed.data.email,
       password: parsed.data.password,
+      callbackURL: `${import.meta.env.VITE_WEB_ORIGIN || window.location.origin}/login?verified=1`,
     });
     setSubmitting(false);
 
@@ -42,11 +44,36 @@ export function Signup() {
       return;
     }
 
+    // Com requireEmailVerification ligado, o cadastro não cria sessão — a
+    // API volta com token: null e o usuário só consegue entrar depois de
+    // clicar no link mandado por e-mail (ver auth.ts no BE).
+    if (!data?.token) {
+      setAwaitingVerification(true);
+      return;
+    }
+
     // Mesmo motivo do Login.tsx: espera a sessão compartilhada refletir o
     // cadastro recém-feito antes de navegar, senão RequireAuth manda de
     // volta pro login por causa do estado velho.
     await refetchSession();
     void navigate("/");
+  }
+
+  if (awaitingVerification) {
+    return (
+      <AuthLayout>
+        <h1>Quase lá!</h1>
+        <p className={layoutStyles.subtitle}>
+          Mandamos um link de confirmação pro seu e-mail. Clique nele pra ativar sua conta e poder
+          entrar.
+        </p>
+        <p className={styles.loginHint}>
+          <Link to="/login" className={layoutStyles.link}>
+            Voltar pra tela de entrar
+          </Link>
+        </p>
+      </AuthLayout>
+    );
   }
 
   return (

@@ -147,6 +147,12 @@
   margin: 0 0 16px;
 }
 
+.success {
+  color: var(--accent);
+  font-size: 13px;
+  margin: 0 0 16px;
+}
+
 .link {
   color: var(--accent);
   text-decoration: none;

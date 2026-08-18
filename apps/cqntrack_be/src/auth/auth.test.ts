@@ -1,6 +1,9 @@
 import { env } from "cloudflare:workers";
-import { describe, expect, it } from "vitest";
+import { eq } from "drizzle-orm";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { app } from "../app";
+import { createDb } from "../db/client";
+import { user } from "../db/schema";
 
 const PASSWORD = "senha12345";
 
@@ -50,43 +53,94 @@ async function signIn(email: string, password: string) {
   );
 }
 
+// Marca o usuário como verificado direto no banco — usado por testes que só
+// precisam de um usuário já verificado, sem testar o clique no link em si
+// (isso é coberto separadamente no describe "confirmação de e-mail").
+async function verifyDirectly(email: string) {
+  await createDb(env).update(user).set({ emailVerified: true }).where(eq(user.email, email));
+}
+
+// Toda rota de cadastro/login passa por sendVerificationEmail (ver auth.ts),
+// que chama o Resend via fetch — sem isso, qualquer signUp() nesse arquivo
+// bateria de verdade na internet. Um mock genérico de sucesso é o padrão;
+// testes que precisam inspecionar a chamada sobrescrevem com o próprio stub.
+beforeEach(() => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 200 })));
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
 describe("autenticação", () => {
-  it("cadastro com dados válidos cria sessão", async () => {
-    const res = await signUp(uniqueUser());
+  it("cadastro com dados válidos cria o usuário, mas não loga (e-mail ainda não verificado)", async () => {
+    const testUser = uniqueUser();
+    const res = await signUp(testUser);
 
     expect(res.status).toBe(200);
-    expect(res.headers.get("set-cookie")).toContain("better-auth.session_token=");
+    expect(res.headers.get("set-cookie")).toBeNull();
+    await expect(res.json()).resolves.toMatchObject({ token: null });
+
+    const [dbUser] = await createDb(env)
+      .select({ emailVerified: user.emailVerified })
+      .from(user)
+      .where(eq(user.email, testUser.email));
+    expect(dbUser?.emailVerified).toBe(false);
   });
 
-  it("cadastro com e-mail duplicado falha", async () => {
-    const user = uniqueUser();
-    await signUp(user);
-    const res = await signUp({ ...user, username: `${user.username}_2` });
+  it("cadastro com e-mail já cadastrado devolve resposta genérica (sem revelar que o e-mail existe)", async () => {
+    // Proteção anti-enumeração do próprio better-auth, automática quando
+    // requireEmailVerification está ligado: em vez de um erro distinguível
+    // (que revelaria a um atacante quais e-mails já têm conta), devolve um
+    // 200 com token: null idêntico ao de um cadastro novo de verdade — sem
+    // criar usuário nenhum nem mandar e-mail.
+    const testUser = uniqueUser();
+    await signUp(testUser);
+    const res = await signUp({ ...testUser, username: `${testUser.username}_2` });
 
-    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toMatchObject({ token: null });
+
+    const usersWithEmail = await createDb(env)
+      .select({ username: user.username })
+      .from(user)
+      .where(eq(user.email, testUser.email));
+    expect(usersWithEmail).toEqual([{ username: testUser.username }]);
   });
 
   it("cadastro com username duplicado falha", async () => {
-    const user = uniqueUser();
-    await signUp(user);
-    const res = await signUp({ ...user, email: `outro-${crypto.randomUUID()}@cqntrack.dev` });
+    const testUser = uniqueUser();
+    await signUp(testUser);
+    const res = await signUp({ ...testUser, email: `outro-${crypto.randomUUID()}@cqntrack.dev` });
 
     expect(res.status).toBeGreaterThanOrEqual(400);
   });
 
-  it("login com credenciais corretas retorna sessão válida", async () => {
-    const user = uniqueUser();
-    await signUp(user);
-    const res = await signIn(user.email, user.password);
+  it("login antes de verificar o e-mail retorna 403 EMAIL_NOT_VERIFIED", async () => {
+    const testUser = uniqueUser();
+    await signUp(testUser);
+    const res = await signIn(testUser.email, testUser.password);
+
+    expect(res.status).toBe(403);
+    await expect(res.json()).resolves.toMatchObject({ code: "EMAIL_NOT_VERIFIED" });
+  });
+
+  it("login com e-mail já verificado retorna sessão válida", async () => {
+    const testUser = uniqueUser();
+    await signUp(testUser);
+    await verifyDirectly(testUser.email);
+
+    const res = await signIn(testUser.email, testUser.password);
 
     expect(res.status).toBe(200);
     expect(res.headers.get("set-cookie")).toContain("better-auth.session_token=");
   });
 
   it("login com senha errada falha", async () => {
-    const user = uniqueUser();
-    await signUp(user);
-    const res = await signIn(user.email, "senhaerrada");
+    const testUser = uniqueUser();
+    await signUp(testUser);
+    await verifyDirectly(testUser.email);
+    const res = await signIn(testUser.email, "senhaerrada");
 
     expect(res.status).toBeGreaterThanOrEqual(400);
   });
@@ -98,20 +152,103 @@ describe("autenticação", () => {
   });
 
   it("GET /api/me com cookie de sessão válido retorna o usuário", async () => {
-    const user = uniqueUser();
-    const signUpRes = await signUp(user);
-    const cookie = extractSessionCookie(signUpRes);
+    const testUser = uniqueUser();
+    await signUp(testUser);
+    await verifyDirectly(testUser.email);
+    const signInRes = await signIn(testUser.email, testUser.password);
+    const cookie = extractSessionCookie(signInRes);
 
     const res = await app.request("/api/me", { headers: { cookie } }, env);
 
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({
       id: expect.any(String),
-      email: user.email,
-      name: user.name,
-      username: user.username,
-      displayUsername: user.username,
+      email: testUser.email,
+      name: testUser.name,
+      username: testUser.username,
+      displayUsername: testUser.username,
     });
+  });
+});
+
+describe("confirmação de e-mail", () => {
+  // Captura o corpo mandado pro Resend (client.ts em
+  // integrations/resend/) e extrai a URL de verificação de dentro do HTML
+  // do e-mail — testa a integração de ponta a ponta, com o token real
+  // gerado pelo better-auth, em vez de só simular o efeito no banco.
+  function stubResendAndCaptureLinks() {
+    const links: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init: RequestInit) => {
+        const body = JSON.parse(init.body as string) as { to: string; html: string };
+        const match = /href="([^"]+)"/.exec(body.html);
+        if (match?.[1]) links.push(match[1]);
+        return new Response(JSON.stringify({ id: "email-de-teste" }), { status: 200 });
+      }),
+    );
+    return links;
+  }
+
+  it("cadastro manda e-mail de verificação via Resend com o link certo", async () => {
+    const testUser = uniqueUser();
+    const links = stubResendAndCaptureLinks();
+
+    await signUp(testUser);
+
+    expect(links).toHaveLength(1);
+    expect(links[0]).toContain("/api/auth/verify-email");
+    expect(links[0]).toContain("token=");
+  });
+
+  it("clicar no link de verificação libera o login, que antes estava bloqueado", async () => {
+    const testUser = uniqueUser();
+    const links = stubResendAndCaptureLinks();
+    await signUp(testUser);
+    const verificationUrl = links[0]!;
+
+    const blockedRes = await signIn(testUser.email, testUser.password);
+    expect(blockedRes.status).toBe(403);
+
+    const verifyPath = verificationUrl.replace(env.BETTER_AUTH_URL, "");
+    const verifyRes = await app.request(verifyPath, undefined, env);
+    expect([200, 302]).toContain(verifyRes.status);
+
+    const res = await signIn(testUser.email, testUser.password);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("set-cookie")).toContain("better-auth.session_token=");
+  });
+
+  it("sendOnSignIn: tentar logar sem verificar reenvia um link novo", async () => {
+    const testUser = uniqueUser();
+    const links = stubResendAndCaptureLinks();
+    await signUp(testUser);
+    expect(links).toHaveLength(1);
+
+    await signIn(testUser.email, testUser.password);
+
+    expect(links).toHaveLength(2);
+  });
+
+  it("Resend fora do ar não derruba o cadastro — envio roda em segundo plano nesse runtime", async () => {
+    // sendVerificationEmail é despachado em background (confirmado
+    // empiricamente rodando esse teste, ver comentário em auth.ts) — o
+    // cadastro responde 200 e cria a conta normalmente mesmo se o Resend
+    // falhar; só não chega e-mail nenhum (fica só como log de erro).
+    const testUser = uniqueUser();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response("upstream error", { status: 500 })),
+    );
+
+    const res = await signUp(testUser);
+
+    expect(res.status).toBe(200);
+    const [dbUser] = await createDb(env)
+      .select({ emailVerified: user.emailVerified })
+      .from(user)
+      .where(eq(user.email, testUser.email));
+    expect(dbUser?.emailVerified).toBe(false);
   });
 });
 
@@ -121,8 +258,8 @@ describe("autenticação", () => {
 // (nem neste arquivo, nem em outro) chama sign-in de novo depois deste.
 describe("rate limit de login (AUTH_RATE_LIMITER)", () => {
   it("bloqueia login com 429 depois de passar do limite de tentativas", async () => {
-    const user = uniqueUser();
-    await signUp(user);
+    const testUser = uniqueUser();
+    await signUp(testUser);
 
     // Margem generosa acima do limite configurado (100/60s, ver
     // wrangler.toml): a janela do rate limiter é por tempo, não por
@@ -131,7 +268,7 @@ describe("rate limit de login (AUTH_RATE_LIMITER)", () => {
     // de mais tentativas líquidas pra cruzar o teto de novo.
     let sawRateLimited = false;
     for (let attempt = 0; attempt < 300; attempt++) {
-      const res = await signIn(user.email, "senhaerrada");
+      const res = await signIn(testUser.email, "senhaerrada");
       if (res.status === 429) {
         sawRateLimited = true;
         break;

@@ -13,6 +13,16 @@ const API_BASE_URL_BY_MODE: Record<string, string> = {
   mobile: "https://api.track.cqn.xyz.br",
 };
 
+// Só o modo mobile precisa disso: dentro do WebView do Capacitor,
+// window.location.origin é "https://localhost" (ver vite.config.ts do FE
+// mobile), que não significa nada fora do app — um link de e-mail de
+// verificação aberto no navegador real do celular não tem como voltar pra
+// lá. Web (dev ou produção) não define isso, e o código que usa cai de
+// volta pro window.location.origin de verdade, que já é o valor certo.
+const WEB_ORIGIN_BY_MODE: Record<string, string> = {
+  mobile: "https://tracker.cqn.xyz.br",
+};
+
 // find como regex casando o especificador de import INTEIRO (não o caminho
 // já resolvido) — os módulos são importados de profundidades diferentes
 // (./lib/api-client, ../lib/api-client, ../../lib/api-client...). O
@@ -46,6 +56,7 @@ export default defineConfig(({ mode }) => ({
   },
   define: {
     "import.meta.env.VITE_API_BASE_URL": JSON.stringify(API_BASE_URL_BY_MODE[mode] ?? ""),
+    "import.meta.env.VITE_WEB_ORIGIN": JSON.stringify(WEB_ORIGIN_BY_MODE[mode] ?? ""),
     // Lido em Account.tsx pra não empacotar a seção de importar CSV no
     // build do app Android — ver plano/CLAUDE.md sobre por que essa seção
     // fica de fora do mobile.

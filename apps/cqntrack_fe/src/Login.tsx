@@ -1,6 +1,6 @@
 import { LoginFormSchema } from "@cqntrack/shared";
 import { type FormEvent, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import layoutStyles from "./AuthLayout.module.css";
 import { AuthLayout } from "./AuthLayout";
 import { authClient } from "./lib/auth-client";
@@ -8,12 +8,16 @@ import styles from "./Login.module.css";
 
 export function Login() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { refetch: refetchSession } = authClient.useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const justVerified = searchParams.get("verified") === "1";
+  const verificationError = searchParams.get("error");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -34,7 +38,11 @@ export function Login() {
     setSubmitting(false);
 
     if (signInError) {
-      setError("E-mail ou senha inválidos.");
+      setError(
+        signInError.code === "EMAIL_NOT_VERIFIED"
+          ? "Confirme seu e-mail antes de entrar — reenviamos o link de confirmação."
+          : "E-mail ou senha inválidos.",
+      );
       return;
     }
 
@@ -50,6 +58,14 @@ export function Login() {
     <AuthLayout>
       <h1>Entrar</h1>
       <p className={layoutStyles.subtitle}>Bem-vindo de volta. Acesse sua conta para continuar.</p>
+      {justVerified && <p className={layoutStyles.success}>E-mail confirmado! Faça login.</p>}
+      {!justVerified && verificationError && (
+        <p className={layoutStyles.error} role="alert">
+          {verificationError === "TOKEN_EXPIRED"
+            ? "O link de confirmação expirou. Tente entrar de novo pra receber um link novo."
+            : "Link de confirmação inválido. Tente entrar de novo pra receber um link novo."}
+        </p>
+      )}
       <form onSubmit={handleSubmit}>
         <label className={styles.field}>
           <span>E-mail</span>

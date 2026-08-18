@@ -13,6 +13,7 @@ migrations_dir = "drizzle"
 BETTER_AUTH_URL = "https://api.track.cqn.xyz.br"
 FRONTEND_ORIGIN = "https://tracker.cqn.xyz.br"
 COOKIE_DOMAIN = ".cqn.xyz.br"
+EMAIL_FROM = "cqntrack <noreply@mail.cqn.xyz.br>"
 
 [observability]
 enabled = true
