@@ -65,11 +65,16 @@
 
 .headerInfo h1 {
   margin: 0 0 4px;
+  /* Nome de exibição é texto livre do usuário — sem espaço pra quebrar,
+     uma string longa (ou um @username longo, ver .handle abaixo) alargava
+     a página inteira no mobile em vez de quebrar linha. */
+  overflow-wrap: anywhere;
 }
 
 .handle {
   margin: 0;
   color: var(--text-secondary);
+  overflow-wrap: anywhere;
 }
 
 .memberSince {

@@ -63,6 +63,11 @@
   align-items: center;
   gap: 4px;
   overflow-x: auto;
+  /* Sem isso, um item flex não encolhe abaixo do tamanho do próprio
+     conteúdo (min-width:auto por padrão) — o overflow-x acima nunca
+     entraria em ação, e a nav empurraria .right pra fora do fluxo normal
+     (ver comentário em .topbar sobre por que não deixamos quebrar linha). */
+  min-width: 0;
 }
 
 .mediaLink {
@@ -110,7 +115,16 @@
 
 @media (max-width: 860px) {
   .topbar {
-    flex-wrap: wrap;
+    /* Sem flex-wrap: wrap de propósito — quando .left não cabe ao lado de
+       .right, ".right" (toggle de tema + menu de conta) quebrava pra uma
+       segunda linha e ficava colado na borda ESQUERDA (comportamento
+       padrão de flex-wrap com 1 item na linha), não na direita onde ele
+       precisa ficar. O AccountMenu posiciona o dropdown com `right: 0`
+       relativo ao próprio botão — com o botão perto da borda esquerda, o
+       dropdown estourava pra fora da tela. Deixamos .mediaNav (via
+       min-width: 0 + overflow-x: auto) absorver a falta de espaço em vez
+       de quebrar a barra inteira.
+    */
     padding: 10px 12px;
   }
 

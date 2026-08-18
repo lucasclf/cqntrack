@@ -11,6 +11,14 @@
   margin-bottom: 20px;
 }
 
+/* Nome da lista é texto livre do usuário — sem isso, cai no tamanho
+   default do h1 do navegador, grande o bastante pra um nome longo virar
+   uma palavra por linha ocupando a tela inteira no mobile. */
+.header h1 {
+  margin: 0 0 4px;
+  font-size: clamp(22px, 6vw, 32px);
+}
+
 .description {
   color: var(--text-secondary);
   font-size: 14px;
