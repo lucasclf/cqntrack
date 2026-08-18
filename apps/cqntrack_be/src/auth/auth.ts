@@ -3,7 +3,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { bearer, username } from "better-auth/plugins";
 import { createDb } from "../db/client";
 import { sendEmail } from "../integrations/resend/client";
-import { verificationEmailHtml } from "../integrations/resend/templates";
+import { resetPasswordEmailHtml, verificationEmailHtml } from "../integrations/resend/templates";
 
 // Montado por request: o binding env.DB só existe dentro do handler do Worker,
 // então a instância do better-auth não pode ser criada em escopo de módulo.
@@ -23,6 +23,16 @@ export function createAuth(env: Env) {
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: true,
+      // Se alguém pediu redefinição de senha, é prudente presumir que a
+      // conta pode estar comprometida — derruba sessões existentes junto.
+      revokeSessionsOnPasswordReset: true,
+      sendResetPassword: async ({ user, url }) => {
+        await sendEmail(env, {
+          to: user.email,
+          subject: "Redefinir senha — cqntrack",
+          html: resetPasswordEmailHtml(url),
+        });
+      },
     },
     // Confirmado em teste: nesse runtime (Cloudflare Workers/D1),
     // sendVerificationEmail já roda em segundo plano por conta própria —

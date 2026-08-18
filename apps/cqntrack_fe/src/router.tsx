@@ -1,12 +1,13 @@
 import { createBrowserRouter, Navigate, type RouteObject } from "react-router";
 import { AppShell } from "./layouts/AppShell";
 import { Account } from "./Account";
+import { ForgotPassword } from "./ForgotPassword";
 import { Home } from "./Home";
 import { Login } from "./Login";
 import { RedirectToJogosListDetail } from "./routes/RedirectToJogosListDetail";
 import { RequireAuth } from "./routes/RequireAuth";
+import { ResetPassword } from "./ResetPassword";
 import { Signup } from "./Signup";
-import { Unavailable } from "./Unavailable";
 
 // Cada tela "de verdade" (não a casca/layout em volta dela) é carregada sob
 // demanda — antes, o router importava todas de uma vez, e era a causa direta
@@ -51,7 +52,8 @@ const routeModules = {
 export const routes: RouteObject[] = [
   { path: "/login", element: <Login /> },
   { path: "/cadastro", element: <Signup /> },
-  { path: "/esqueci-senha", element: <Unavailable /> },
+  { path: "/esqueci-senha", element: <ForgotPassword /> },
+  { path: "/redefinir-senha", element: <ResetPassword /> },
   // react-router não casa texto literal + parâmetro no mesmo segmento
   // (confirmado: "/@:username" nunca dá match) — captura o segmento inteiro
   // ("@lucas") como :handle e separa o "@" dentro do componente.

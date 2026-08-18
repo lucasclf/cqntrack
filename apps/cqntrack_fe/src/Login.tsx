@@ -17,6 +17,7 @@ export function Login() {
   const [submitting, setSubmitting] = useState(false);
 
   const justVerified = searchParams.get("verified") === "1";
+  const justReset = searchParams.get("reset") === "1";
   const verificationError = searchParams.get("error");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -59,6 +60,9 @@ export function Login() {
       <h1>Entrar</h1>
       <p className={layoutStyles.subtitle}>Bem-vindo de volta. Acesse sua conta para continuar.</p>
       {justVerified && <p className={layoutStyles.success}>E-mail confirmado! Faça login.</p>}
+      {justReset && (
+        <p className={layoutStyles.success}>Senha alterada! Faça login com a senha nova.</p>
+      )}
       {!justVerified && verificationError && (
         <p className={layoutStyles.error} role="alert">
           {verificationError === "TOKEN_EXPIRED"

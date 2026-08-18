@@ -23,6 +23,18 @@ export const SignupFormSchema = z.object({
 
 export type SignupForm = z.infer<typeof SignupFormSchema>;
 
+export const ForgotPasswordFormSchema = z.object({
+  email: z.email(),
+});
+
+export type ForgotPasswordForm = z.infer<typeof ForgotPasswordFormSchema>;
+
+export const ResetPasswordFormSchema = z.object({
+  newPassword: z.string().min(8),
+});
+
+export type ResetPasswordForm = z.infer<typeof ResetPasswordFormSchema>;
+
 // DTO enxuto do que o frontend consome de session.user (better-auth já devolve um
 // objeto limpo, mas isso desacopla o FE do formato exato de resposta da lib).
 export const AuthUserSchema = z.object({

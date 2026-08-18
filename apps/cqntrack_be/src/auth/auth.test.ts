@@ -60,6 +60,49 @@ async function verifyDirectly(email: string) {
   await createDb(env).update(user).set({ emailVerified: true }).where(eq(user.email, email));
 }
 
+async function requestPasswordReset(email: string) {
+  return app.request(
+    "/api/auth/request-password-reset",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, redirectTo: "http://localhost:5173/redefinir-senha" }),
+    },
+    env,
+  );
+}
+
+async function resetPassword(newPassword: string, token: string) {
+  return app.request(
+    "/api/auth/reset-password",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ newPassword, token }),
+    },
+    env,
+  );
+}
+
+// Captura o corpo mandado pro Resend (client.ts em integrations/resend/) e
+// extrai a URL de dentro do HTML do e-mail — testa a integração de ponta a
+// ponta, com o token real gerado pelo better-auth, em vez de só simular o
+// efeito no banco. Usado tanto pra confirmação de e-mail quanto redefinição
+// de senha — mesmo client, mesmo formato de corpo.
+function stubResendAndCaptureLinks() {
+  const links: string[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string) as { to: string; html: string };
+      const match = /href="([^"]+)"/.exec(body.html);
+      if (match?.[1]) links.push(match[1]);
+      return new Response(JSON.stringify({ id: "email-de-teste" }), { status: 200 });
+    }),
+  );
+  return links;
+}
+
 // Toda rota de cadastro/login passa por sendVerificationEmail (ver auth.ts),
 // que chama o Resend via fetch — sem isso, qualquer signUp() nesse arquivo
 // bateria de verdade na internet. Um mock genérico de sucesso é o padrão;
@@ -172,24 +215,6 @@ describe("autenticação", () => {
 });
 
 describe("confirmação de e-mail", () => {
-  // Captura o corpo mandado pro Resend (client.ts em
-  // integrations/resend/) e extrai a URL de verificação de dentro do HTML
-  // do e-mail — testa a integração de ponta a ponta, com o token real
-  // gerado pelo better-auth, em vez de só simular o efeito no banco.
-  function stubResendAndCaptureLinks() {
-    const links: string[] = [];
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (_url: string, init: RequestInit) => {
-        const body = JSON.parse(init.body as string) as { to: string; html: string };
-        const match = /href="([^"]+)"/.exec(body.html);
-        if (match?.[1]) links.push(match[1]);
-        return new Response(JSON.stringify({ id: "email-de-teste" }), { status: 200 });
-      }),
-    );
-    return links;
-  }
-
   it("cadastro manda e-mail de verificação via Resend com o link certo", async () => {
     const testUser = uniqueUser();
     const links = stubResendAndCaptureLinks();
@@ -249,6 +274,84 @@ describe("confirmação de e-mail", () => {
       .from(user)
       .where(eq(user.email, testUser.email));
     expect(dbUser?.emailVerified).toBe(false);
+  });
+});
+
+describe("redefinição de senha", () => {
+  it("e-mail inexistente devolve 200 genérico, sem chamar o Resend", async () => {
+    const links = stubResendAndCaptureLinks();
+
+    const res = await requestPasswordReset(`inexistente-${crypto.randomUUID()}@cqntrack.dev`);
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toMatchObject({ status: true });
+    expect(links).toHaveLength(0);
+  });
+
+  it("e-mail existente manda o link de redefinição via Resend", async () => {
+    const testUser = uniqueUser();
+    await signUp(testUser);
+    const links = stubResendAndCaptureLinks();
+
+    const res = await requestPasswordReset(testUser.email);
+
+    expect(res.status).toBe(200);
+    expect(links).toHaveLength(1);
+    expect(links[0]).toContain("/api/auth/reset-password/");
+  });
+
+  it("clicar no link redireciona com o token anexado na URL final", async () => {
+    const testUser = uniqueUser();
+    await signUp(testUser);
+    const links = stubResendAndCaptureLinks();
+    await requestPasswordReset(testUser.email);
+    const resetUrl = links[0]!;
+
+    const clickPath = resetUrl.replace(env.BETTER_AUTH_URL, "");
+    const res = await app.request(clickPath, { redirect: "manual" }, env);
+
+    expect(res.status).toBe(302);
+    const location = res.headers.get("location");
+    expect(location).toContain("/redefinir-senha");
+    expect(location).toContain("token=");
+  });
+
+  it("token válido troca a senha — login com a nova funciona, com a antiga não", async () => {
+    const testUser = uniqueUser();
+    await signUp(testUser);
+    const links = stubResendAndCaptureLinks();
+    await requestPasswordReset(testUser.email);
+    const resetUrl = links[0]!;
+    const token = new URL(resetUrl).pathname.split("/").pop()!;
+
+    const res = await resetPassword("senhaNova456", token);
+    expect(res.status).toBe(200);
+
+    await verifyDirectly(testUser.email);
+    const oldPasswordRes = await signIn(testUser.email, testUser.password);
+    expect(oldPasswordRes.status).toBeGreaterThanOrEqual(400);
+
+    const newPasswordRes = await signIn(testUser.email, "senhaNova456");
+    expect(newPasswordRes.status).toBe(200);
+  });
+
+  it("token já usado não funciona uma segunda vez", async () => {
+    const testUser = uniqueUser();
+    await signUp(testUser);
+    const links = stubResendAndCaptureLinks();
+    await requestPasswordReset(testUser.email);
+    const token = new URL(links[0]!).pathname.split("/").pop()!;
+    await resetPassword("senhaNova456", token);
+
+    const res = await resetPassword("outraSenha789", token);
+
+    expect(res.status).toBeGreaterThanOrEqual(400);
+  });
+
+  it("token inválido falha", async () => {
+    const res = await resetPassword("senhaNova456", "token-que-nao-existe");
+
+    expect(res.status).toBeGreaterThanOrEqual(400);
   });
 });
 

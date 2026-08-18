@@ -123,6 +123,12 @@ describe("Login", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(/link de confirmação expirou/);
   });
 
+  it("mostra banner de sucesso quando vem de ?reset=1 (senha redefinida)", () => {
+    renderLogin("/login?reset=1");
+
+    expect(screen.getByText("Senha alterada! Faça login com a senha nova.")).toBeInTheDocument();
+  });
+
   it("mostra erro de validação sem chamar signIn.email quando a senha é curta demais", () => {
     renderLogin();
 
