@@ -1,9 +1,22 @@
 import type { ReactNode } from "react";
 import styles from "./AuthLayout.module.css";
+import cat01 from "./assets/collage/cat-01.webp";
+import cat02 from "./assets/collage/cat-02.webp";
+import cat03 from "./assets/collage/cat-03.webp";
+import cat04 from "./assets/collage/cat-04.webp";
+import cat05 from "./assets/collage/cat-05.webp";
+import cat06 from "./assets/collage/cat-06.webp";
+import cat07 from "./assets/collage/cat-07.webp";
+import cat08 from "./assets/collage/cat-08.webp";
+import cat09 from "./assets/collage/cat-09.webp";
 import { CatMark } from "./CatMark";
 import { ThemeToggle } from "./ThemeToggle";
 
-const COLLAGE_TILE_COUNT = 18;
+// Fotos dos gatos reais do dono do projeto — cada uma aparece duas vezes
+// pra preencher as 18 tiles sem repetir vizinhas (o grid tem 6 colunas, e
+// index e index+9 nunca ficam lado a lado).
+const COLLAGE_PHOTOS = [cat01, cat02, cat03, cat04, cat05, cat06, cat07, cat08, cat09];
+const COLLAGE_TILE_COUNT = COLLAGE_PHOTOS.length * 2;
 
 interface AuthLayoutProps {
   children: ReactNode;
@@ -18,7 +31,10 @@ export function AuthLayout({ children }: AuthLayoutProps) {
       <aside className={styles.visualPanel}>
         <div className={styles.collage} aria-hidden="true">
           {Array.from({ length: COLLAGE_TILE_COUNT }).map((_, index) => (
-            <div key={index} />
+            <div
+              key={index}
+              style={{ backgroundImage: `url(${COLLAGE_PHOTOS[index % COLLAGE_PHOTOS.length]})` }}
+            />
           ))}
         </div>
         <div className={styles.scrim} />

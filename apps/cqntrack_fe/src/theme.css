@@ -25,12 +25,6 @@
   --focus-ring: rgba(167, 139, 250, 0.35);
   --scrim-from: rgba(14, 10, 24, 0.15);
   --scrim-to: rgba(14, 10, 24, 0.96);
-  --tile-1: #4c3a8a;
-  --tile-2: #6d3a82;
-  --tile-3: #2e2c6b;
-  --tile-4: #7c3aed;
-  --tile-5: #3c2a63;
-  --tile-6: #5a3c99;
   --error: #f87171;
 }
 
@@ -51,12 +45,6 @@
   --focus-ring: rgba(124, 58, 237, 0.22);
   --scrim-from: rgba(250, 249, 254, 0.1);
   --scrim-to: rgba(250, 249, 254, 0.97);
-  --tile-1: #dcd3fb;
-  --tile-2: #ead8f5;
-  --tile-3: #c9c4f2;
-  --tile-4: #b9a5f5;
-  --tile-5: #e0d6fa;
-  --tile-6: #d0c2f7;
   --error: #dc2626;
 }
 

@@ -35,28 +35,30 @@
 .collage div {
   border-radius: 12px;
   aspect-ratio: 2 / 3;
+  background-size: cover;
+  background-position: center;
 }
 
-.collage div:nth-child(6n + 1) {
-  background: var(--tile-1);
-}
-.collage div:nth-child(6n + 2) {
-  background: var(--tile-2);
-}
-.collage div:nth-child(6n + 3) {
-  background: var(--tile-3);
-}
-.collage div:nth-child(6n + 4) {
-  background: var(--tile-4);
-}
-.collage div:nth-child(6n + 5) {
-  background: var(--tile-5);
-}
-.collage div:nth-child(6n + 6) {
-  background: var(--tile-6);
-}
 .collage div:nth-child(3n) {
   margin-top: 30px;
+}
+
+/* Pequena rotação/escala por tile — sem isso, fotos reais alinhadas num
+   grid perfeito parecem uma planilha, não uma colagem. */
+.collage div:nth-child(5n + 1) {
+  transform: rotate(-3deg) scale(1.05);
+}
+.collage div:nth-child(5n + 2) {
+  transform: rotate(2deg);
+}
+.collage div:nth-child(5n + 3) {
+  transform: rotate(-1.5deg) scale(1.04);
+}
+.collage div:nth-child(5n + 4) {
+  transform: rotate(3deg);
+}
+.collage div:nth-child(5n + 5) {
+  transform: rotate(-2deg) scale(1.03);
 }
 
 .scrim {
