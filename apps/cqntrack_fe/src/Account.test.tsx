@@ -108,6 +108,15 @@ describe("Account", () => {
     expect(screen.getAllByText("Escolher arquivo CSV")).toHaveLength(2);
   });
 
+  it("mostra o link de download do APK apontando pra release mais recente do GitHub", () => {
+    renderAccount();
+
+    expect(screen.getByRole("link", { name: "Baixar APK" })).toHaveAttribute(
+      "href",
+      "https://github.com/lucasclf/cqntrack/releases/latest/download/cqntrack.apk",
+    );
+  });
+
   it("desloga e navega pro login", async () => {
     signOutMock.mockResolvedValue(undefined);
     renderAccount();

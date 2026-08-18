@@ -44,6 +44,15 @@ describe("Login", () => {
     expect(screen.getByLabelText("Senha")).toBeInTheDocument();
   });
 
+  it("mostra o link de download do app Android (casca compartilhada AuthLayout)", () => {
+    renderLogin();
+
+    expect(screen.getByRole("link", { name: "Baixe o app Android" })).toHaveAttribute(
+      "href",
+      "https://github.com/lucasclf/cqntrack/releases/latest/download/cqntrack.apk",
+    );
+  });
+
   it("permite digitar e-mail e senha", () => {
     renderLogin();
 

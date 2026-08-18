@@ -10,6 +10,7 @@ import cat07 from "./assets/collage/cat-07.webp";
 import cat08 from "./assets/collage/cat-08.webp";
 import cat09 from "./assets/collage/cat-09.webp";
 import { CatMark } from "./CatMark";
+import { APK_DOWNLOAD_URL } from "./lib/apk-download-url";
 import { ThemeToggle } from "./ThemeToggle";
 
 // Fotos dos gatos reais do dono do projeto — cada uma aparece duas vezes
@@ -57,6 +58,16 @@ export function AuthLayout({ children }: AuthLayoutProps) {
             <span className={styles.brandWord}>cqntrack</span>
           </div>
           {children}
+          {/* Sem sentido dentro do próprio app mobile — só faz sentido pra
+              quem está acessando pelo navegador. */}
+          {import.meta.env.VITE_TARGET !== "mobile" && (
+            <p className={styles.apkLink}>
+              Prefere usar no celular?{" "}
+              <a href={APK_DOWNLOAD_URL} className={styles.link}>
+                Baixe o app Android
+              </a>
+            </p>
+          )}
         </div>
       </main>
     </div>

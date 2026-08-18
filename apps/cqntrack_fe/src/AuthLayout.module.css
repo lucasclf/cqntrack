@@ -153,6 +153,13 @@
   margin: 0 0 16px;
 }
 
+.apkLink {
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 32px 0 0;
+}
+
 .link {
   color: var(--accent);
   text-decoration: none;

@@ -4,6 +4,7 @@ import styles from "./Account.module.css";
 import { AvatarUpload } from "./AvatarUpload";
 import { ImportFilmowCsv } from "./ImportFilmowCsv";
 import { ImportTvTimeCsv } from "./ImportTvTimeCsv";
+import { APK_DOWNLOAD_URL } from "./lib/apk-download-url";
 import { authClient } from "./lib/auth-client";
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
@@ -135,6 +136,18 @@ export function Account() {
             <ImportFilmowCsv />
             <ImportTvTimeCsv />
           </div>
+        </section>
+      )}
+
+      {/* Mesmo motivo do bloco de "Importar dados" acima — sem sentido
+          dentro do próprio app mobile. */}
+      {import.meta.env.VITE_TARGET !== "mobile" && (
+        <section className={styles.section}>
+          <h2>App Android</h2>
+          <p>Prefere usar no celular? Baixe o app Android (fora da Play Store).</p>
+          <a href={APK_DOWNLOAD_URL} className={styles.downloadLink}>
+            Baixar APK
+          </a>
         </section>
       )}
 
