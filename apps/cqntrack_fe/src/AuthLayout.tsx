@@ -29,15 +29,6 @@ export function AuthLayout({ children }: AuthLayoutProps) {
             </span>
             <span className={styles.brandWord}>cqntrack</span>
           </div>
-          <div className={styles.visualBottom}>
-            <p className={styles.tagline}>Tudo que você jogou, assistiu e leu, em um só lugar.</p>
-            <div className={styles.tags}>
-              <span className={styles.tag}>Jogos</span>
-              <span className={styles.tag}>Séries</span>
-              <span className={styles.tag}>Filmes</span>
-              <span className={styles.tag}>Livros</span>
-            </div>
-          </div>
         </div>
       </aside>
 

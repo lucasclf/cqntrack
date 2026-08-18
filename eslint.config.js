@@ -11,6 +11,7 @@ export default tseslint.config(
     ignores: [
       "**/dist/**",
       "**/dist-mobile/**",
+      "apps/cqntrack_mobile/android/**",
       "**/node_modules/**",
       "**/.wrangler/**",
       "**/coverage/**",

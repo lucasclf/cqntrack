@@ -110,36 +110,6 @@
   display: none;
 }
 
-.visualBottom {
-  max-width: 420px;
-}
-
-.tagline {
-  font-family: "Space Grotesk", sans-serif;
-  font-weight: 600;
-  font-size: 32px;
-  line-height: 1.25;
-  letter-spacing: -0.01em;
-  margin: 0 0 20px;
-  color: var(--text-primary);
-}
-
-.tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.tag {
-  font-size: 13px;
-  font-weight: 500;
-  padding: 6px 14px;
-  border-radius: 999px;
-  border: 1px solid var(--card-border);
-  color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.02);
-}
-
 /* ---- painel de conteúdo (direita) ---- */
 .formPanel {
   background: var(--form-bg);
