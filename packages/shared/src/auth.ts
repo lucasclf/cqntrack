@@ -10,16 +10,22 @@ export const LoginFormSchema = z.object({
 
 export type LoginForm = z.infer<typeof LoginFormSchema>;
 
-export const SignupFormSchema = z.object({
-  name: z.string().min(1),
-  username: z
-    .string()
-    .min(3)
-    .max(30)
-    .regex(/^[a-z0-9_]+$/, "use letras minúsculas, números e _"),
-  email: z.email(),
-  password: z.string().min(8),
-});
+export const SignupFormSchema = z
+  .object({
+    name: z.string().min(1),
+    username: z
+      .string()
+      .min(3)
+      .max(30)
+      .regex(/^[a-z0-9_]+$/, "use letras minúsculas, números e _"),
+    email: z.email(),
+    password: z.string().min(8),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "as senhas não coincidem",
+    path: ["confirmPassword"],
+  });
 
 export type SignupForm = z.infer<typeof SignupFormSchema>;
 

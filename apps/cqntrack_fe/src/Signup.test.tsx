@@ -34,6 +34,7 @@ function fillValidForm() {
   fireEvent.change(screen.getByLabelText("Nome de usuário"), { target: { value: "teste_user" } });
   fireEvent.change(screen.getByLabelText("E-mail"), { target: { value: "teste@cqntrack.dev" } });
   fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "segredo123" } });
+  fireEvent.change(screen.getByLabelText("Confirmar senha"), { target: { value: "segredo123" } });
 }
 
 describe("Signup", () => {
@@ -51,6 +52,7 @@ describe("Signup", () => {
     expect(screen.getByLabelText("Nome de usuário")).toBeInTheDocument();
     expect(screen.getByLabelText("E-mail")).toBeInTheDocument();
     expect(screen.getByLabelText("Senha")).toBeInTheDocument();
+    expect(screen.getByLabelText("Confirmar senha")).toBeInTheDocument();
   });
 
   it("chama signUp.email com os dados do formulário, incluindo callbackURL de verificação", async () => {
@@ -114,9 +116,23 @@ describe("Signup", () => {
     fireEvent.change(screen.getByLabelText("Nome de usuário"), { target: { value: "ab" } }); // curto demais
     fireEvent.change(screen.getByLabelText("E-mail"), { target: { value: "teste@cqntrack.dev" } });
     fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "segredo123" } });
+    fireEvent.change(screen.getByLabelText("Confirmar senha"), { target: { value: "segredo123" } });
     fireEvent.click(screen.getByRole("button", { name: "Criar conta" }));
 
     expect(screen.getByRole("alert")).toHaveTextContent(/nome de usuário/);
+    expect(signUpEmailMock).not.toHaveBeenCalled();
+  });
+
+  it("mostra erro específico quando a confirmação de senha não bate com a senha", () => {
+    renderSignup();
+
+    fillValidForm();
+    fireEvent.change(screen.getByLabelText("Confirmar senha"), {
+      target: { value: "outraSenha456" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Criar conta" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent("As senhas não coincidem.");
     expect(signUpEmailMock).not.toHaveBeenCalled();
   });
 });

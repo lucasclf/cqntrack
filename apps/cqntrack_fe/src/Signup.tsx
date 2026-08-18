@@ -13,6 +13,7 @@ export function Signup() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [awaitingVerification, setAwaitingVerification] = useState(false);
@@ -21,10 +22,19 @@ export function Signup() {
     event.preventDefault();
     setError(null);
 
-    const parsed = SignupFormSchema.safeParse({ name, username, email, password });
+    const parsed = SignupFormSchema.safeParse({
+      name,
+      username,
+      email,
+      password,
+      confirmPassword,
+    });
     if (!parsed.success) {
+      const mismatch = parsed.error.issues.some((issue) => issue.path[0] === "confirmPassword");
       setError(
-        "Preencha nome, um nome de usuário (letras minúsculas, números e _), e-mail válido e uma senha com pelo menos 8 caracteres.",
+        mismatch
+          ? "As senhas não coincidem."
+          : "Preencha nome, um nome de usuário (letras minúsculas, números e _), e-mail válido e uma senha com pelo menos 8 caracteres.",
       );
       return;
     }
@@ -124,6 +134,17 @@ export function Signup() {
             required
             value={password}
             onChange={(event) => setPassword(event.target.value)}
+          />
+        </label>
+        <label className={styles.field}>
+          <span>Confirmar senha</span>
+          <input
+            type="password"
+            placeholder="••••••••"
+            autoComplete="new-password"
+            required
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
           />
         </label>
         {error && (
