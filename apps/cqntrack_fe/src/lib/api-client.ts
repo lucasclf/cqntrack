@@ -30,6 +30,26 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T;
 }
 
+// Upload de arquivo (multipart/form-data) — não passa por `request()` porque
+// esse sempre força Content-Type: application/json; aqui o boundary do
+// multipart precisa ser definido pelo próprio browser a partir do FormData,
+// então o header de Content-Type não pode ser setado manualmente.
+async function requestForm<T>(path: string, formData: FormData, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    credentials: "include",
+    body: formData,
+  });
+
+  if (!res.ok) {
+    throw new ApiError(res.status, `Falha na requisição para ${path} (status ${res.status})`);
+  }
+  if (res.status === 204) {
+    return undefined as T;
+  }
+  return (await res.json()) as T;
+}
+
 export const apiClient = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) =>
@@ -48,4 +68,6 @@ export const apiClient = {
       body: body !== undefined ? JSON.stringify(body) : undefined,
     }),
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
+  putForm: <T>(path: string, formData: FormData) =>
+    requestForm<T>(path, formData, { method: "PUT" }),
 };

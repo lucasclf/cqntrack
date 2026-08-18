@@ -54,4 +54,24 @@ describe("apiClient", () => {
 
     await expect(apiClient.get("/api/lists/inexistente")).rejects.toBeInstanceOf(ApiError);
   });
+
+  it("putForm manda o FormData cru, sem forçar Content-Type", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue({ ok: true, status: 200, json: () => Promise.resolve({ url: "x" }) }),
+    );
+    const formData = new FormData();
+    formData.set("file", new File(["a"], "avatar.png", { type: "image/png" }));
+
+    await apiClient.putForm("/api/me/avatar", formData);
+
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/me/avatar",
+      expect.objectContaining({ method: "PUT", body: formData, credentials: "include" }),
+    );
+    const callInit = vi.mocked(fetch).mock.calls[0]?.[1] as RequestInit;
+    expect(callInit.headers).toBeUndefined();
+  });
 });

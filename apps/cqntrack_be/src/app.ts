@@ -1,4 +1,4 @@
-import { AuthUserSchema, HealthResponseSchema } from "@cqntrack/shared";
+import { AuthUserSchema, HealthResponseSchema, UploadAvatarResponseSchema } from "@cqntrack/shared";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { activityRouter } from "./activity/activity.routes";
@@ -9,12 +9,16 @@ import { booksRouter } from "./books/books.routes";
 import { bookListsRouter } from "./books/lists.routes";
 import { gamesRouter } from "./games/games.routes";
 import { listsRouter } from "./games/lists.routes";
+import { uploadAvatar } from "./integrations/cloudinary/client";
 import { movieListsRouter } from "./movies/lists.routes";
 import { moviesRouter } from "./movies/movies.routes";
 import { peopleRouter } from "./people/people.routes";
 import { seriesListsRouter } from "./series/lists.routes";
 import { seriesRouter } from "./series/series.routes";
 import { usersRouter } from "./users/users.routes";
+
+const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 
 export const app = new Hono<{ Bindings: Env }>();
 
@@ -52,6 +56,32 @@ app.get("/api/me", requireSession, (c) => {
     displayUsername: c.get("displayUsername"),
   });
   return c.json(body);
+});
+
+// Sobe uma única imagem (avatar) pro Cloudinary — a rota é só um proxy
+// assinado; quem persiste a URL em user.image é o FE, via
+// authClient.updateUser (mesmo mecanismo do better-auth já usado pra
+// "name"), reaproveitando o refresh de sessão que ele já faz sozinho em
+// vez de duplicar essa lógica aqui. Ver integrations/cloudinary/client.ts
+// pro porquê de não precisar de uma chamada de delete separada pra imagem
+// antiga.
+app.put("/api/me/avatar", requireSession, async (c) => {
+  const body = await c.req.parseBody();
+  const file = body.file;
+
+  if (!(file instanceof File) || !ALLOWED_AVATAR_TYPES.includes(file.type)) {
+    return c.json({ error: "invalid_file" }, 400);
+  }
+  if (file.size > MAX_AVATAR_BYTES) {
+    return c.json({ error: "file_too_large" }, 400);
+  }
+
+  try {
+    const { url } = await uploadAvatar(c.env, c.get("userId"), file);
+    return c.json(UploadAvatarResponseSchema.parse({ url }));
+  } catch {
+    return c.json({ error: "avatar_upload_failed" }, 502);
+  }
 });
 
 app.route("/api/books", booksRouter);

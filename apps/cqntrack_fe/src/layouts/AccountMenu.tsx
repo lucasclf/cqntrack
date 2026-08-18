@@ -41,7 +41,11 @@ export function AccountMenu({ sectionPrefix }: AccountMenuProps) {
   return (
     <details className={styles.menu}>
       <summary className={styles.trigger} aria-label="Menu da conta">
-        <UserIcon className={styles.icon} />
+        {session?.user?.image ? (
+          <img className={styles.avatar} src={session.user.image} alt="" />
+        ) : (
+          <UserIcon className={styles.icon} />
+        )}
       </summary>
       <div className={styles.dropdown} role="menu">
         {username && (

@@ -147,4 +147,26 @@ describe("AppShell", () => {
 
     expect(signOutMock).toHaveBeenCalled();
   });
+
+  it("sem avatar na sessão, mostra o ícone genérico", () => {
+    renderShell("/");
+
+    expect(screen.getByLabelText("Menu da conta").querySelector("img")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Menu da conta").querySelector("svg")).toBeInTheDocument();
+  });
+
+  it("com avatar na sessão, mostra a imagem em vez do ícone genérico", () => {
+    useSessionMock.mockReturnValue({
+      data: { user: { id: "1", username: "lucas", image: "https://cdn.example.com/avatar.png" } },
+      isPending: false,
+    });
+    renderShell("/");
+
+    const trigger = screen.getByLabelText("Menu da conta");
+    expect(trigger.querySelector("img")).toHaveAttribute(
+      "src",
+      "https://cdn.example.com/avatar.png",
+    );
+    expect(trigger.querySelector("svg")).not.toBeInTheDocument();
+  });
 });

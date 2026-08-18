@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from "react";
 import { useNavigate } from "react-router";
 import styles from "./Account.module.css";
+import { AvatarUpload } from "./AvatarUpload";
 import { ImportFilmowCsv } from "./ImportFilmowCsv";
 import { ImportTvTimeCsv } from "./ImportTvTimeCsv";
 import { authClient } from "./lib/auth-client";
@@ -58,6 +59,7 @@ export function Account() {
 
       <section className={styles.section}>
         <h2>Perfil</h2>
+        <AvatarUpload imageUrl={user.image ?? null} />
         <dl className={styles.info}>
           <div>
             <dt>Nome de usuário</dt>

@@ -34,3 +34,12 @@ export const AuthUserSchema = z.object({
 });
 
 export type AuthUser = z.infer<typeof AuthUserSchema>;
+
+// PUT /api/me/avatar — a rota é só um proxy assinado pro Cloudinary; quem
+// persiste a URL em user.image é o próprio FE via authClient.updateUser
+// (mesmo mecanismo do better-auth já usado pra "name"), não essa resposta.
+export const UploadAvatarResponseSchema = z.object({
+  url: z.url(),
+});
+
+export type UploadAvatarResponse = z.infer<typeof UploadAvatarResponseSchema>;
