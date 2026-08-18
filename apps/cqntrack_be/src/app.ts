@@ -22,10 +22,19 @@ const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 
 export const app = new Hono<{ Bindings: Env }>();
 
+// Dois consumidores legítimos agora: o FE web (FRONTEND_ORIGIN) e o app
+// Android via Capacitor (MOBILE_APP_ORIGIN, o origin fixo que o WebView
+// local reporta — "https://localhost" por padrão). Diferente de antes
+// (um único valor sempre ecoado, sem checar o Origin de verdade contra
+// nada), agora só ecoa de volta quando o Origin do request bate com um
+// dos dois — qualquer outro é rejeitado pelo cors().
 app.use(
   "/api/*",
   cors({
-    origin: (_origin, c) => c.env.FRONTEND_ORIGIN,
+    origin: (origin, c) => {
+      const allowed = [c.env.FRONTEND_ORIGIN, c.env.MOBILE_APP_ORIGIN];
+      return allowed.includes(origin) ? origin : c.env.FRONTEND_ORIGIN;
+    },
     credentials: true,
   }),
 );

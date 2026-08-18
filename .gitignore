@@ -1,6 +1,7 @@
 # Dependências e build
 node_modules
 dist
+dist-mobile
 build
 *.tsbuildinfo
 .vite
@@ -39,6 +40,7 @@ pnpm-debug.log*
 yarn-error.log*
 
 # Sistema operacional / editor
+.idea
 .DS_Store
 Thumbs.db
 ehthumbs.db

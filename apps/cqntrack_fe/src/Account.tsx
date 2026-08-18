@@ -123,13 +123,20 @@ export function Account() {
         </form>
       </section>
 
-      <section className={styles.section}>
-        <h2>Importar dados</h2>
-        <div className={styles.importList}>
-          <ImportFilmowCsv />
-          <ImportTvTimeCsv />
-        </div>
-      </section>
+      {/* Fora do build mobile de propósito (ver vite.config.ts,
+          VITE_TARGET) — import de CSV não faz parte do app Android. A
+          condição é sobre uma constante substituída em build time, então o
+          Rollup elimina esse ramo (e os imports abaixo) inteiro do bundle
+          mobile, não só esconde visualmente. */}
+      {import.meta.env.VITE_TARGET !== "mobile" && (
+        <section className={styles.section}>
+          <h2>Importar dados</h2>
+          <div className={styles.importList}>
+            <ImportFilmowCsv />
+            <ImportTvTimeCsv />
+          </div>
+        </section>
+      )}
 
       <section className={styles.section}>
         <button type="button" className={styles.logoutBtn} onClick={handleLogout}>

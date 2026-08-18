@@ -10,6 +10,7 @@ export default tseslint.config(
   {
     ignores: [
       "**/dist/**",
+      "**/dist-mobile/**",
       "**/node_modules/**",
       "**/.wrangler/**",
       "**/coverage/**",

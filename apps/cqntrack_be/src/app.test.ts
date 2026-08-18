@@ -132,3 +132,67 @@ describe("PUT /api/me/avatar", () => {
     await expect(res.json()).resolves.toEqual({ error: "avatar_upload_failed" });
   });
 });
+
+describe("CORS (/api/*)", () => {
+  it("ecoa o Origin da web (FRONTEND_ORIGIN)", async () => {
+    const res = await app.request("/api/health", { headers: { Origin: env.FRONTEND_ORIGIN } }, env);
+
+    expect(res.headers.get("access-control-allow-origin")).toBe(env.FRONTEND_ORIGIN);
+  });
+
+  it("ecoa o Origin do app mobile (MOBILE_APP_ORIGIN)", async () => {
+    const res = await app.request(
+      "/api/health",
+      { headers: { Origin: env.MOBILE_APP_ORIGIN } },
+      env,
+    );
+
+    expect(res.headers.get("access-control-allow-origin")).toBe(env.MOBILE_APP_ORIGIN);
+  });
+
+  it("não ecoa um Origin fora da allowlist", async () => {
+    const res = await app.request(
+      "/api/health",
+      { headers: { Origin: "https://site-malicioso.com" } },
+      env,
+    );
+
+    expect(res.headers.get("access-control-allow-origin")).not.toBe("https://site-malicioso.com");
+  });
+});
+
+describe("Autenticação via Bearer token (app mobile)", () => {
+  it("login devolve o token no header set-auth-token, e ele autentica rotas protegidas", async () => {
+    const { email } = await createAuthenticatedUser(app, env);
+
+    const signInRes = await app.request(
+      "/api/auth/sign-in/email",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Origin: env.MOBILE_APP_ORIGIN },
+        body: JSON.stringify({ email, password: "senha12345" }),
+      },
+      env,
+    );
+    const token = signInRes.headers.get("set-auth-token");
+    expect(token).toBeTruthy();
+
+    // Sem cookie nenhum — só o header Authorization, do jeito que o app
+    // mobile chama (ver auth-client.mobile.ts no FE).
+    const meRes = await app.request(
+      "/api/me",
+      { headers: { Authorization: `Bearer ${token}` } },
+      env,
+    );
+
+    expect(meRes.status).toBe(200);
+    const body = (await meRes.json()) as { email: string };
+    expect(body.email).toBe(email);
+  });
+
+  it("sem Authorization nem cookie, rota protegida continua 401", async () => {
+    const res = await app.request("/api/me", undefined, env);
+
+    expect(res.status).toBe(401);
+  });
+});

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:mobile": "vite build --mode mobile --outDir dist-mobile",
     "preview": "vite preview",
     "predeploy": "pnpm run typecheck && pnpm run test",
     "deploy": "vite build && wrangler deploy",
@@ -13,6 +14,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@capacitor/core": "8.5.0",
+    "@capacitor/preferences": "8.0.1",
     "@cqntrack/shared": "workspace:*",
     "better-auth": "1.6.26",
     "react": "19.2.8",
