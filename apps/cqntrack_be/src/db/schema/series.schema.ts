@@ -139,6 +139,40 @@ export const seriesEpisodeWatch = sqliteTable(
   ],
 );
 
+// Próximo episódio não assistido "de verdade" (respeitando ordem, mesmo
+// se o usuário pulou episódios) por usuário×série — calculado pelo cron
+// (ver series/refresh-episodes.job.ts e series/watch-progress.service.ts),
+// não ao vivo: exige buscar episódio por episódio na TMDB até achar a
+// lacuna, caro demais pra fazer a cada carregamento da Home. Uma linha só
+// existe enquanto há episódio pendente — some (delete) quando o usuário
+// termina de assistir tudo que já foi ao ar.
+export const seriesWatchProgress = sqliteTable(
+  "series_watch_progress",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    seriesId: integer("series_id")
+      .notNull()
+      .references(() => series.tmdbId, { onDelete: "cascade" }),
+    nextEpisodeSeasonNumber: integer("next_episode_season_number").notNull(),
+    nextEpisodeNumber: integer("next_episode_number").notNull(),
+    nextEpisodeName: text("next_episode_name").notNull(),
+    nextEpisodeAirDate: integer("next_episode_air_date", { mode: "timestamp" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("series_watch_progress_user_series_unique").on(table.userId, table.seriesId),
+    index("series_watch_progress_user_idx").on(table.userId),
+  ],
+);
+
 export const seriesList = sqliteTable(
   "series_list",
   {
@@ -187,6 +221,7 @@ export const seriesRelations = relations(series, ({ many }) => ({
   entries: many(seriesEntry),
   listItems: many(seriesListItem),
   episodeWatches: many(seriesEpisodeWatch),
+  watchProgress: many(seriesWatchProgress),
 }));
 
 export const seriesEntryRelations = relations(seriesEntry, ({ one }) => ({
@@ -197,6 +232,11 @@ export const seriesEntryRelations = relations(seriesEntry, ({ one }) => ({
 export const seriesEpisodeWatchRelations = relations(seriesEpisodeWatch, ({ one }) => ({
   user: one(user, { fields: [seriesEpisodeWatch.userId], references: [user.id] }),
   series: one(series, { fields: [seriesEpisodeWatch.seriesId], references: [series.tmdbId] }),
+}));
+
+export const seriesWatchProgressRelations = relations(seriesWatchProgress, ({ one }) => ({
+  user: one(user, { fields: [seriesWatchProgress.userId], references: [user.id] }),
+  series: one(series, { fields: [seriesWatchProgress.seriesId], references: [series.tmdbId] }),
 }));
 
 export const seriesListRelations = relations(seriesList, ({ one, many }) => ({

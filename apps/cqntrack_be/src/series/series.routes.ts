@@ -1,4 +1,5 @@
 import {
+  ContinueWatchingResponseSchema,
   DiscoverSeriesQuerySchema,
   DiscoverSeriesResponseSchema,
   ImportTvTimeRequestSchema,
@@ -19,6 +20,7 @@ import {
 } from "@cqntrack/shared";
 import { Hono } from "hono";
 import { type AuthedEnv, requireSession } from "../auth/require-session";
+import { getContinueWatching } from "./continue-watching.service";
 import { createDb } from "../db/client";
 import {
   deleteSeriesEntry,
@@ -151,6 +153,15 @@ seriesRouter.get("/recently-watched", async (c) => {
       total,
     }),
   );
+});
+
+// "Continuar assistindo" da Home — só lê series_watch_progress, já
+// calculado pelo cron (ver refresh-episodes.job.ts); nenhuma chamada à
+// TMDB acontece nesta request.
+seriesRouter.get("/continue-watching", async (c) => {
+  const db = createDb(c.env);
+  const items = await getContinueWatching(db, c.get("userId"));
+  return c.json(ContinueWatchingResponseSchema.parse({ items }));
 });
 
 seriesRouter.get("/discover", async (c) => {

@@ -168,6 +168,25 @@ export const PaginatedSeriesEntriesResponseSchema = z.object({
 
 export type PaginatedSeriesEntriesResponse = z.infer<typeof PaginatedSeriesEntriesResponseSchema>;
 
+// Item da Home ("Continuar assistindo") — pré-calculado pelo cron (ver
+// refresh-episodes.job.ts/watch-progress.service.ts no BE), não uma marcação
+// qualquer: só existe pra série com episódio pendente de verdade.
+// `recentlyActive` = assistiu algum episódio dessa série nos últimos 3
+// meses (critério de ordenação, não de filtro — calculado ao vivo no BE).
+export const ContinueWatchingItemSchema = z.object({
+  series: SeriesSummarySchema,
+  nextEpisode: SeriesUpcomingEpisodeSchema,
+  recentlyActive: z.boolean(),
+});
+
+export type ContinueWatchingItem = z.infer<typeof ContinueWatchingItemSchema>;
+
+export const ContinueWatchingResponseSchema = z.object({
+  items: z.array(ContinueWatchingItemSchema),
+});
+
+export type ContinueWatchingResponse = z.infer<typeof ContinueWatchingResponseSchema>;
+
 export const SeriesListSchema = z.object({
   id: z.string(),
   name: z.string(),

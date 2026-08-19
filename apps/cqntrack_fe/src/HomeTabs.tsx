@@ -1,13 +1,11 @@
 import styles from "./HomeTabs.module.css";
 
-export type HomeTab = "movies" | "series" | "games" | "books" | "activity";
+export type HomeTab = "movies" | "games" | "books";
 
 const TABS: { key: HomeTab; label: string }[] = [
   { key: "movies", label: "Filmes" },
-  { key: "series", label: "Séries" },
   { key: "games", label: "Jogos" },
   { key: "books", label: "Livros" },
-  { key: "activity", label: "Atividades" },
 ];
 
 interface HomeTabsProps {
@@ -15,6 +13,11 @@ interface HomeTabsProps {
   onChange: (tab: HomeTab) => void;
 }
 
+// Só a seção secundária da Home usa isso agora (favoritos/recentes/
+// estatísticas de Filmes/Jogos/Livros) — Séries ganhou sua própria seção
+// primária ("Continuar assistindo", ver ContinueWatching.tsx) e Atividades
+// virou seção própria (ActivityTab), não mais uma aba aqui.
+//
 // Mesmo espírito visual de ProfileTabs (perfil público), mas com estado
 // local em vez de rota — a home vive dentro do AppShell, e os caminhos
 // "/filmes", "/series" etc. já são as telas de Descobrir/marcações de cada

@@ -12,7 +12,7 @@ vi.mock("./lib/api-client", () => ({
 const EMPTY_FAVORITES = { items: [] };
 const EMPTY_ENTRIES = { items: [], page: 1, pageSize: 24, total: 0 };
 const EMPTY_ACTIVITY = { items: [], nextCursor: null };
-const EMPTY_RECENTLY_WATCHED_SERIES = { items: [], page: 1, pageSize: 1, total: 0 };
+const EMPTY_CONTINUE_WATCHING = { items: [] };
 
 const MOVIE = {
   tmdbId: 27205,
@@ -24,6 +24,18 @@ const MOVIE = {
   rating: null,
 };
 
+const SERIES = {
+  tmdbId: 1399,
+  name: "Game of Thrones",
+  posterUrl: null,
+  firstAirDate: "2011-04-17",
+  genres: [],
+  numberOfSeasons: 8,
+  numberOfEpisodes: 73,
+  seasons: null,
+  rating: null,
+};
+
 function renderHome() {
   render(
     <MemoryRouter>
@@ -32,21 +44,18 @@ function renderHome() {
   );
 }
 
-// Mock genérico que cobre as 8 rotas usadas pelas abas (favoritos + recente
-// x4 mídias, todas com "/api" em vez de "/api/users/:username") — sem
-// mediaType específico, cada rota devolve vazio por padrão. Testes que
-// precisam de dado real sobrescrevem a rota específica.
-function mockAllTabsEmpty(overrides: Record<string, unknown> = {}) {
+// Mock genérico cobrindo tudo que a Home carrega de cara (continuar
+// assistindo + atividades + as 3 abas secundárias, todas com "/api" em vez
+// de "/api/users/:username") — cada rota devolve vazio por padrão. Testes
+// que precisam de dado real sobrescrevem a rota específica.
+function mockHomeEmpty(overrides: Record<string, unknown> = {}) {
   getMock.mockImplementation((path: string) => {
     if (path in overrides) return Promise.resolve(overrides[path]);
+    if (path === "/api/series/continue-watching") return Promise.resolve(EMPTY_CONTINUE_WATCHING);
     if (path === "/api/movies/favorites") return Promise.resolve(EMPTY_FAVORITES);
-    if (path === "/api/series/favorites") return Promise.resolve(EMPTY_FAVORITES);
     if (path === "/api/books/favorites") return Promise.resolve(EMPTY_FAVORITES);
     if (path === "/api/games/favorites") return Promise.resolve(EMPTY_FAVORITES);
     if (path.startsWith("/api/movies/entries")) return Promise.resolve(EMPTY_ENTRIES);
-    if (path.startsWith("/api/series/recently-watched")) {
-      return Promise.resolve(EMPTY_RECENTLY_WATCHED_SERIES);
-    }
     if (path.startsWith("/api/books/entries")) return Promise.resolve(EMPTY_ENTRIES);
     if (path.startsWith("/api/games/entries")) return Promise.resolve(EMPTY_ENTRIES);
     if (path.startsWith("/api/activity")) return Promise.resolve(EMPTY_ACTIVITY);
@@ -59,23 +68,61 @@ describe("Home", () => {
     getMock.mockReset();
   });
 
-  it("mostra o título e as 5 abas (Filmes/Séries/Jogos/Livros/Atividades)", () => {
-    mockAllTabsEmpty();
+  it("mostra o título, continuar assistindo, atividades e as 3 abas secundárias (Filmes/Jogos/Livros)", async () => {
+    mockHomeEmpty();
     renderHome();
 
     expect(screen.getByRole("heading", { name: "cqntrack" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Filmes" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Séries" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Jogos" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Livros" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Atividades" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Continuar assistindo" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Atividades recentes" })).toBeInTheDocument();
+    expect(await screen.findByText("Nenhum episódio pendente — tudo em dia!")).toBeInTheDocument();
 
-    // Aba padrão é Filmes.
-    expect(screen.getByRole("button", { name: "Filmes" })).toHaveAttribute("aria-current", "page");
+    // "Filmes"/"Jogos" são ambíguos com os botões de filtro de
+    // ActivityTab (mesmo rótulo) — escopa pro nav das abas de mídia.
+    const mediaTabs = screen.getByRole("navigation", { name: "Mídia" });
+    expect(within(mediaTabs).getByRole("button", { name: "Filmes" })).toBeInTheDocument();
+    expect(within(mediaTabs).getByRole("button", { name: "Jogos" })).toBeInTheDocument();
+    expect(within(mediaTabs).getByRole("button", { name: "Livros" })).toBeInTheDocument();
+    expect(within(mediaTabs).queryByRole("button", { name: "Séries" })).not.toBeInTheDocument();
+    expect(within(mediaTabs).queryByRole("button", { name: "Atividades" })).not.toBeInTheDocument();
+
+    // Aba padrão da seção secundária é Filmes.
+    expect(within(mediaTabs).getByRole("button", { name: "Filmes" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 
-  it("aba Filmes mostra favoritos + assistido recentemente + estatísticas, com dado próprio (sem username na URL)", async () => {
-    mockAllTabsEmpty({
+  it("continuar assistindo lista a série com o próximo episódio, linkando pro episódio", async () => {
+    mockHomeEmpty({
+      "/api/series/continue-watching": {
+        items: [
+          {
+            series: SERIES,
+            nextEpisode: {
+              seasonNumber: 2,
+              episodeNumber: 3,
+              name: "What Is Dead May Never Die",
+              airDate: "2012-04-15",
+            },
+            recentlyActive: true,
+          },
+        ],
+      },
+    });
+    renderHome();
+
+    expect(await screen.findByText("Game of Thrones")).toBeInTheDocument();
+    expect(
+      screen.getByText("Temporada 2 · Episódio 3 — What Is Dead May Never Die"),
+    ).toBeInTheDocument();
+
+    const link = screen.getByRole("link", { name: /Game of Thrones/ });
+    expect(link).toHaveAttribute("href", "/series/1399/temporadas/2/episodios/3");
+  });
+
+  it("aba Filmes (seção secundária) mostra favoritos + assistido recentemente + estatísticas, com dado próprio", async () => {
+    mockHomeEmpty({
       "/api/movies/favorites": {
         items: [
           {
@@ -106,13 +153,11 @@ describe("Home", () => {
     expect(link).toHaveAttribute("href", "/filmes/marcacoes?status=watched");
   });
 
-  it("clicar na aba Atividades mostra o feed com filtro por mídia", async () => {
-    mockAllTabsEmpty();
+  it("atividades recentes mostra o feed com filtro por mídia", async () => {
+    mockHomeEmpty();
     renderHome();
 
-    fireEvent.click(screen.getByRole("button", { name: "Atividades" }));
-
-    const filterGroup = screen.getByRole("group", { name: "Filtrar por mídia" });
+    const filterGroup = await screen.findByRole("group", { name: "Filtrar por mídia" });
     expect(within(filterGroup).getByRole("button", { name: "Todas" })).toHaveAttribute(
       "aria-pressed",
       "true",
@@ -120,28 +165,20 @@ describe("Home", () => {
     expect(await screen.findByText("Nenhuma atividade por aqui ainda.")).toBeInTheDocument();
     expect(getMock).toHaveBeenCalledWith("/api/activity");
 
-    // "Jogos" é ambíguo com a aba de mídia (HomeTabs) — escopa pro grupo de
-    // filtro.
     fireEvent.click(within(filterGroup).getByRole("button", { name: "Jogos" }));
     expect(await screen.findByText("Nenhuma atividade por aqui ainda.")).toBeInTheDocument();
     expect(getMock).toHaveBeenCalledWith("/api/activity?mediaType=games");
   });
 
-  it("aba Séries mostra a estatística agregada (sem status), levando pra marcações", async () => {
-    mockAllTabsEmpty({
-      "/api/series/recently-watched?page=1&pageSize=1": {
-        items: [],
-        page: 1,
-        pageSize: 1,
-        total: 3,
-      },
-    });
+  it("aba Jogos (seção secundária) mostra a estatística, levando pra marcações", async () => {
+    mockHomeEmpty();
     renderHome();
 
-    fireEvent.click(screen.getByRole("button", { name: "Séries" }));
+    const mediaTabs = screen.getByRole("navigation", { name: "Mídia" });
+    fireEvent.click(within(mediaTabs).getByRole("button", { name: "Jogos" }));
 
     const sidebar = screen.getByRole("complementary");
-    const link = await within(sidebar).findByRole("link", { name: /Séries acompanhadas/ });
-    expect(link).toHaveAttribute("href", "/series/marcacoes");
+    const link = await within(sidebar).findByRole("link", { name: /Jogando/ });
+    expect(link).toHaveAttribute("href", "/jogos/marcacoes?status=playing");
   });
 });

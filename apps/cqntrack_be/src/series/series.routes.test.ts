@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createAuthenticatedUser } from "../../test/auth-helpers";
 import { app } from "../app";
 import { createDb } from "../db/client";
-import { series } from "../db/schema";
+import { series, seriesEpisodeWatch, seriesWatchProgress, user } from "../db/schema";
 
 const TMDB_SEARCH_RESULT = {
   id: 1396,
@@ -839,6 +839,150 @@ describe("GET /api/series/favorites", () => {
       (item) => item.itemId === "624" && item.type === "favorited",
     );
     expect(favorited).toHaveLength(1);
+  });
+});
+
+describe("GET /api/series/continue-watching", () => {
+  async function getUserId(email: string): Promise<string> {
+    const [row] = await createDb(env)
+      .select({ id: user.id })
+      .from(user)
+      .where(eq(user.email, email));
+    if (!row) throw new Error("usuário de teste não encontrado");
+    return row.id;
+  }
+
+  // A rota só lê series_watch_progress (já calculado pelo cron, ver
+  // refresh-episodes.job.test.ts) — insere direto no banco em vez de rodar
+  // o cron de verdade aqui, foco é testar ordenação/filtro da rota.
+  async function insertProgress(
+    userId: string,
+    seriesId: number,
+    nextEpisode: { seasonNumber: number; episodeNumber: number; name: string; airDate: string },
+  ): Promise<void> {
+    await createDb(env)
+      .insert(seriesWatchProgress)
+      .values({
+        userId,
+        seriesId,
+        nextEpisodeSeasonNumber: nextEpisode.seasonNumber,
+        nextEpisodeNumber: nextEpisode.episodeNumber,
+        nextEpisodeName: nextEpisode.name,
+        nextEpisodeAirDate: new Date(nextEpisode.airDate),
+      });
+  }
+
+  it("sem sessão retorna 401", async () => {
+    const res = await app.request("/api/series/continue-watching", undefined, env);
+    expect(res.status).toBe(401);
+  });
+
+  it("começa vazio", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+
+    const res = await app.request("/api/series/continue-watching", { headers: { cookie } }, env);
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({ items: [] });
+  });
+
+  it("só traz séries com progresso pendente, com o próximo episódio", async () => {
+    const { cookie, email } = await createAuthenticatedUser(app, env);
+    const userId = await getUserId(email);
+
+    stubSeriesCacheFetch(701, "Série sem progresso");
+    await app.request(
+      "/api/series/701/entry",
+      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: "{}" },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    stubSeriesCacheFetch(702, "Série com progresso");
+    await app.request(
+      "/api/series/702/entry",
+      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: "{}" },
+      env,
+    );
+    vi.unstubAllGlobals();
+    await insertProgress(userId, 702, {
+      seasonNumber: 2,
+      episodeNumber: 5,
+      name: "O episódio pendente",
+      airDate: "2026-03-10",
+    });
+
+    const res = await app.request("/api/series/continue-watching", { headers: { cookie } }, env);
+    const body = (await res.json()) as {
+      items: Array<{
+        series: { tmdbId: number };
+        nextEpisode: { seasonNumber: number; episodeNumber: number; name: string; airDate: string };
+        recentlyActive: boolean;
+      }>;
+    };
+
+    expect(body.items).toHaveLength(1);
+    expect(body.items[0]?.series.tmdbId).toBe(702);
+    expect(body.items[0]?.nextEpisode).toEqual({
+      seasonNumber: 2,
+      episodeNumber: 5,
+      name: "O episódio pendente",
+      airDate: "2026-03-10",
+    });
+    expect(body.items[0]?.recentlyActive).toBe(false);
+  });
+
+  it("ordena quem assistiu algo nos últimos 3 meses primeiro; dentro de cada grupo, episódio liberado mais recentemente primeiro", async () => {
+    const { cookie, email } = await createAuthenticatedUser(app, env);
+    const userId = await getUserId(email);
+    const db = createDb(env);
+
+    for (const [id, name] of [
+      [711, "Sem atividade recente, episódio mais antigo"],
+      [712, "Sem atividade recente, episódio mais novo"],
+      [713, "Atividade recente"],
+    ] as const) {
+      stubSeriesCacheFetch(id, name);
+      await app.request(
+        `/api/series/${id}/entry`,
+        { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: "{}" },
+        env,
+      );
+      vi.unstubAllGlobals();
+    }
+
+    await insertProgress(userId, 711, {
+      seasonNumber: 1,
+      episodeNumber: 1,
+      name: "Ep",
+      airDate: "2026-01-01",
+    });
+    await insertProgress(userId, 712, {
+      seasonNumber: 1,
+      episodeNumber: 1,
+      name: "Ep",
+      airDate: "2026-02-01",
+    });
+    await insertProgress(userId, 713, {
+      seasonNumber: 1,
+      episodeNumber: 1,
+      name: "Ep",
+      airDate: "2025-12-01",
+    });
+    // Atividade recente (< 3 meses) só na 713 — faz ela vir primeiro mesmo
+    // com o episódio pendente mais antigo dos três.
+    await db.insert(seriesEpisodeWatch).values({
+      userId,
+      seriesId: 713,
+      seasonNumber: 1,
+      episodeNumber: 0,
+      watchedAt: new Date(),
+    });
+
+    const res = await app.request("/api/series/continue-watching", { headers: { cookie } }, env);
+    const body = (await res.json()) as { items: Array<{ series: { tmdbId: number } }> };
+
+    expect(body.items.map((item) => item.series.tmdbId)).toEqual([713, 712, 711]);
   });
 });
 
