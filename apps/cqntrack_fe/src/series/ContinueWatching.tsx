@@ -6,11 +6,12 @@ import styles from "./ContinueWatching.module.css";
 
 type LoadStatus = "loading" | "ready" | "error";
 
-// Mesma conversão "YYYY-MM-DD" -> "DD/MM" de SeriesCard, sem passar por
-// Date (evita o bug de fuso: new Date("YYYY-MM-DD") vira meia-noite UTC).
-function formatShortDate(isoDate: string): string {
-  const [, month, day] = isoDate.split("-");
-  return `${day}/${month}`;
+// "YYYY-MM-DD" -> "DD/MM/YYYY", sem passar por Date (evita o bug de fuso:
+// new Date("YYYY-MM-DD") vira meia-noite UTC, e toLocaleDateString num
+// fuso atrás de UTC — caso do Brasil — mostraria o dia anterior).
+function formatFullDate(isoDate: string): string {
+  const [year, month, day] = isoDate.split("-");
+  return `${day}/${month}/${year}`;
 }
 
 // Seção principal da Home — séries com episódio pendente de verdade (ver
@@ -72,7 +73,7 @@ export function ContinueWatching() {
                 {" — "}
                 {item.nextEpisode.name}
               </p>
-              <p className={styles.date}>Lançado em {formatShortDate(item.nextEpisode.airDate)}</p>
+              <p className={styles.date}>Lançado em {formatFullDate(item.nextEpisode.airDate)}</p>
             </div>
           </Link>
         </li>

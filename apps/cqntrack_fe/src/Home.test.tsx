@@ -116,6 +116,7 @@ describe("Home", () => {
     expect(
       screen.getByText("Temporada 2 · Episódio 3 — What Is Dead May Never Die"),
     ).toBeInTheDocument();
+    expect(screen.getByText("Lançado em 15/04/2012")).toBeInTheDocument();
 
     const link = screen.getByRole("link", { name: /Game of Thrones/ });
     expect(link).toHaveAttribute("href", "/series/1399/temporadas/2/episodios/3");
