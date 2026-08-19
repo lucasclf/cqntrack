@@ -157,6 +157,19 @@ export function ImportTvTimeCsv() {
       setResults([...collected]);
     }
 
+    // Resumo agregado, não 1 por série (ver logTvTimeImportActivity no
+    // backend — nada no caminho de import loga activity de propósito).
+    // Melhor esforço: falha aqui não deve travar a tela de resultado.
+    const importedGroups = collected.filter((result) => result.status === "imported");
+    if (importedGroups.length > 0) {
+      apiClient
+        .post("/api/series/import/tvtime/activity", {
+          importedSeriesCount: importedGroups.length,
+          importedEpisodeCount: importedGroups.reduce((sum, r) => sum + r.episodesImported, 0),
+        })
+        .catch(() => {});
+    }
+
     setStatus("done");
   }
 

@@ -95,6 +95,14 @@ export function ImportFilmowCsv() {
       setResults([...collected]);
     }
 
+    // Resumo agregado, não 1 por título (ver logFilmowImportActivity no
+    // backend — o import em si roda com logActivity: false de propósito).
+    // Melhor esforço: falha aqui não deve travar a tela de resultado.
+    const importedCount = collected.filter((result) => result.status === "imported").length;
+    if (importedCount > 0) {
+      apiClient.post("/api/movies/import/filmow/activity", { importedCount }).catch(() => {});
+    }
+
     setStatus("done");
   }
 

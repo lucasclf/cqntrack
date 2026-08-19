@@ -214,4 +214,15 @@ export const ImportFilmowResponseSchema = z.object({
   results: z.array(ImportFilmowResultSchema),
 });
 
+// O import em si não gera activity por título (floodaria o feed com
+// centenas de "status_changed" de uma vez, ver logActivity: false em
+// upsertMovieEntry) — o front chama essa rota separada 1x, ao final do
+// loop de import, só com a contagem final, gerando 1 única entrada-resumo
+// no feed.
+export const LogFilmowImportActivityRequestSchema = z.object({
+  importedCount: z.number().int().min(0),
+});
+
+export type LogFilmowImportActivityRequest = z.infer<typeof LogFilmowImportActivityRequestSchema>;
+
 export type ImportFilmowResponse = z.infer<typeof ImportFilmowResponseSchema>;

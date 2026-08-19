@@ -5,6 +5,7 @@ import {
   ImportTvTimeRequestSchema,
   ImportTvTimeResponseSchema,
   ListSeriesEntriesQuerySchema,
+  LogTvTimeImportActivityRequestSchema,
   PaginatedSeriesEntriesResponseSchema,
   RecentlyWatchedSeriesQuerySchema,
   RecentlyWatchedSeriesResponseSchema,
@@ -36,7 +37,7 @@ import {
   setEpisodeWatched,
   setSeasonWatched,
 } from "./episodes.service";
-import { importTvTimeSeries } from "./import.service";
+import { importTvTimeSeries, logTvTimeImportActivity } from "./import.service";
 import {
   getOrCacheSeries,
   getPopularSeriesForUser,
@@ -127,6 +128,24 @@ seriesRouter.post("/import/tvtime", async (c) => {
     parsed.data.episodes,
   );
   return c.json(ImportTvTimeResponseSchema.parse(result));
+});
+
+// Chamada 1x pelo front ao final do loop de import (ver logTvTimeImportActivity).
+seriesRouter.post("/import/tvtime/activity", async (c) => {
+  const json = await c.req.json().catch(() => null);
+  const parsed = LogTvTimeImportActivityRequestSchema.safeParse(json);
+  if (!parsed.success) {
+    return c.json({ error: "invalid_body" }, 400);
+  }
+
+  const db = createDb(c.env);
+  await logTvTimeImportActivity(
+    db,
+    c.get("userId"),
+    parsed.data.importedSeriesCount,
+    parsed.data.importedEpisodeCount,
+  );
+  return c.body(null, 204);
 });
 
 // Mesma lógica da rota pública equivalente (/api/users/:username/series/

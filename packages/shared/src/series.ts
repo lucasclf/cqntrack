@@ -336,3 +336,14 @@ export const ImportTvTimeResponseSchema = z.object({
 });
 
 export type ImportTvTimeResponse = z.infer<typeof ImportTvTimeResponseSchema>;
+
+// Mesmo racional de LogFilmowImportActivityRequestSchema (movies.ts): o
+// import por série não gera activity individual (ver import.service.ts) —
+// o front chama essa rota 1x, ao final do loop de import, com o total
+// agregado, gerando 1 única entrada-resumo no feed.
+export const LogTvTimeImportActivityRequestSchema = z.object({
+  importedSeriesCount: z.number().int().min(0),
+  importedEpisodeCount: z.number().int().min(0),
+});
+
+export type LogTvTimeImportActivityRequest = z.infer<typeof LogTvTimeImportActivityRequestSchema>;

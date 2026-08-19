@@ -44,6 +44,11 @@ function findSummaryText(pattern: RegExp) {
 describe("ImportTvTimeCsv", () => {
   beforeEach(() => {
     postMock.mockReset();
+    // Fallback pra chamada de resumo de atividade ao final do import (ver
+    // logTvTimeImportActivity) — testes que empilham .mockResolvedValueOnce
+    // só pros requests de import continuam funcionando, essa 1 chamada a
+    // mais cai nesse default em vez de ficar sem stub.
+    postMock.mockResolvedValue(undefined);
   });
 
   it("mostra erro quando o CSV não tem as colunas esperadas", async () => {
@@ -93,7 +98,7 @@ describe("ImportTvTimeCsv", () => {
     await selectFile(csv);
 
     expect(await findSummaryText(/2 séries importadas/)).toBeInTheDocument();
-    expect(postMock).toHaveBeenCalledTimes(2);
+    expect(postMock).toHaveBeenCalledTimes(3);
     expect(postMock).toHaveBeenNthCalledWith(1, "/api/series/import/tvtime", {
       seriesTvdbId: 335425,
       title: "Infinity Train",
@@ -108,6 +113,12 @@ describe("ImportTvTimeCsv", () => {
       episodes: [{ season: 1, episode: 1, watchedAt: "2020-03-05T03:05:10Z" }],
     });
     expect(await findSummaryText(/3 episódios marcados/)).toBeInTheDocument();
+    // Resumo agregado (ver logTvTimeImportActivity), disparado 1x ao final
+    // do loop — não 1 por série.
+    expect(postMock).toHaveBeenNthCalledWith(3, "/api/series/import/tvtime/activity", {
+      importedSeriesCount: 2,
+      importedEpisodeCount: 3,
+    });
   });
 
   it("não manda request pra série sem nenhum episódio assistido", async () => {
@@ -127,11 +138,15 @@ describe("ImportTvTimeCsv", () => {
     await selectFile(csv);
 
     await findSummaryText(/1 série importada/);
-    expect(postMock).toHaveBeenCalledTimes(1);
+    expect(postMock).toHaveBeenCalledTimes(2);
     expect(postMock).toHaveBeenCalledWith("/api/series/import/tvtime", {
       seriesTvdbId: 332353,
       title: "Final Space",
       episodes: [{ season: 1, episode: 1, watchedAt: "2020-03-05T03:05:10Z" }],
+    });
+    expect(postMock).toHaveBeenCalledWith("/api/series/import/tvtime/activity", {
+      importedSeriesCount: 1,
+      importedEpisodeCount: 1,
     });
   });
 

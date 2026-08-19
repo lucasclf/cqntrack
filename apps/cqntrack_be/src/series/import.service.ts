@@ -1,6 +1,6 @@
 import type { ImportTvTimeEpisode, ImportTvTimeResponse } from "@cqntrack/shared";
 import type { createDb } from "../db/client";
-import { seriesEpisodeWatch } from "../db/schema";
+import { activity, seriesEpisodeWatch } from "../db/schema";
 import { findSeriesByTvdbId } from "../integrations/tmdb/series";
 import { ensureSeriesEntry } from "./entries.service";
 
@@ -72,4 +72,31 @@ export async function importTvTimeSeries(
   } catch {
     return { seriesTvdbId, title, status: "error", episodesImported: 0 };
   }
+}
+
+// Chamada 1x pelo front ao final do loop de import (ver
+// ImportTvTimeCsv.tsx), não por série — nada no caminho acima loga
+// activity (mesmo espírito de "marcar 1 episódio é ruído demais pro feed",
+// ver setEpisodeWatched em episodes.service.ts), então essa é a única
+// entrada de activity que o import gera: um resumo agregado.
+export async function logTvTimeImportActivity(
+  db: Db,
+  userId: string,
+  importedSeriesCount: number,
+  importedEpisodeCount: number,
+): Promise<void> {
+  if (importedSeriesCount <= 0) {
+    return;
+  }
+
+  await db.insert(activity).values({
+    userId,
+    mediaType: "series",
+    itemId: crypto.randomUUID(),
+    itemTitle: `${importedSeriesCount} ${importedSeriesCount === 1 ? "série" : "séries"}`,
+    itemHref: "/series/marcacoes",
+    itemCoverUrl: null,
+    type: "imported",
+    metadata: { source: "tvtime", count: importedSeriesCount, episodeCount: importedEpisodeCount },
+  });
 }

@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createAuthenticatedUser } from "../../test/auth-helpers";
 import { app } from "../app";
 import { createDb } from "../db/client";
-import { series, seriesEpisodeWatch, user } from "../db/schema";
+import { activity, series, seriesEpisodeWatch, user } from "../db/schema";
 
 const TMDB_SEARCH_RESULT = {
   id: 1396,
@@ -1721,5 +1721,90 @@ describe("POST /api/series/import/tvtime", () => {
       where: (table, { eq: eqOp }) => eqOp(table.seriesId, 1500),
     });
     expect(watches).toHaveLength(320);
+  });
+});
+
+describe("POST /api/series/import/tvtime/activity", () => {
+  async function getUserId(email: string): Promise<string> {
+    const [row] = await createDb(env)
+      .select({ id: user.id })
+      .from(user)
+      .where(eq(user.email, email));
+    if (!row) throw new Error("usuário de teste não encontrado");
+    return row.id;
+  }
+
+  it("sem sessão retorna 401", async () => {
+    const res = await app.request(
+      "/api/series/import/tvtime/activity",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ importedSeriesCount: 2, importedEpisodeCount: 10 }),
+      },
+      env,
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("corpo inválido retorna 400", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    const res = await app.request(
+      "/api/series/import/tvtime/activity",
+      {
+        method: "POST",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ importedSeriesCount: -1, importedEpisodeCount: 10 }),
+      },
+      env,
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("gera 1 activity-resumo do tipo 'imported', não uma por série", async () => {
+    const { cookie, email } = await createAuthenticatedUser(app, env);
+    const userId = await getUserId(email);
+    const db = createDb(env);
+
+    const res = await app.request(
+      "/api/series/import/tvtime/activity",
+      {
+        method: "POST",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ importedSeriesCount: 12, importedEpisodeCount: 340 }),
+      },
+      env,
+    );
+    expect(res.status).toBe(204);
+
+    const activities = await db.query.activity.findMany({ where: eq(activity.userId, userId) });
+    const imported = activities.filter((item) => item.type === "imported");
+    expect(imported).toHaveLength(1);
+    expect(imported[0]).toMatchObject({
+      mediaType: "series",
+      itemTitle: "12 séries",
+      itemHref: "/series/marcacoes",
+      metadata: { source: "tvtime", count: 12, episodeCount: 340 },
+    });
+  });
+
+  it("importedSeriesCount 0 não gera nenhuma activity", async () => {
+    const { cookie, email } = await createAuthenticatedUser(app, env);
+    const userId = await getUserId(email);
+    const db = createDb(env);
+
+    const res = await app.request(
+      "/api/series/import/tvtime/activity",
+      {
+        method: "POST",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ importedSeriesCount: 0, importedEpisodeCount: 0 }),
+      },
+      env,
+    );
+    expect(res.status).toBe(204);
+
+    const activities = await db.query.activity.findMany({ where: eq(activity.userId, userId) });
+    expect(activities.filter((item) => item.type === "imported")).toHaveLength(0);
   });
 });

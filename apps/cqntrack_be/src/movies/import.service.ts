@@ -1,5 +1,6 @@
 import type { ImportFilmowResult } from "@cqntrack/shared";
 import type { createDb } from "../db/client";
+import { activity } from "../db/schema";
 import { searchMovies as tmdbSearchMovies } from "../integrations/tmdb/movies";
 import { upsertMovieEntry } from "./entries.service";
 import { mapTmdbSearchResultToSummary } from "./movies.service";
@@ -73,4 +74,31 @@ export async function importFilmowTitles(
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, titles.length) }, () => worker()));
 
   return results;
+}
+
+// Chamada 1x pelo front ao final do loop de import (ver
+// ImportFilmowCsv.tsx), não por título — cada `importOne` roda com
+// logActivity: false de propósito (evita floodar o feed), então essa é a
+// única entrada de activity que o import gera: um resumo agregado.
+// itemId/itemHref não apontam pra um filme real (o import cobre vários) —
+// só o suficiente pro card do feed fazer sentido.
+export async function logFilmowImportActivity(
+  db: Db,
+  userId: string,
+  importedCount: number,
+): Promise<void> {
+  if (importedCount <= 0) {
+    return;
+  }
+
+  await db.insert(activity).values({
+    userId,
+    mediaType: "movies",
+    itemId: crypto.randomUUID(),
+    itemTitle: `${importedCount} ${importedCount === 1 ? "filme" : "filmes"}`,
+    itemHref: "/filmes/marcacoes?status=watched",
+    itemCoverUrl: null,
+    type: "imported",
+    metadata: { source: "filmow", count: importedCount },
+  });
 }

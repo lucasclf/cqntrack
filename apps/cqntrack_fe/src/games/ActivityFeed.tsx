@@ -58,6 +58,11 @@ function describeActivity(item: ActivityItem): string {
     }
     case "watched":
       return "Assistiu";
+    case "imported": {
+      const source = metadata.source as string | undefined;
+      const label = source === "filmow" ? "Filmow" : source === "tvtime" ? "tvtime" : "importação";
+      return `Importou do ${label}`;
+    }
     default:
       return "Atividade";
   }

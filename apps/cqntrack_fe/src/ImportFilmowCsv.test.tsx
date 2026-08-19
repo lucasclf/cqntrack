@@ -32,6 +32,12 @@ function findSummaryText(pattern: RegExp) {
 describe("ImportFilmowCsv", () => {
   beforeEach(() => {
     postMock.mockReset();
+    // Fallback pra chamada de resumo de atividade ao final do import (ver
+    // logFilmowImportActivity) — testes que empilham .mockResolvedValueOnce
+    // só pros requests de import continuam funcionando, essa 1 chamada a
+    // mais cai nesse default em vez de ficar sem stub (undefined quebraria
+    // o .catch() no componente).
+    postMock.mockResolvedValue(undefined);
   });
 
   it("mostra erro quando o CSV não tem coluna 'Title'", async () => {
@@ -85,6 +91,11 @@ describe("ImportFilmowCsv", () => {
     });
     expect(postMock).toHaveBeenNthCalledWith(2, "/api/movies/import/filmow", {
       titles: ["Filme Inexistente XYZ"],
+    });
+    // Resumo agregado (ver logFilmowImportActivity), disparado 1x ao final
+    // do loop — não 1 por título.
+    expect(postMock).toHaveBeenNthCalledWith(3, "/api/movies/import/filmow/activity", {
+      importedCount: 1,
     });
     expect(screen.getByText("1 não encontrado")).toBeInTheDocument();
 

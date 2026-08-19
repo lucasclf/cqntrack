@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createAuthenticatedUser } from "../../test/auth-helpers";
 import { app } from "../app";
 import { createDb } from "../db/client";
-import { movie } from "../db/schema";
+import { activity, movie, user } from "../db/schema";
 
 const TMDB_SEARCH_RESULT = {
   id: 27205,
@@ -822,5 +822,91 @@ describe("POST /api/movies/import/filmow", () => {
     const [cachedMovie] = await createDb(env).select().from(movie).where(eq(movie.tmdbId, 27205));
     expect(cachedMovie?.cast).toBeNull();
     expect(cachedMovie?.directors).toBeNull();
+  });
+});
+
+describe("POST /api/movies/import/filmow/activity", () => {
+  it("sem sessão retorna 401", async () => {
+    const res = await app.request(
+      "/api/movies/import/filmow/activity",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ importedCount: 3 }),
+      },
+      env,
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("corpo inválido retorna 400", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    const res = await app.request(
+      "/api/movies/import/filmow/activity",
+      {
+        method: "POST",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ importedCount: -1 }),
+      },
+      env,
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("gera 1 activity-resumo do tipo 'imported', não uma por filme", async () => {
+    const { cookie, email } = await createAuthenticatedUser(app, env);
+    const db = createDb(env);
+    const [{ id: userId }] = await db
+      .select({ id: user.id })
+      .from(user)
+      .where(eq(user.email, email));
+
+    const res = await app.request(
+      "/api/movies/import/filmow/activity",
+      {
+        method: "POST",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ importedCount: 87 }),
+      },
+      env,
+    );
+    expect(res.status).toBe(204);
+
+    const activities = await db.query.activity.findMany({ where: eq(activity.userId, userId) });
+    const imported = activities.filter((item) => item.type === "imported");
+    expect(imported).toHaveLength(1);
+    expect(imported[0]).toMatchObject({
+      mediaType: "movies",
+      itemTitle: "87 filmes",
+      itemHref: "/filmes/marcacoes?status=watched",
+      metadata: { source: "filmow", count: 87 },
+    });
+
+    const feedRes = await app.request("/api/activity", { headers: { cookie } }, env);
+    const feedBody = (await feedRes.json()) as { items: Array<{ type: string }> };
+    expect(feedBody.items.some((item) => item.type === "imported")).toBe(true);
+  });
+
+  it("importedCount 0 não gera nenhuma activity", async () => {
+    const { cookie, email } = await createAuthenticatedUser(app, env);
+    const db = createDb(env);
+    const [{ id: userId }] = await db
+      .select({ id: user.id })
+      .from(user)
+      .where(eq(user.email, email));
+
+    const res = await app.request(
+      "/api/movies/import/filmow/activity",
+      {
+        method: "POST",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ importedCount: 0 }),
+      },
+      env,
+    );
+    expect(res.status).toBe(204);
+
+    const activities = await db.query.activity.findMany({ where: eq(activity.userId, userId) });
+    expect(activities.filter((item) => item.type === "imported")).toHaveLength(0);
   });
 });

@@ -4,6 +4,7 @@ import {
   ImportFilmowRequestSchema,
   ImportFilmowResponseSchema,
   ListMovieEntriesQuerySchema,
+  LogFilmowImportActivityRequestSchema,
   MovieDetailResponseSchema,
   MovieEntrySchema,
   MovieFavoritesResponseSchema,
@@ -22,7 +23,7 @@ import {
   listMovieEntries,
   upsertMovieEntry,
 } from "./entries.service";
-import { importFilmowTitles } from "./import.service";
+import { importFilmowTitles, logFilmowImportActivity } from "./import.service";
 import {
   getOrCacheMovie,
   getPopularMoviesForUser,
@@ -97,6 +98,19 @@ moviesRouter.post("/import/filmow", async (c) => {
   const db = createDb(c.env);
   const results = await importFilmowTitles(c.env, db, c.get("userId"), parsed.data.titles);
   return c.json(ImportFilmowResponseSchema.parse({ results }));
+});
+
+// Chamada 1x pelo front ao final do loop de import (ver logFilmowImportActivity).
+moviesRouter.post("/import/filmow/activity", async (c) => {
+  const json = await c.req.json().catch(() => null);
+  const parsed = LogFilmowImportActivityRequestSchema.safeParse(json);
+  if (!parsed.success) {
+    return c.json({ error: "invalid_body" }, 400);
+  }
+
+  const db = createDb(c.env);
+  await logFilmowImportActivity(db, c.get("userId"), parsed.data.importedCount);
+  return c.body(null, 204);
 });
 
 moviesRouter.get("/discover", async (c) => {
