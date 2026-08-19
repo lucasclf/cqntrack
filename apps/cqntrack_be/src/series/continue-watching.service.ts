@@ -27,8 +27,34 @@ const ENDED_STATUSES = new Set(["ended", "canceled"]);
 // delimitado por relevância (só quem tem lacuna conhecida ou está
 // desatualizado há +24h gasta orçamento), mas ainda assim precisa de um
 // teto — série que não coube nesta carga simplesmente não aparece agora, a
-// próxima visita à Home tenta de novo.
-const LIVE_TMDB_BUDGET = 15;
+// próxima visita à Home tenta de novo. Deixado conservador (bem abaixo do
+// teto de subrequests por invocação) porque as queries em lote abaixo já
+// consomem uma parte desse mesmo orçamento.
+const LIVE_TMDB_BUDGET = 12;
+
+// D1 limita 100 parâmetros bindados por query (ver
+// developers.cloudflare.com/d1/platform/limits) — bem menos do que uma
+// conta com muitas séries acompanhadas precisa num "IN (...)" só (chegou a
+// estourar com 284 ids reais em produção, ver histórico). Divide em fatias
+// seguras e dispara em paralelo, em vez de voltar pro padrão de 1 query por
+// série que os lotes abaixo existem justamente pra evitar.
+const D1_PARAM_CHUNK_SIZE = 95;
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
+}
+
+async function queryInChunks<T>(
+  ids: number[],
+  run: (idsChunk: number[]) => Promise<T[]>,
+): Promise<T[]> {
+  const results = await Promise.all(chunk(ids, D1_PARAM_CHUNK_SIZE).map(run));
+  return results.flat();
+}
 
 function isSeriesCacheStale(row: CachedSeries): boolean {
   return Date.now() - row.updatedAt.getTime() > SERIES_CACHE_TTL_MS;
@@ -134,52 +160,46 @@ export async function getContinueWatching(
     return [];
   }
 
-  const [seriesRows, watchedCountRows, watchedEpisodeRows, recentRows] = await Promise.all([
-    db.select().from(series).where(inArray(series.tmdbId, seriesIds)),
-    db
-      .select({
-        seriesId: seriesEpisodeWatch.seriesId,
-        seasonNumber: seriesEpisodeWatch.seasonNumber,
-        count: sql<number>`count(*)`,
-      })
-      .from(seriesEpisodeWatch)
-      .where(
-        and(eq(seriesEpisodeWatch.userId, userId), inArray(seriesEpisodeWatch.seriesId, seriesIds)),
-      )
-      .groupBy(seriesEpisodeWatch.seriesId, seriesEpisodeWatch.seasonNumber),
-    db
-      .select({
-        seriesId: seriesEpisodeWatch.seriesId,
-        seasonNumber: seriesEpisodeWatch.seasonNumber,
-        episodeNumber: seriesEpisodeWatch.episodeNumber,
-      })
-      .from(seriesEpisodeWatch)
-      .where(
-        and(eq(seriesEpisodeWatch.userId, userId), inArray(seriesEpisodeWatch.seriesId, seriesIds)),
-      ),
-    db
-      .select({
-        seriesId: seriesEpisodeWatch.seriesId,
-        lastWatchedAt: sql<number>`max(${seriesEpisodeWatch.watchedAt})`,
-      })
-      .from(seriesEpisodeWatch)
-      .where(
-        and(eq(seriesEpisodeWatch.userId, userId), inArray(seriesEpisodeWatch.seriesId, seriesIds)),
-      )
-      .groupBy(seriesEpisodeWatch.seriesId),
+  // watchedCountBySeries é derivado de watchedEpisodeRows em memória — uma
+  // query agrupada (count por seriesId+seasonNumber) a menos pra rodar em
+  // fatias, sem custo real (o dado já vem todo de watchedEpisodeRows).
+  const [seriesRows, watchedEpisodeRows, recentRows] = await Promise.all([
+    queryInChunks(seriesIds, (ids) => db.select().from(series).where(inArray(series.tmdbId, ids))),
+    queryInChunks(seriesIds, (ids) =>
+      db
+        .select({
+          seriesId: seriesEpisodeWatch.seriesId,
+          seasonNumber: seriesEpisodeWatch.seasonNumber,
+          episodeNumber: seriesEpisodeWatch.episodeNumber,
+        })
+        .from(seriesEpisodeWatch)
+        .where(
+          and(eq(seriesEpisodeWatch.userId, userId), inArray(seriesEpisodeWatch.seriesId, ids)),
+        ),
+    ),
+    queryInChunks(seriesIds, (ids) =>
+      db
+        .select({
+          seriesId: seriesEpisodeWatch.seriesId,
+          lastWatchedAt: sql<number>`max(${seriesEpisodeWatch.watchedAt})`,
+        })
+        .from(seriesEpisodeWatch)
+        .where(
+          and(eq(seriesEpisodeWatch.userId, userId), inArray(seriesEpisodeWatch.seriesId, ids)),
+        )
+        .groupBy(seriesEpisodeWatch.seriesId),
+    ),
   ]);
 
   const seriesById = new Map(seriesRows.map((row) => [row.tmdbId, row]));
 
   const watchedCountBySeries = new Map<number, Map<number, number>>();
-  for (const row of watchedCountRows) {
-    const bySeason = watchedCountBySeries.get(row.seriesId) ?? new Map<number, number>();
-    bySeason.set(row.seasonNumber, row.count);
-    watchedCountBySeries.set(row.seriesId, bySeason);
-  }
-
   const watchedKeysBySeries = new Map<number, Set<string>>();
   for (const row of watchedEpisodeRows) {
+    const bySeason = watchedCountBySeries.get(row.seriesId) ?? new Map<number, number>();
+    bySeason.set(row.seasonNumber, (bySeason.get(row.seasonNumber) ?? 0) + 1);
+    watchedCountBySeries.set(row.seriesId, bySeason);
+
     const keys = watchedKeysBySeries.get(row.seriesId) ?? new Set<string>();
     keys.add(`${row.seasonNumber}-${row.episodeNumber}`);
     watchedKeysBySeries.set(row.seriesId, keys);

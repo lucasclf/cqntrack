@@ -1086,6 +1086,70 @@ describe("GET /api/series/continue-watching", () => {
 
     expect(body.items.map((item) => item.series.tmdbId)).toEqual([713, 712, 711]);
   });
+
+  // Regressão: D1 limita 100 parâmetros bindados por query — as queries em
+  // lote da rota precisam dividir os ids acompanhados em fatias (ver
+  // D1_PARAM_CHUNK_SIZE em continue-watching.service.ts), senão a rota
+  // quebra com 500 pra qualquer usuário com mais séries acompanhadas do que
+  // o teto. 120 séries aqui, garantindo que estoura pelo menos 1 fatia.
+  it("funciona com mais séries acompanhadas do que o teto de parâmetros do D1 (>100)", async () => {
+    const { cookie, email } = await createAuthenticatedUser(app, env);
+    const userId = await getUserId(email);
+    const db = createDb(env);
+
+    const TOTAL_SERIES = 120;
+    const GAP_SERIES_ID = 90100; // cai na 2ª fatia de 95, não na 1ª
+
+    const seriesRows = Array.from({ length: TOTAL_SERIES }, (_, index) => {
+      const tmdbId = 90000 + index;
+      const hasGap = tmdbId === GAP_SERIES_ID;
+      return {
+        tmdbId,
+        name: `Série ${tmdbId}`,
+        genres: [],
+        seasons: [
+          {
+            seasonNumber: 1,
+            name: "Temporada 1",
+            episodeCount: hasGap ? 3 : 1,
+            airDate: "2008-01-20",
+            posterPath: null,
+          },
+        ],
+        status: hasGap ? "Returning Series" : "Ended",
+      };
+    });
+    const watchRows = seriesRows.map((row) => ({
+      userId,
+      seriesId: row.tmdbId,
+      seasonNumber: 1,
+      episodeNumber: 1,
+    }));
+
+    // Inserts em massa também batem no teto de 100 parâmetros do D1 (cada
+    // linha de `series` liga ~5, cada linha de `seriesEpisodeWatch` liga
+    // 4) — fatia em lotes pequenos só pra escrever a fixture do teste.
+    for (let i = 0; i < seriesRows.length; i += 15) {
+      await db.insert(series).values(seriesRows.slice(i, i + 15));
+    }
+    for (let i = 0; i < watchRows.length; i += 20) {
+      await db.insert(seriesEpisodeWatch).values(watchRows.slice(i, i + 20));
+    }
+
+    // Só a série com lacuna deveria gerar 1 chamada (temporada) — as
+    // demais estão ended e em dia, não deveriam bater na TMDB.
+    const fetchSpy = vi.fn(async () => jsonResponse(tmdbSeasonDetail(1, 3)));
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const res = await app.request("/api/series/continue-watching", { headers: { cookie } }, env);
+    const body = (await res.json()) as { items: Array<{ series: { tmdbId: number } }> };
+    vi.unstubAllGlobals();
+
+    expect(res.status).toBe(200);
+    expect(body.items).toHaveLength(1);
+    expect(body.items[0]?.series.tmdbId).toBe(GAP_SERIES_ID);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("GET /api/series/:tmdbId/seasons/:seasonNumber", () => {
