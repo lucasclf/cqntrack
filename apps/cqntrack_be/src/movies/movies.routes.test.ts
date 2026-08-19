@@ -856,10 +856,9 @@ describe("POST /api/movies/import/filmow/activity", () => {
   it("gera 1 activity-resumo do tipo 'imported', não uma por filme", async () => {
     const { cookie, email } = await createAuthenticatedUser(app, env);
     const db = createDb(env);
-    const [{ id: userId }] = await db
-      .select({ id: user.id })
-      .from(user)
-      .where(eq(user.email, email));
+    const [row] = await db.select({ id: user.id }).from(user).where(eq(user.email, email));
+    if (!row) throw new Error("usuário de teste não encontrado");
+    const userId = row.id;
 
     const res = await app.request(
       "/api/movies/import/filmow/activity",
@@ -890,10 +889,9 @@ describe("POST /api/movies/import/filmow/activity", () => {
   it("importedCount 0 não gera nenhuma activity", async () => {
     const { cookie, email } = await createAuthenticatedUser(app, env);
     const db = createDb(env);
-    const [{ id: userId }] = await db
-      .select({ id: user.id })
-      .from(user)
-      .where(eq(user.email, email));
+    const [row] = await db.select({ id: user.id }).from(user).where(eq(user.email, email));
+    if (!row) throw new Error("usuário de teste não encontrado");
+    const userId = row.id;
 
     const res = await app.request(
       "/api/movies/import/filmow/activity",
