@@ -15,68 +15,56 @@ import { ContinueWatching } from "./series/ContinueWatching";
 
 const BASE_PATH = "/api";
 
-// Home reformulada: em primeiro lugar, "o que assistir a seguir"
-// (ContinueWatching — séries com episódio pendente de verdade, ver
-// series_watch_progress) e atividades recentes (ActivityTab, reaproveitado
-// tal como já existia). O conteúdo de favoritos/recentes/estatísticas de
-// Filmes/Jogos/Livros que antes ocupava a Home inteira (cópia do perfil
-// público) continua existindo, mas rebaixado a seção secundária abaixo —
-// Séries saiu desse conjunto porque ganhou a seção própria acima.
-//
-// As abas da seção secundária são estado local, não rota: diferente do
-// perfil público, "/filmes", "/series" etc. já são as telas de Descobrir/
-// marcações de cada seção (ver router.tsx), então a home não pode
-// reivindicar esses caminhos pras suas abas.
+// 5 abas puramente visuais (estado local, não rota) — Continuar assistindo/
+// Filmes/Jogos/Livros/Atividades recentes. Todo o conteúdo carrega assim
+// que a Home monta: as 5 seções ficam sempre no DOM, cada uma com seu
+// próprio fetch (useEffect de sempre); trocar de aba só alterna quem fica
+// visível via `hidden`, sem desmontar nada — voltar pra uma aba já
+// visitada não refaz o fetch. Sem <h1> aqui: o nome "cqntrack" já aparece
+// no header (ver TopBar), repetir no corpo era redundante.
 export function Home() {
-  const [activeTab, setActiveTab] = useState<HomeTab>("movies");
+  const [activeTab, setActiveTab] = useState<HomeTab>("continueWatching");
 
   return (
     <div className={styles.page}>
-      <h1>cqntrack</h1>
+      <HomeTabs active={activeTab} onChange={setActiveTab} />
 
-      <h2>Continuar assistindo</h2>
-      <ContinueWatching />
+      <div hidden={activeTab !== "continueWatching"}>
+        <ContinueWatching />
+      </div>
 
-      <h2>Atividades recentes</h2>
-      <ActivityTab />
+      <div hidden={activeTab !== "activity"}>
+        <ActivityTab />
+      </div>
 
-      <div className={styles.secondary}>
-        <h2>Filmes, jogos e livros</h2>
-        <HomeTabs active={activeTab} onChange={setActiveTab} />
-        <div className={styles.layout}>
-          <div className={styles.main}>
-            {activeTab === "movies" && (
-              <>
-                <MovieFavorites basePath={BASE_PATH} />
-                <RecentlyWatchedMovies basePath={BASE_PATH} />
-              </>
-            )}
-            {activeTab === "games" && (
-              <>
-                <FavoritesSection favoritesEndpoint="/api/games/favorites" />
-                <RecentlyPlayedGames basePath={BASE_PATH} />
-              </>
-            )}
-            {activeTab === "books" && (
-              <>
-                <BookFavoritesSection favoritesEndpoint="/api/books/favorites" />
-                <RecentlyReadBooks basePath={BASE_PATH} />
-              </>
-            )}
-          </div>
-
-          <aside className={styles.sidebar}>
-            {activeTab === "movies" && (
-              <MovieStats basePath={BASE_PATH} linkBase="/filmes/marcacoes" />
-            )}
-            {activeTab === "games" && (
-              <GameStats basePath={BASE_PATH} linkBase="/jogos/marcacoes" />
-            )}
-            {activeTab === "books" && (
-              <BookStats basePath={BASE_PATH} linkBase="/livros/marcacoes" />
-            )}
-          </aside>
+      <div hidden={activeTab !== "movies"} className={styles.layout}>
+        <div className={styles.main}>
+          <MovieFavorites basePath={BASE_PATH} />
+          <RecentlyWatchedMovies basePath={BASE_PATH} />
         </div>
+        <aside className={styles.sidebar}>
+          <MovieStats basePath={BASE_PATH} linkBase="/filmes/marcacoes" />
+        </aside>
+      </div>
+
+      <div hidden={activeTab !== "games"} className={styles.layout}>
+        <div className={styles.main}>
+          <FavoritesSection favoritesEndpoint="/api/games/favorites" />
+          <RecentlyPlayedGames basePath={BASE_PATH} />
+        </div>
+        <aside className={styles.sidebar}>
+          <GameStats basePath={BASE_PATH} linkBase="/jogos/marcacoes" />
+        </aside>
+      </div>
+
+      <div hidden={activeTab !== "books"} className={styles.layout}>
+        <div className={styles.main}>
+          <BookFavoritesSection favoritesEndpoint="/api/books/favorites" />
+          <RecentlyReadBooks basePath={BASE_PATH} />
+        </div>
+        <aside className={styles.sidebar}>
+          <BookStats basePath={BASE_PATH} linkBase="/livros/marcacoes" />
+        </aside>
       </div>
     </div>
   );

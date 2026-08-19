@@ -3,23 +3,6 @@
   margin: 0 auto;
 }
 
-.page h2 {
-  font-size: 16px;
-  color: var(--text-secondary);
-  margin: 24px 0 16px;
-}
-
-.secondary {
-  margin-top: 40px;
-  padding-top: 24px;
-  border-top: 1px solid var(--card-border);
-}
-
-.secondary h2 {
-  font-size: 14px;
-  color: var(--text-muted);
-}
-
 .layout {
   display: grid;
   grid-template-columns: 1fr 240px;

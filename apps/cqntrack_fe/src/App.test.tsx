@@ -40,6 +40,8 @@ describe("Roteamento do App", () => {
     useSessionMock.mockReturnValue({ data: { user: { id: "1" } }, isPending: false });
     renderApp("/");
 
-    expect(await screen.findByRole("heading", { name: "cqntrack" })).toBeInTheDocument();
+    // A marca "cqntrack" só existe no header (TopBar) — a Home não repete
+    // o título no corpo.
+    expect(await screen.findByRole("link", { name: "cqntrack" })).toBeInTheDocument();
   });
 });

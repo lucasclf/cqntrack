@@ -44,10 +44,14 @@ function renderHome() {
   );
 }
 
-// Mock genérico cobrindo tudo que a Home carrega de cara (continuar
-// assistindo + atividades + as 3 abas secundárias, todas com "/api" em vez
-// de "/api/users/:username") — cada rota devolve vazio por padrão. Testes
-// que precisam de dado real sobrescrevem a rota específica.
+function homeTabsNav() {
+  return screen.getByRole("navigation", { name: "Seções da home" });
+}
+
+// Mock genérico cobrindo tudo que a Home carrega de cara (as 5 abas, todas
+// com "/api" em vez de "/api/users/:username") — cada rota devolve vazio
+// por padrão. Testes que precisam de dado real sobrescrevem a rota
+// específica.
 function mockHomeEmpty(overrides: Record<string, unknown> = {}) {
   getMock.mockImplementation((path: string) => {
     if (path in overrides) return Promise.resolve(overrides[path]);
@@ -68,29 +72,69 @@ describe("Home", () => {
     getMock.mockReset();
   });
 
-  it("mostra o título, continuar assistindo, atividades e as 3 abas secundárias (Filmes/Jogos/Livros)", async () => {
+  it("mostra as 5 abas, com Continuar assistindo ativa por padrão", async () => {
     mockHomeEmpty();
     renderHome();
 
-    expect(screen.getByRole("heading", { name: "cqntrack" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Continuar assistindo" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Atividades recentes" })).toBeInTheDocument();
-    expect(await screen.findByText("Nenhum episódio pendente — tudo em dia!")).toBeInTheDocument();
+    // Sem <h1> aqui — "cqntrack" já aparece no header (TopBar), fora do
+    // que esse componente renderiza isoladamente.
+    expect(screen.queryByRole("heading", { name: "cqntrack" })).not.toBeInTheDocument();
 
-    // "Filmes"/"Jogos" são ambíguos com os botões de filtro de
-    // ActivityTab (mesmo rótulo) — escopa pro nav das abas de mídia.
-    const mediaTabs = screen.getByRole("navigation", { name: "Mídia" });
-    expect(within(mediaTabs).getByRole("button", { name: "Filmes" })).toBeInTheDocument();
-    expect(within(mediaTabs).getByRole("button", { name: "Jogos" })).toBeInTheDocument();
-    expect(within(mediaTabs).getByRole("button", { name: "Livros" })).toBeInTheDocument();
-    expect(within(mediaTabs).queryByRole("button", { name: "Séries" })).not.toBeInTheDocument();
-    expect(within(mediaTabs).queryByRole("button", { name: "Atividades" })).not.toBeInTheDocument();
-
-    // Aba padrão da seção secundária é Filmes.
-    expect(within(mediaTabs).getByRole("button", { name: "Filmes" })).toHaveAttribute(
+    const nav = homeTabsNav();
+    for (const label of [
+      "Continuar assistindo",
+      "Filmes",
+      "Jogos",
+      "Livros",
+      "Atividades recentes",
+    ]) {
+      expect(within(nav).getByRole("button", { name: label })).toBeInTheDocument();
+    }
+    expect(within(nav).getByRole("button", { name: "Continuar assistindo" })).toHaveAttribute(
       "aria-current",
       "page",
     );
+
+    expect(await screen.findByText("Nenhum episódio pendente — tudo em dia!")).toBeVisible();
+  });
+
+  it("carrega o conteúdo de todas as abas ao montar; trocar de aba só alterna visibilidade, sem refazer fetch", async () => {
+    mockHomeEmpty({
+      "/api/movies/favorites": {
+        items: [
+          {
+            id: "1",
+            status: "watched",
+            rating: null,
+            watchedAt: "2026-01-01T00:00:00.000Z",
+            favoritedAt: "2026-01-01T00:00:00.000Z",
+            review: null,
+            updatedAt: "2026-01-01T00:00:00.000Z",
+            movie: MOVIE,
+          },
+        ],
+      },
+    });
+    renderHome();
+
+    // Espera a aba ativa (Continuar assistindo) assentar — garante que os
+    // efeitos de montagem das outras abas, disparados no mesmo render,
+    // também já rodaram.
+    await screen.findByText("Nenhum episódio pendente — tudo em dia!");
+
+    expect(getMock).toHaveBeenCalledWith("/api/movies/favorites");
+    expect(getMock).toHaveBeenCalledWith("/api/activity");
+    expect(getMock.mock.calls.filter(([path]) => path === "/api/movies/favorites")).toHaveLength(1);
+
+    // Já buscado, mas escondido — a aba ativa ainda é "Continuar assistindo".
+    expect(screen.getAllByText("Inception")[0]).not.toBeVisible();
+
+    fireEvent.click(within(homeTabsNav()).getByRole("button", { name: "Filmes" }));
+
+    expect(await screen.findByRole("heading", { name: "Filmes favoritos" })).toBeVisible();
+    // Mesmo depois de trocar de aba, nenhum novo fetch — o dado já estava
+    // carregado desde a montagem.
+    expect(getMock.mock.calls.filter(([path]) => path === "/api/movies/favorites")).toHaveLength(1);
   });
 
   it("continuar assistindo lista a série com o próximo episódio, linkando pro episódio", async () => {
@@ -112,7 +156,7 @@ describe("Home", () => {
     });
     renderHome();
 
-    expect(await screen.findByText("Game of Thrones")).toBeInTheDocument();
+    expect(await screen.findByText("Game of Thrones")).toBeVisible();
     expect(
       screen.getByText("Temporada 2 · Episódio 3 — What Is Dead May Never Die"),
     ).toBeInTheDocument();
@@ -122,7 +166,7 @@ describe("Home", () => {
     expect(link).toHaveAttribute("href", "/series/1399/temporadas/2/episodios/3");
   });
 
-  it("aba Filmes (seção secundária) mostra favoritos + assistido recentemente + estatísticas, com dado próprio", async () => {
+  it("aba Filmes mostra favoritos + assistido recentemente + estatísticas, com dado próprio", async () => {
     mockHomeEmpty({
       "/api/movies/favorites": {
         items: [
@@ -141,6 +185,8 @@ describe("Home", () => {
     });
     renderHome();
 
+    fireEvent.click(within(homeTabsNav()).getByRole("button", { name: "Filmes" }));
+
     expect(await screen.findByRole("heading", { name: "Filmes favoritos" })).toBeInTheDocument();
     expect(screen.getAllByText("Inception")).not.toHaveLength(0);
 
@@ -154,9 +200,11 @@ describe("Home", () => {
     expect(link).toHaveAttribute("href", "/filmes/marcacoes?status=watched");
   });
 
-  it("atividades recentes mostra o feed com filtro por mídia", async () => {
+  it("aba Atividades recentes mostra o feed com filtro por mídia", async () => {
     mockHomeEmpty();
     renderHome();
+
+    fireEvent.click(within(homeTabsNav()).getByRole("button", { name: "Atividades recentes" }));
 
     const filterGroup = await screen.findByRole("group", { name: "Filtrar por mídia" });
     expect(within(filterGroup).getByRole("button", { name: "Todas" })).toHaveAttribute(
@@ -171,12 +219,11 @@ describe("Home", () => {
     expect(getMock).toHaveBeenCalledWith("/api/activity?mediaType=games");
   });
 
-  it("aba Jogos (seção secundária) mostra a estatística, levando pra marcações", async () => {
+  it("aba Jogos mostra a estatística, levando pra marcações", async () => {
     mockHomeEmpty();
     renderHome();
 
-    const mediaTabs = screen.getByRole("navigation", { name: "Mídia" });
-    fireEvent.click(within(mediaTabs).getByRole("button", { name: "Jogos" }));
+    fireEvent.click(within(homeTabsNav()).getByRole("button", { name: "Jogos" }));
 
     const sidebar = screen.getByRole("complementary");
     const link = await within(sidebar).findByRole("link", { name: /Jogando/ });

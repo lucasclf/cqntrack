@@ -1,11 +1,13 @@
 import styles from "./HomeTabs.module.css";
 
-export type HomeTab = "movies" | "games" | "books";
+export type HomeTab = "continueWatching" | "movies" | "games" | "books" | "activity";
 
 const TABS: { key: HomeTab; label: string }[] = [
+  { key: "continueWatching", label: "Continuar assistindo" },
   { key: "movies", label: "Filmes" },
   { key: "games", label: "Jogos" },
   { key: "books", label: "Livros" },
+  { key: "activity", label: "Atividades recentes" },
 ];
 
 interface HomeTabsProps {
@@ -13,18 +15,15 @@ interface HomeTabsProps {
   onChange: (tab: HomeTab) => void;
 }
 
-// Só a seção secundária da Home usa isso agora (favoritos/recentes/
-// estatísticas de Filmes/Jogos/Livros) — Séries ganhou sua própria seção
-// primária ("Continuar assistindo", ver ContinueWatching.tsx) e Atividades
-// virou seção própria (ActivityTab), não mais uma aba aqui.
-//
-// Mesmo espírito visual de ProfileTabs (perfil público), mas com estado
-// local em vez de rota — a home vive dentro do AppShell, e os caminhos
-// "/filmes", "/series" etc. já são as telas de Descobrir/marcações de cada
-// seção, então as abas daqui não podem reivindicar esses paths.
+// Abas puramente visuais (estado local, não rota) — todo o conteúdo das 5
+// já carrega assim que a Home monta (ver Home.tsx, cada seção fica no DOM
+// o tempo todo, só escondida via `hidden`), trocar de aba não refaz
+// nenhum fetch. Os caminhos "/filmes", "/jogos" etc. já são as telas de
+// Descobrir/marcações de cada seção (ver router.tsx), então as abas daqui
+// não podem reivindicar esses paths.
 export function HomeTabs({ active, onChange }: HomeTabsProps) {
   return (
-    <nav className={styles.tabs} aria-label="Mídia">
+    <nav className={styles.tabs} aria-label="Seções da home">
       {TABS.map((tab) => (
         <button
           key={tab.key}
