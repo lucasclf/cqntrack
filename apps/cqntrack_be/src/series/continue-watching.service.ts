@@ -1,7 +1,7 @@
 import type { ContinueWatchingItem } from "@cqntrack/shared";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import type { createDb } from "../db/client";
-import { series, seriesEpisodeWatch } from "../db/schema";
+import { series, seriesEntry, seriesEpisodeWatch } from "../db/schema";
 import { getSeriesSeason } from "../integrations/tmdb/series";
 import { type CachedSeries, getOrCacheSeries, mapCachedSeriesToSummary } from "./series.service";
 
@@ -146,16 +146,30 @@ async function findNextUnwatchedEpisode(
 //    assistiu tudo que temos cacheado — só reconsulta a TMDB se o cache
 //    dessa série estiver desatualizado há mais de 24h; caso contrário,
 //    confia no que já sabemos (nada pendente).
+//
+// Série marcada como abandonada (seriesEntry.abandonedAt, ver
+// SeriesDetail) nunca entra nessas contas — filtrada antes de tudo,
+// independente de ter lacuna real ou não.
 export async function getContinueWatching(
   env: Env,
   db: Db,
   userId: string,
 ): Promise<ContinueWatchingItem[]> {
-  const trackedRows = await db
-    .selectDistinct({ seriesId: seriesEpisodeWatch.seriesId })
-    .from(seriesEpisodeWatch)
-    .where(eq(seriesEpisodeWatch.userId, userId));
-  const seriesIds = trackedRows.map((row) => row.seriesId);
+  const [trackedRows, abandonedRows] = await Promise.all([
+    db
+      .selectDistinct({ seriesId: seriesEpisodeWatch.seriesId })
+      .from(seriesEpisodeWatch)
+      .where(eq(seriesEpisodeWatch.userId, userId)),
+    // Filtra por userId só (sem IN de seriesIds) — não precisa de chunk.
+    db
+      .select({ seriesId: seriesEntry.seriesId })
+      .from(seriesEntry)
+      .where(and(eq(seriesEntry.userId, userId), isNotNull(seriesEntry.abandonedAt))),
+  ]);
+  const abandonedSeriesIds = new Set(abandonedRows.map((row) => row.seriesId));
+  const seriesIds = trackedRows
+    .map((row) => row.seriesId)
+    .filter((seriesId) => !abandonedSeriesIds.has(seriesId));
   if (seriesIds.length === 0) {
     return [];
   }

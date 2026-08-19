@@ -1,0 +1,1 @@
+ALTER TABLE `series_entry` ADD `abandoned_at` integer;

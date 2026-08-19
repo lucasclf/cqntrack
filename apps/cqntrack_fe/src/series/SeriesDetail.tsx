@@ -99,6 +99,7 @@ export function SeriesDetail() {
   const { series, entry } = detail;
   const year = series.firstAirDate ? series.firstAirDate.slice(0, 4) : null;
   const favorited = entry?.favoritedAt != null;
+  const abandoned = entry?.abandonedAt != null;
 
   return (
     <div className={styles.page}>
@@ -154,6 +155,14 @@ export function SeriesDetail() {
             {favorited ? "♥" : "♡"}
           </button>
           <StarRating value={entry?.rating ?? null} onChange={(rating) => savePatch({ rating })} />
+          <button
+            type="button"
+            className={styles.abandonBtn}
+            aria-pressed={abandoned}
+            onClick={() => savePatch({ abandoned: !abandoned })}
+          >
+            {abandoned ? "Abandonada" : "Abandonar"}
+          </button>
         </div>
 
         {entry && (

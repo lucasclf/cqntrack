@@ -107,6 +107,29 @@ describe("SeriesDetail", () => {
     );
   });
 
+  it("abandona ao clicar no botão, e mostra o estado marcado", async () => {
+    getMock.mockResolvedValue({ series: SERIES, entry: null });
+    putMock.mockResolvedValue({
+      id: "2",
+      rating: null,
+      watchedEpisodeCount: 0,
+      favoritedAt: null,
+      abandonedAt: "2026-01-01T00:00:00.000Z",
+      review: null,
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    renderDetail();
+
+    await screen.findByRole("heading", { name: "Breaking Bad" });
+    fireEvent.click(screen.getByRole("button", { name: "Abandonar" }));
+
+    expect(putMock).toHaveBeenCalledWith("/api/series/1396/entry", { abandoned: true });
+    expect(await screen.findByRole("button", { name: "Abandonada" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
   it("salva a nota ao clicar numa estrela, criando a marcação quando ainda não existe entry", async () => {
     getMock.mockResolvedValue({ series: SERIES, entry: null });
     putMock.mockResolvedValue({

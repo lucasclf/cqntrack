@@ -148,6 +148,13 @@
       "when": 1787166056453,
       "tag": "0020_series_status_drop_watch_progress",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "6",
+      "when": 1787169399767,
+      "tag": "0021_series_entry_abandoned_at",
+      "breakpoints": true
     }
   ]
 }

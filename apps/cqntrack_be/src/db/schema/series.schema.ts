@@ -83,10 +83,13 @@ export const series = sqliteTable("series", {
     .notNull(),
 });
 
-// Marcação do usuário para uma série: nota pessoal, favorito e review. Sem
-// status e sem ponteiro de progresso — o progresso de verdade mora em
-// series_episode_watch (uma linha por episódio assistido). Um usuário só
-// pode ter uma marcação por série (upsert).
+// Marcação do usuário para uma série: nota pessoal, favorito, abandonada e
+// review. Sem status "de verdade" (watching/completed/etc.) e sem ponteiro
+// de progresso — o progresso mora em series_episode_watch (uma linha por
+// episódio assistido); "abandonada" é a única exceção deliberada, um sinal
+// binário só pra tirar a série de "Continuar assistindo" (ver
+// continue-watching.service.ts) sem mexer no progresso já registrado. Um
+// usuário só pode ter uma marcação por série (upsert).
 export const seriesEntry = sqliteTable(
   "series_entry",
   {
@@ -103,6 +106,8 @@ export const seriesEntry = sqliteTable(
     // Existência = favoritado, sem limite de quantidade (não é mais um
     // slot 1-4) — mesmo padrão de watchedAt de filme, ordenado por data.
     favoritedAt: integer("favorited_at", { mode: "timestamp_ms" }),
+    // Existência = abandonada, mesmo padrão de favoritedAt acima.
+    abandonedAt: integer("abandoned_at", { mode: "timestamp_ms" }),
     review: text("review"),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)

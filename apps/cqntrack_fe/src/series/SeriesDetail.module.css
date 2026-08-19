@@ -145,3 +145,19 @@
   border-color: var(--error);
   color: var(--error);
 }
+
+.abandonBtn {
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.abandonBtn[aria-pressed="true"] {
+  border-color: var(--text-muted);
+  background: var(--text-muted);
+  color: var(--on-accent);
+}

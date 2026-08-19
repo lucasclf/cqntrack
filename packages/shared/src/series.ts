@@ -100,6 +100,9 @@ export const SeriesEntrySchema = z.object({
   // Favoritar não tem mais limite de quantidade (ver SeriesFavoritesResponseSchema)
   // — null = essa série não está favoritada.
   favoritedAt: z.iso.datetime().nullable(),
+  // null = não abandonada. Só tira a série de "Continuar assistindo" (ver
+  // getContinueWatching no backend) — não mexe no progresso já registrado.
+  abandonedAt: z.iso.datetime().nullable(),
   review: z.string().nullable(),
   updatedAt: z.iso.datetime(),
   // Último episódio lançado (segundo a TMDB) que esse usuário ainda não
@@ -132,6 +135,7 @@ export const UpsertSeriesEntryRequestSchema = z.object({
   rating: z.number().min(0).max(5).multipleOf(0.5).nullable().optional(),
   review: z.string().max(2000).nullable().optional(),
   favorited: z.boolean().optional(),
+  abandoned: z.boolean().optional(),
 });
 
 export type UpsertSeriesEntryRequest = z.infer<typeof UpsertSeriesEntryRequestSchema>;

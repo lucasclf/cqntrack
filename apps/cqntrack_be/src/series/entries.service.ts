@@ -106,6 +106,7 @@ function toSeriesEntry(
     rating: row.rating,
     watchedEpisodeCount: watched.count,
     favoritedAt: row.favoritedAt?.toISOString() ?? null,
+    abandonedAt: row.abandonedAt?.toISOString() ?? null,
     review: row.review,
     updatedAt: row.updatedAt.toISOString(),
     availableEpisode,
@@ -198,6 +199,7 @@ export async function upsertSeriesEntry(
     rating: input.rating,
     review: input.review,
     favoritedAt: input.favorited === undefined ? undefined : input.favorited ? new Date() : null,
+    abandonedAt: input.abandoned === undefined ? undefined : input.abandoned ? new Date() : null,
   });
 
   const [row] = existing

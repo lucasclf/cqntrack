@@ -932,6 +932,60 @@ describe("GET /api/series/continue-watching", () => {
     });
   });
 
+  it("série marcada como abandonada não aparece, mesmo com lacuna real (caso A) — some da TMDB também", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    await watchFirstEpisode(cookie, 706, "Série abandonada");
+
+    await app.request(
+      "/api/series/706/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ abandoned: true }),
+      },
+      env,
+    );
+
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const res = await app.request("/api/series/continue-watching", { headers: { cookie } }, env);
+    await expect(res.json()).resolves.toEqual({ items: [] });
+    expect(fetchSpy).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it("desabandonar traz a série de volta (com lacuna real)", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    await watchFirstEpisode(cookie, 707, "Série readotada");
+
+    await app.request(
+      "/api/series/707/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ abandoned: true }),
+      },
+      env,
+    );
+    await app.request(
+      "/api/series/707/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ abandoned: false }),
+      },
+      env,
+    );
+
+    stubTmdbFetchOnce(tmdbSeasonDetail(1, 3));
+    const res = await app.request("/api/series/continue-watching", { headers: { cookie } }, env);
+    const body = (await res.json()) as { items: Array<{ series: { tmdbId: number } }> };
+    vi.unstubAllGlobals();
+
+    expect(body.items.map((item) => item.series.tmdbId)).toEqual([707]);
+  });
+
   it("caso B: série ended com tudo assistido não aparece, mesmo com cache velho (não reconsulta a TMDB)", async () => {
     const { cookie, email } = await createAuthenticatedUser(app, env);
     const userId = await getUserId(email);
