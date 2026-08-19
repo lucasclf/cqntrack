@@ -37,34 +37,45 @@ export function Home() {
         <ActivityTab />
       </div>
 
-      <div hidden={activeTab !== "movies"} className={styles.layout}>
-        <div className={styles.main}>
-          <MovieFavorites basePath={BASE_PATH} />
-          <RecentlyWatchedMovies basePath={BASE_PATH} />
+      {/* `hidden` fica num wrapper só com esse atributo — colocar junto de
+          className={styles.layout} não funciona: CSS de autor (o
+          `display: grid` do módulo) sempre vence o `display: none` padrão
+          do atributo `hidden` do navegador, então o bloco continuava
+          visível mesmo escondido. */}
+      <div hidden={activeTab !== "movies"}>
+        <div className={styles.layout}>
+          <div className={styles.main}>
+            <MovieFavorites basePath={BASE_PATH} />
+            <RecentlyWatchedMovies basePath={BASE_PATH} />
+          </div>
+          <aside className={styles.sidebar}>
+            <MovieStats basePath={BASE_PATH} linkBase="/filmes/marcacoes" />
+          </aside>
         </div>
-        <aside className={styles.sidebar}>
-          <MovieStats basePath={BASE_PATH} linkBase="/filmes/marcacoes" />
-        </aside>
       </div>
 
-      <div hidden={activeTab !== "games"} className={styles.layout}>
-        <div className={styles.main}>
-          <FavoritesSection favoritesEndpoint="/api/games/favorites" />
-          <RecentlyPlayedGames basePath={BASE_PATH} />
+      <div hidden={activeTab !== "games"}>
+        <div className={styles.layout}>
+          <div className={styles.main}>
+            <FavoritesSection favoritesEndpoint="/api/games/favorites" />
+            <RecentlyPlayedGames basePath={BASE_PATH} />
+          </div>
+          <aside className={styles.sidebar}>
+            <GameStats basePath={BASE_PATH} linkBase="/jogos/marcacoes" />
+          </aside>
         </div>
-        <aside className={styles.sidebar}>
-          <GameStats basePath={BASE_PATH} linkBase="/jogos/marcacoes" />
-        </aside>
       </div>
 
-      <div hidden={activeTab !== "books"} className={styles.layout}>
-        <div className={styles.main}>
-          <BookFavoritesSection favoritesEndpoint="/api/books/favorites" />
-          <RecentlyReadBooks basePath={BASE_PATH} />
+      <div hidden={activeTab !== "books"}>
+        <div className={styles.layout}>
+          <div className={styles.main}>
+            <BookFavoritesSection favoritesEndpoint="/api/books/favorites" />
+            <RecentlyReadBooks basePath={BASE_PATH} />
+          </div>
+          <aside className={styles.sidebar}>
+            <BookStats basePath={BASE_PATH} linkBase="/livros/marcacoes" />
+          </aside>
         </div>
-        <aside className={styles.sidebar}>
-          <BookStats basePath={BASE_PATH} linkBase="/livros/marcacoes" />
-        </aside>
       </div>
     </div>
   );
