@@ -11,6 +11,16 @@ export interface TmdbSeriesSearchResult {
   vote_average?: number; // nota agregada da própria TMDB, 0-10
 }
 
+// next_episode_to_air/last_episode_to_air (abaixo) usam esse mesmo shape,
+// com season_number a mais — a TMDB já calcula os dois de graça no GET
+// /tv/{id}, sem request extra (nem precisa abrir a temporada).
+export interface TmdbUpcomingEpisode {
+  episode_number: number;
+  season_number: number;
+  name: string;
+  air_date: string | null;
+}
+
 export interface TmdbSeriesDetail {
   id: number;
   name: string;
@@ -35,6 +45,11 @@ export interface TmdbSeriesDetail {
   // request extra. Não é a mesma coisa que "diretor" (ver TmdbAggregateCrewMember
   // abaixo) — série não tem um diretor único como filme.
   created_by?: { id: number; name: string; profile_path: string | null }[];
+  // Usados pro aviso de "episódio disponível"/"episódio previsto" (ver
+  // series.service.ts) — null quando a série terminou (sem próximo) ou
+  // ainda não estreou nenhum episódio (sem último).
+  next_episode_to_air?: TmdbUpcomingEpisode | null;
+  last_episode_to_air?: TmdbUpcomingEpisode | null;
 }
 
 // GET /tv/{series_id}/season/{season_number} — buscado ao vivo, sem cache

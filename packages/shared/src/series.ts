@@ -75,6 +75,17 @@ export const SeriesDetailSchema = SeriesSummarySchema.extend({
 
 export type SeriesDetail = z.infer<typeof SeriesDetailSchema>;
 
+// Episódio "resumido" — usado tanto pro já disponível quanto pro previsto
+// (ver availableEpisode/upcomingEpisode abaixo), mesmo shape pros dois.
+export const SeriesUpcomingEpisodeSchema = z.object({
+  seasonNumber: z.number().int(),
+  episodeNumber: z.number().int(),
+  name: z.string(),
+  airDate: z.iso.date(),
+});
+
+export type SeriesUpcomingEpisode = z.infer<typeof SeriesUpcomingEpisodeSchema>;
+
 // Marcação do usuário para uma série específica — sem a `series` embutida
 // (quem consome isso normalmente já sabe de qual série se trata pelo
 // contexto da chamada). Ver SeriesEntryWithSeriesSchema para o caso de
@@ -91,6 +102,15 @@ export const SeriesEntrySchema = z.object({
   favoritedAt: z.iso.datetime().nullable(),
   review: z.string().nullable(),
   updatedAt: z.iso.datetime(),
+  // Último episódio lançado (segundo a TMDB) que esse usuário ainda não
+  // marcou como assistido — null quando não há episódio lançado pendente
+  // (já assistiu o mais recente, ou a série não tem episódio lançado
+  // ainda). Refeito pelo cron diário + toda revalidação do cache da série
+  // (ver refresh-episodes.job.ts / series.service.ts).
+  availableEpisode: SeriesUpcomingEpisodeSchema.nullable(),
+  // Próximo episódio previsto, com data futura — null quando a TMDB não
+  // tem previsão (série encerrada, ou hiato sem data anunciada ainda).
+  upcomingEpisode: SeriesUpcomingEpisodeSchema.nullable(),
 });
 
 export type SeriesEntry = z.infer<typeof SeriesEntrySchema>;

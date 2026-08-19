@@ -9,6 +9,14 @@ interface SeriesCardProps {
   entry?: SeriesEntry;
 }
 
+// "YYYY-MM-DD" -> "DD/MM", sem passar por Date (evita o clássico bug de
+// fuso: new Date("YYYY-MM-DD") vira meia-noite UTC, e toLocaleDateString
+// num fuso atrás de UTC — caso do Brasil — mostraria o dia anterior).
+function formatShortDate(isoDate: string): string {
+  const [, month, day] = isoDate.split("-");
+  return `${day}/${month}`;
+}
+
 // Cartão de série reutilizado em busca, listas, marcações e perfil público —
 // sempre linka pro detalhe da série (/series/:tmdbId).
 export function SeriesCard({ series, entry }: SeriesCardProps) {
@@ -30,6 +38,18 @@ export function SeriesCard({ series, entry }: SeriesCardProps) {
           <span className={styles.favoriteBadge} aria-label="Favoritado">
             ♥
           </span>
+        )}
+        {/* Só um dos dois de cada vez — "já disponível" é mais acionável
+            (e mutuamente exclusivo na prática: a TMDB só prevê o próximo
+            episódio depois que o anterior já foi ao ar). */}
+        {entry?.availableEpisode ? (
+          <span className={styles.newEpisodeBadge}>Novo episódio</span>
+        ) : (
+          entry?.upcomingEpisode && (
+            <span className={styles.upcomingEpisodeBadge}>
+              Previsto {formatShortDate(entry.upcomingEpisode.airDate)}
+            </span>
+          )
         )}
       </div>
       <div className={styles.info}>

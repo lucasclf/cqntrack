@@ -18,6 +18,13 @@ EMAIL_FROM = "cqntrack <noreply@mail.cqn.xyz.br>"
 [observability]
 enabled = true
 
+# 1x/dia, 6h UTC (~3h em Brasília) — atualiza o cache de próximo episódio/
+# último lançado das séries acompanhadas (ver src/series/refresh-episodes.job.ts
+# e scheduled() em src/index.ts). Séries não lançam episódio com frequência
+# maior que isso; 1x/dia já cobre sem gastar requests da TMDB à toa.
+[triggers]
+crons = ["0 6 * * *"]
+
 # Contadores de verdade compartilhados pela conta (não por isolate) — ao
 # contrário de um rate limit em memória de aplicação, que não é confiável em
 # Workers (cada isolate/PoP teria seu próprio contador). Ver

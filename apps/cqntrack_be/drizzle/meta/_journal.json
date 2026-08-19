@@ -127,6 +127,13 @@
       "when": 1786559812731,
       "tag": "0017_redesign_status_favoritos",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1787141486330,
+      "tag": "0018_add_series_next_episode",
+      "breakpoints": true
     }
   ]
 }

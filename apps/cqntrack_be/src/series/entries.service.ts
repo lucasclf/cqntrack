@@ -25,42 +25,91 @@ const SORT_COLUMNS = {
   updatedAt: seriesEntry.updatedAt,
 } as const;
 
-async function getWatchedCount(db: Db, userId: string, seriesId: number): Promise<number> {
-  const [result] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(seriesEpisodeWatch)
-    .where(and(eq(seriesEpisodeWatch.userId, userId), eq(seriesEpisodeWatch.seriesId, seriesId)));
-  return result?.count ?? 0;
+interface WatchedSummary {
+  count: number;
+  // Chaveado por "temporada-episódio" — permite checar se um episódio
+  // específico (lastEpisodeToAir da série) já foi assistido, sem query
+  // extra por série (ver toSeriesEntry).
+  watchedKeys: Set<string>;
 }
 
-// Uma query em lote (GROUP BY) em vez de uma por linha — mesmo espírito de
-// withItemCount em lists.service.ts, evita N+1 em listSeriesEntries.
-async function getWatchedCounts(
+function episodeKey(seasonNumber: number, episodeNumber: number): string {
+  return `${seasonNumber}-${episodeNumber}`;
+}
+
+const EMPTY_WATCHED_SUMMARY: WatchedSummary = { count: 0, watchedKeys: new Set() };
+
+// Uma query em lote por (temporada, episódio) — mesmo espírito de
+// withItemCount em lists.service.ts, evita N+1 em listSeriesEntries. Troca
+// count(*) por trazer as linhas: além da contagem, dá pra checar se um
+// episódio específico já foi assistido (aviso de "episódio disponível").
+async function getWatchedSummaries(
   db: Db,
   userId: string,
   seriesIds: number[],
-): Promise<Map<number, number>> {
+): Promise<Map<number, WatchedSummary>> {
   if (seriesIds.length === 0) {
     return new Map();
   }
   const rows = await db
-    .select({ seriesId: seriesEpisodeWatch.seriesId, count: sql<number>`count(*)` })
+    .select({
+      seriesId: seriesEpisodeWatch.seriesId,
+      seasonNumber: seriesEpisodeWatch.seasonNumber,
+      episodeNumber: seriesEpisodeWatch.episodeNumber,
+    })
     .from(seriesEpisodeWatch)
     .where(
       and(eq(seriesEpisodeWatch.userId, userId), inArray(seriesEpisodeWatch.seriesId, seriesIds)),
-    )
-    .groupBy(seriesEpisodeWatch.seriesId);
-  return new Map(rows.map((row) => [row.seriesId, row.count]));
+    );
+
+  const summaries = new Map<number, WatchedSummary>();
+  for (const row of rows) {
+    const summary = summaries.get(row.seriesId) ?? { count: 0, watchedKeys: new Set<string>() };
+    summary.count += 1;
+    summary.watchedKeys.add(episodeKey(row.seasonNumber, row.episodeNumber));
+    summaries.set(row.seriesId, summary);
+  }
+  return summaries;
 }
 
-function toSeriesEntry(row: SeriesEntryRow, watchedEpisodeCount: number): SeriesEntry {
+async function getWatchedSummary(
+  db: Db,
+  userId: string,
+  seriesId: number,
+): Promise<WatchedSummary> {
+  const summaries = await getWatchedSummaries(db, userId, [seriesId]);
+  return summaries.get(seriesId) ?? EMPTY_WATCHED_SUMMARY;
+}
+
+// lastEpisodeToAir/nextEpisodeToAir vêm do cache global da série (ver
+// series.schema.ts), refeitos pelo cron diário (refresh-episodes.job.ts)
+// e a cada revalidação de 24h do cache (series.service.ts) — aqui só
+// cruza com o que esse usuário específico já assistiu.
+function toSeriesEntry(
+  row: SeriesEntryRow,
+  cachedSeries: CachedSeries,
+  watched: WatchedSummary,
+): SeriesEntry {
+  const lastEpisode = cachedSeries.lastEpisodeToAir;
+  const availableEpisode =
+    lastEpisode &&
+    !watched.watchedKeys.has(episodeKey(lastEpisode.seasonNumber, lastEpisode.episodeNumber))
+      ? lastEpisode
+      : null;
+
+  const nextEpisode = cachedSeries.nextEpisodeToAir;
+  const upcomingEpisode =
+    nextEpisode && new Date(nextEpisode.airDate).getTime() > Date.now() ? nextEpisode : null;
+
   return {
     id: row.id,
     rating: row.rating,
-    watchedEpisodeCount,
+    watchedEpisodeCount: watched.count,
     favoritedAt: row.favoritedAt?.toISOString() ?? null,
     review: row.review,
     updatedAt: row.updatedAt.toISOString(),
+    availableEpisode,
+    upcomingEpisode,
   };
 }
 
@@ -96,12 +145,13 @@ export async function getSeriesEntryForUser(
 ): Promise<SeriesEntry | null> {
   const row = await db.query.seriesEntry.findFirst({
     where: and(eq(seriesEntry.userId, userId), eq(seriesEntry.seriesId, tmdbId)),
+    with: { series: true },
   });
   if (!row) {
     return null;
   }
-  const watchedEpisodeCount = await getWatchedCount(db, userId, tmdbId);
-  return toSeriesEntry(row, watchedEpisodeCount);
+  const watched = await getWatchedSummary(db, userId, tmdbId);
+  return toSeriesEntry(row, row.series, watched);
 }
 
 // Garante que existe uma marcação (mesmo vazia) pra essa série — usado por
@@ -163,8 +213,8 @@ export async function upsertSeriesEntry(
 
   await logSeriesEntryActivities(db, userId, cachedSeries, input);
 
-  const watchedEpisodeCount = await getWatchedCount(db, userId, tmdbId);
-  return toSeriesEntry(row, watchedEpisodeCount);
+  const watched = await getWatchedSummary(db, userId, tmdbId);
+  return toSeriesEntry(row, cachedSeries, watched);
 }
 
 // Sem limite de quantidade — toda série com favoritedAt preenchido, mais
@@ -175,14 +225,14 @@ export async function getFavorites(db: Db, userId: string): Promise<SeriesEntryW
     orderBy: desc(seriesEntry.favoritedAt),
     with: { series: true },
   });
-  const watchedCounts = await getWatchedCounts(
+  const watchedSummaries = await getWatchedSummaries(
     db,
     userId,
     rows.map((row) => row.seriesId),
   );
 
   return rows.map((row) => ({
-    ...toSeriesEntry(row, watchedCounts.get(row.seriesId) ?? 0),
+    ...toSeriesEntry(row, row.series, watchedSummaries.get(row.seriesId) ?? EMPTY_WATCHED_SUMMARY),
     series: mapCachedSeriesToSummary(row.series),
   }));
 }
@@ -282,7 +332,7 @@ export async function listSeriesEntries(
       .where(where),
   ]);
 
-  const watchedCounts = await getWatchedCounts(
+  const watchedSummaries = await getWatchedSummaries(
     db,
     userId,
     rows.map((row) => row.seriesId),
@@ -290,7 +340,11 @@ export async function listSeriesEntries(
 
   return {
     items: rows.map((row) => ({
-      ...toSeriesEntry(row, watchedCounts.get(row.seriesId) ?? 0),
+      ...toSeriesEntry(
+        row,
+        row.series,
+        watchedSummaries.get(row.seriesId) ?? EMPTY_WATCHED_SUMMARY,
+      ),
       series: mapCachedSeriesToSummary(row.series),
     })),
     total: countResult[0]?.count ?? 0,

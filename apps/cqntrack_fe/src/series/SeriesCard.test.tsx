@@ -57,6 +57,8 @@ describe("SeriesCard", () => {
       favoritedAt: "2026-01-01T00:00:00.000Z",
       review: null,
       updatedAt: "2026-01-01T00:00:00.000Z",
+      availableEpisode: null,
+      upcomingEpisode: null,
     });
 
     expect(screen.getByText("40/62 ep.")).toBeInTheDocument();
@@ -75,8 +77,51 @@ describe("SeriesCard", () => {
       favoritedAt: "2026-01-01T00:00:00.000Z",
       review: null,
       updatedAt: "2026-01-01T00:00:00.000Z",
+      availableEpisode: null,
+      upcomingEpisode: null,
     });
 
     expect(container.querySelector("p:last-child")).toBeEmptyDOMElement();
+  });
+
+  it("mostra o selo de episódio novo quando a entry tem availableEpisode", () => {
+    renderCard(BASE_SERIES, {
+      id: "1",
+      rating: null,
+      watchedEpisodeCount: 40,
+      favoritedAt: null,
+      review: null,
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      availableEpisode: {
+        seasonNumber: 5,
+        episodeNumber: 15,
+        name: "Granite State",
+        airDate: "2013-09-22",
+      },
+      upcomingEpisode: null,
+    });
+
+    expect(screen.getByText("Novo episódio")).toBeInTheDocument();
+  });
+
+  it("mostra o selo de previsão quando só há upcomingEpisode (sem availableEpisode)", () => {
+    renderCard(BASE_SERIES, {
+      id: "1",
+      rating: null,
+      watchedEpisodeCount: 40,
+      favoritedAt: null,
+      review: null,
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      availableEpisode: null,
+      upcomingEpisode: {
+        seasonNumber: 5,
+        episodeNumber: 16,
+        name: "Felina",
+        airDate: "2026-12-25",
+      },
+    });
+
+    expect(screen.getByText("Previsto 25/12")).toBeInTheDocument();
+    expect(screen.queryByText("Novo episódio")).not.toBeInTheDocument();
   });
 });

@@ -621,6 +621,110 @@ describe("GET /api/series/entries", () => {
 
     expect(res.status).toBe(401);
   });
+
+  it("availableEpisode vem preenchido quando o último episódio lançado ainda não foi assistido", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+
+    stubTmdbFetchOnce(
+      {
+        ...tmdbSeriesDetail(705, "Slow Horses"),
+        last_episode_to_air: {
+          episode_number: 6,
+          season_number: 4,
+          name: "Hello Goodbye",
+          air_date: "2025-01-01",
+        },
+      },
+      tmdbSeriesCredits(),
+    );
+    await app.request(
+      "/api/series/705/entry",
+      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: "{}" },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const res = await app.request("/api/series/entries", { headers: { cookie } }, env);
+    const body = (await res.json()) as {
+      items: Array<{ availableEpisode: unknown; upcomingEpisode: unknown }>;
+    };
+
+    expect(body.items[0]?.availableEpisode).toEqual({
+      seasonNumber: 4,
+      episodeNumber: 6,
+      name: "Hello Goodbye",
+      airDate: "2025-01-01",
+    });
+    expect(body.items[0]?.upcomingEpisode).toBeNull();
+  });
+
+  it("availableEpisode vem null quando o último episódio já foi assistido", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+
+    // watched=true passa por ensureSeriesEntry -> getOrCacheSeries (sem
+    // options, fetchCredits: true por padrão) — 2 requests, mesma ordem de
+    // stubSeriesCacheFetch (detalhe + aggregate_credits).
+    stubTmdbFetchOnce(
+      {
+        ...tmdbSeriesDetail(706, "Severance"),
+        last_episode_to_air: {
+          episode_number: 1,
+          season_number: 1,
+          name: "Good News About Hell",
+          air_date: "2025-01-01",
+        },
+      },
+      tmdbSeriesCredits(),
+    );
+    await app.request(
+      "/api/series/706/episodes/1/1",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ watched: true }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const res = await app.request("/api/series/entries", { headers: { cookie } }, env);
+    const body = (await res.json()) as { items: Array<{ availableEpisode: unknown }> };
+
+    expect(body.items[0]?.availableEpisode).toBeNull();
+  });
+
+  it("upcomingEpisode vem preenchido quando next_episode_to_air é uma data futura", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+
+    stubTmdbFetchOnce(
+      {
+        ...tmdbSeriesDetail(707, "The Bear"),
+        next_episode_to_air: {
+          episode_number: 1,
+          season_number: 5,
+          name: "TBA",
+          air_date: "2027-01-01",
+        },
+      },
+      tmdbSeriesCredits(),
+    );
+    await app.request(
+      "/api/series/707/entry",
+      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: "{}" },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const res = await app.request("/api/series/entries", { headers: { cookie } }, env);
+    const body = (await res.json()) as { items: Array<{ upcomingEpisode: unknown }> };
+
+    expect(body.items[0]?.upcomingEpisode).toEqual({
+      seasonNumber: 5,
+      episodeNumber: 1,
+      name: "TBA",
+      airDate: "2027-01-01",
+    });
+  });
 });
 
 describe("GET /api/series/favorites", () => {

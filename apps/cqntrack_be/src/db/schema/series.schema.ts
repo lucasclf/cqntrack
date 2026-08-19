@@ -15,6 +15,15 @@ import { user } from "./auth.schema";
 // (`created_by`), sem custo extra. Série não tem um "diretor" único como
 // filme — `creators` é quem a TMDB credita como criador/showrunner,
 // `directors` são os diretores mais frequentes por nº de episódios.
+// Mesmo shape pra next/lastEpisodeToAir abaixo — episódio "resumido" (sem
+// overview/still), o suficiente pro aviso de disponível/previsto.
+export type CachedSeriesUpcomingEpisode = {
+  seasonNumber: number;
+  episodeNumber: number;
+  name: string;
+  airDate: string;
+};
+
 export const series = sqliteTable("series", {
   tmdbId: integer("tmdb_id").primaryKey(),
   name: text("name").notNull(),
@@ -33,6 +42,18 @@ export const series = sqliteTable("series", {
       posterPath: string | null;
     }[]
   >(),
+  // Próximo episódio previsto / último já lançado, segundo a própria TMDB
+  // (next_episode_to_air/last_episode_to_air do GET /tv/{id} — de graça,
+  // sem request extra). Refeito a cada revalidação do cache (24h, ver
+  // isStale em series.service.ts) e pelo cron diário (ver
+  // refresh-episodes.job.ts) — é o que alimenta o aviso de "episódio
+  // disponível"/"episódio previsto" em entries.service.ts.
+  nextEpisodeToAir: text("next_episode_to_air", {
+    mode: "json",
+  }).$type<CachedSeriesUpcomingEpisode | null>(),
+  lastEpisodeToAir: text("last_episode_to_air", {
+    mode: "json",
+  }).$type<CachedSeriesUpcomingEpisode | null>(),
   cast: text("cast", { mode: "json" }).$type<
     { personId: number; name: string; character: string; profilePath: string | null }[]
   >(),

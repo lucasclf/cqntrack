@@ -2,6 +2,7 @@ import type { CastMember, CrewMember, SeriesDirector, SeriesSummary } from "@cqn
 import { eq } from "drizzle-orm";
 import type { createDb } from "../db/client";
 import { series } from "../db/schema";
+import type { CachedSeriesUpcomingEpisode } from "../db/schema/series.schema";
 import { getSeriesAggregateCredits } from "../integrations/tmdb/credits";
 import {
   getPopularSeries,
@@ -13,6 +14,7 @@ import {
   TV_GENRE_NAMES,
   type TmdbAggregateCredits,
   type TmdbSeriesSearchResult,
+  type TmdbUpcomingEpisode,
 } from "../integrations/tmdb/types";
 
 type Db = ReturnType<typeof createDb>;
@@ -208,6 +210,23 @@ function mapAggregateCreditsToDirectorRows(credits: TmdbAggregateCredits | null)
     }));
 }
 
+// null quando a TMDB não informa data (ex.: episódio "TBA") — mesmo sem
+// data, não dá pra usar como "disponível"/"previsto" (ver
+// entries.service.ts), então esses casos viram null aqui também.
+function mapUpcomingEpisode(
+  episode: TmdbUpcomingEpisode | null | undefined,
+): CachedSeriesUpcomingEpisode | null {
+  if (!episode || !episode.air_date) {
+    return null;
+  }
+  return {
+    seasonNumber: episode.season_number,
+    episodeNumber: episode.episode_number,
+    name: episode.name,
+    airDate: episode.air_date,
+  };
+}
+
 function mapSeriesDetailToRow(detail: NonNullable<Awaited<ReturnType<typeof getSeriesById>>>) {
   return {
     name: detail.name,
@@ -238,6 +257,8 @@ function mapSeriesDetailToRow(detail: NonNullable<Awaited<ReturnType<typeof getS
         profilePath: creator.profile_path,
       })) ?? [],
     rating: detail.vote_average ?? null,
+    nextEpisodeToAir: mapUpcomingEpisode(detail.next_episode_to_air),
+    lastEpisodeToAir: mapUpcomingEpisode(detail.last_episode_to_air),
   };
 }
 
