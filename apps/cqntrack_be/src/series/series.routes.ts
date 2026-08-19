@@ -155,12 +155,11 @@ seriesRouter.get("/recently-watched", async (c) => {
   );
 });
 
-// "Continuar assistindo" da Home — só lê series_watch_progress, já
-// calculado pelo cron (ver refresh-episodes.job.ts); nenhuma chamada à
-// TMDB acontece nesta request.
+// "Continuar assistindo" da Home — calculado ao vivo (ver
+// continue-watching.service.ts), sem tabela pré-computada por cron.
 seriesRouter.get("/continue-watching", async (c) => {
   const db = createDb(c.env);
-  const items = await getContinueWatching(db, c.get("userId"));
+  const items = await getContinueWatching(c.env, db, c.get("userId"));
   return c.json(ContinueWatchingResponseSchema.parse({ items }));
 });
 

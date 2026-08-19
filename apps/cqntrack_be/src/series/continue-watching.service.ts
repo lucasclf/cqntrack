@@ -1,65 +1,256 @@
 import type { ContinueWatchingItem } from "@cqntrack/shared";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { createDb } from "../db/client";
-import { seriesEpisodeWatch, seriesWatchProgress } from "../db/schema";
-import { mapCachedSeriesToSummary } from "./series.service";
+import { series, seriesEpisodeWatch } from "../db/schema";
+import { getSeriesSeason } from "../integrations/tmdb/series";
+import { type CachedSeries, getOrCacheSeries, mapCachedSeriesToSummary } from "./series.service";
 
 type Db = ReturnType<typeof createDb>;
+type NextEpisode = ContinueWatchingItem["nextEpisode"];
+type SeasonSummary = NonNullable<CachedSeries["seasons"]>[number];
 
-// ~3 meses — mesma unidade usada no resto do app pra "período recente"
-// (ex.: CACHE_TTL_MS em series.service.ts usa ms também).
+// ~3 meses — mesma unidade usada no resto do app pra "período recente".
 const RECENT_ACTIVITY_WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
+// Mesma janela de 24h de isStale em series.service.ts — não reaproveitamos
+// aquela função porque ela também considera cast===null como "sempre
+// stale" (regra pensada pro import em massa do tvtime), o que faria uma
+// série nunca aberta na tela de detalhe ser rechecada em toda carga da
+// Home, todo dia. Aqui só interessa a idade do cache.
+const SERIES_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const ENDED_STATUSES = new Set(["ended", "canceled"]);
 
-// Lista pronta pra Home ("Continuar assistindo") — lê direto de
-// series_watch_progress, já calculado pelo cron (ver
-// refresh-episodes.job.ts/watch-progress.service.ts); nenhuma chamada à
-// TMDB acontece aqui. "assistiu nos últimos 3 meses" é calculado ao vivo
-// (MAX(watchedAt), mesmo padrão de getRecentlyWatchedSeries em
-// entries.service.ts) — não depende do cron, sempre atual.
-export async function getContinueWatching(db: Db, userId: string): Promise<ContinueWatchingItem[]> {
-  const rows = await db.query.seriesWatchProgress.findMany({
-    where: eq(seriesWatchProgress.userId, userId),
-    with: { series: true },
-  });
-  if (rows.length === 0) {
+// Teto de chamadas à TMDB (contando o par detalhe+créditos de
+// getOrCacheSeries como 2) numa única carga da Home — protege contra o
+// limite de subrequests por invocação do Worker. O cron antigo processava
+// todas as séries acompanhadas numa invocação só e estourava esse limite
+// (ver commit que introduziu esse comentário); aqui o trabalho é
+// delimitado por relevância (só quem tem lacuna conhecida ou está
+// desatualizado há +24h gasta orçamento), mas ainda assim precisa de um
+// teto — série que não coube nesta carga simplesmente não aparece agora, a
+// próxima visita à Home tenta de novo.
+const LIVE_TMDB_BUDGET = 15;
+
+function isSeriesCacheStale(row: CachedSeries): boolean {
+  return Date.now() - row.updatedAt.getTime() > SERIES_CACHE_TTL_MS;
+}
+
+function sortedSeasons(cachedSeries: CachedSeries): SeasonSummary[] {
+  // Temporada 0 (especiais) fica de fora de propósito — não faz parte da
+  // progressão principal da história.
+  return (cachedSeries.seasons ?? [])
+    .filter((season) => season.seasonNumber > 0)
+    .sort((a, b) => a.seasonNumber - b.seasonNumber);
+}
+
+function hasKnownGap(seasons: SeasonSummary[], watchedCountBySeason: Map<number, number>): boolean {
+  return seasons.some(
+    (season) => (watchedCountBySeason.get(season.seasonNumber) ?? 0) < season.episodeCount,
+  );
+}
+
+// Busca temporada por temporada (a partir da primeira com lacuna, por
+// contagem já cacheada) até achar o primeiro episódio já lançado e não
+// assistido — não é "o mais recente lançado" (ver CachedSeries.
+// lastEpisodeToAir): respeita a ordem de verdade, funciona mesmo se o
+// usuário pulou episódios. `budget` é decrementado por temporada
+// consultada; se estourar, devolve null (série some desta carga, tenta de
+// novo na próxima).
+async function findNextUnwatchedEpisode(
+  env: Env,
+  tmdbId: number,
+  seasons: SeasonSummary[],
+  watchedCountBySeason: Map<number, number>,
+  watchedKeys: Set<string>,
+  budget: { remaining: number },
+): Promise<NextEpisode | null> {
+  const now = Date.now();
+
+  for (const season of seasons) {
+    const watchedCount = watchedCountBySeason.get(season.seasonNumber) ?? 0;
+    if (watchedCount >= season.episodeCount) {
+      continue; // temporada inteira já assistida, sem lacuna possível
+    }
+    if (budget.remaining <= 0) {
+      return null;
+    }
+    budget.remaining -= 1;
+
+    const seasonDetail = await getSeriesSeason(env, tmdbId, season.seasonNumber);
+    if (!seasonDetail) {
+      continue; // temporada não encontrada na TMDB (raro) — tenta a próxima
+    }
+
+    const episodesInOrder = [...seasonDetail.episodes].sort(
+      (a, b) => a.episode_number - b.episode_number,
+    );
+    for (const episode of episodesInOrder) {
+      if (!episode.air_date) {
+        continue; // sem data ainda (ex.: "TBA") — não dá pra dizer se já foi ao ar
+      }
+      if (new Date(episode.air_date).getTime() > now) {
+        break; // episódios seguintes na mesma temporada também são futuros
+      }
+      const key = `${season.seasonNumber}-${episode.episode_number}`;
+      if (!watchedKeys.has(key)) {
+        return {
+          seasonNumber: season.seasonNumber,
+          episodeNumber: episode.episode_number,
+          name: episode.name,
+          airDate: episode.air_date,
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+// Lista pronta pra Home ("Continuar assistindo"), calculada ao vivo a cada
+// carregamento — sem tabela de progresso pré-computada por cron (ver
+// histórico: processar todas as séries acompanhadas numa invocação só
+// estourava o limite de subrequests do Worker). Em vez disso, o trabalho é
+// delimitado por 3 situações:
+//
+// A) Série com lacuna já visível pelos dados cacheados (assistidos <
+//    episódios da temporada) — sempre busca o episódio exato, não importa
+//    o status.
+// B) Série ended/canceled e o usuário já assistiu tudo que temos cacheado
+//    — nunca mais precisa reconsultar a TMDB, não aparece.
+// C) Série ainda ativa (status diferente de ended/canceled) e o usuário já
+//    assistiu tudo que temos cacheado — só reconsulta a TMDB se o cache
+//    dessa série estiver desatualizado há mais de 24h; caso contrário,
+//    confia no que já sabemos (nada pendente).
+export async function getContinueWatching(
+  env: Env,
+  db: Db,
+  userId: string,
+): Promise<ContinueWatchingItem[]> {
+  const trackedRows = await db
+    .selectDistinct({ seriesId: seriesEpisodeWatch.seriesId })
+    .from(seriesEpisodeWatch)
+    .where(eq(seriesEpisodeWatch.userId, userId));
+  const seriesIds = trackedRows.map((row) => row.seriesId);
+  if (seriesIds.length === 0) {
     return [];
   }
 
-  const recentRows = await db
-    .select({
-      seriesId: seriesEpisodeWatch.seriesId,
-      lastWatchedAt: sql<number>`max(${seriesEpisodeWatch.watchedAt})`,
-    })
-    .from(seriesEpisodeWatch)
-    .where(
-      and(
-        eq(seriesEpisodeWatch.userId, userId),
-        inArray(
-          seriesEpisodeWatch.seriesId,
-          rows.map((row) => row.seriesId),
-        ),
+  const [seriesRows, watchedCountRows, watchedEpisodeRows, recentRows] = await Promise.all([
+    db.select().from(series).where(inArray(series.tmdbId, seriesIds)),
+    db
+      .select({
+        seriesId: seriesEpisodeWatch.seriesId,
+        seasonNumber: seriesEpisodeWatch.seasonNumber,
+        count: sql<number>`count(*)`,
+      })
+      .from(seriesEpisodeWatch)
+      .where(
+        and(eq(seriesEpisodeWatch.userId, userId), inArray(seriesEpisodeWatch.seriesId, seriesIds)),
+      )
+      .groupBy(seriesEpisodeWatch.seriesId, seriesEpisodeWatch.seasonNumber),
+    db
+      .select({
+        seriesId: seriesEpisodeWatch.seriesId,
+        seasonNumber: seriesEpisodeWatch.seasonNumber,
+        episodeNumber: seriesEpisodeWatch.episodeNumber,
+      })
+      .from(seriesEpisodeWatch)
+      .where(
+        and(eq(seriesEpisodeWatch.userId, userId), inArray(seriesEpisodeWatch.seriesId, seriesIds)),
       ),
-    )
-    .groupBy(seriesEpisodeWatch.seriesId);
-  const lastWatchedBySeriesId = new Map(recentRows.map((row) => [row.seriesId, row.lastWatchedAt]));
+    db
+      .select({
+        seriesId: seriesEpisodeWatch.seriesId,
+        lastWatchedAt: sql<number>`max(${seriesEpisodeWatch.watchedAt})`,
+      })
+      .from(seriesEpisodeWatch)
+      .where(
+        and(eq(seriesEpisodeWatch.userId, userId), inArray(seriesEpisodeWatch.seriesId, seriesIds)),
+      )
+      .groupBy(seriesEpisodeWatch.seriesId),
+  ]);
 
+  const seriesById = new Map(seriesRows.map((row) => [row.tmdbId, row]));
+
+  const watchedCountBySeries = new Map<number, Map<number, number>>();
+  for (const row of watchedCountRows) {
+    const bySeason = watchedCountBySeries.get(row.seriesId) ?? new Map<number, number>();
+    bySeason.set(row.seasonNumber, row.count);
+    watchedCountBySeries.set(row.seriesId, bySeason);
+  }
+
+  const watchedKeysBySeries = new Map<number, Set<string>>();
+  for (const row of watchedEpisodeRows) {
+    const keys = watchedKeysBySeries.get(row.seriesId) ?? new Set<string>();
+    keys.add(`${row.seasonNumber}-${row.episodeNumber}`);
+    watchedKeysBySeries.set(row.seriesId, keys);
+  }
+
+  const lastWatchedBySeries = new Map(recentRows.map((row) => [row.seriesId, row.lastWatchedAt]));
+
+  const budget = { remaining: LIVE_TMDB_BUDGET };
   const now = Date.now();
-  const items: ContinueWatchingItem[] = rows.map((row) => {
-    const lastWatchedAt = lastWatchedBySeriesId.get(row.seriesId);
+  const items: ContinueWatchingItem[] = [];
+
+  for (const seriesId of seriesIds) {
+    let cachedSeries = seriesById.get(seriesId);
+    if (!cachedSeries) {
+      continue; // referência órfã (não deveria acontecer, FK garante) — pula em vez de quebrar a Home inteira
+    }
+
+    const watchedCountBySeason = watchedCountBySeries.get(seriesId) ?? new Map<number, number>();
+    const watchedKeys = watchedKeysBySeries.get(seriesId) ?? new Set<string>();
+    let seasons = sortedSeasons(cachedSeries);
+
+    let nextEpisode: NextEpisode | null = null;
+
+    if (hasKnownGap(seasons, watchedCountBySeason)) {
+      // Caso A.
+      nextEpisode = await findNextUnwatchedEpisode(
+        env,
+        seriesId,
+        seasons,
+        watchedCountBySeason,
+        watchedKeys,
+        budget,
+      );
+    } else {
+      const status = cachedSeries.status?.toLowerCase() ?? null;
+      const isEndedOrCanceled = status !== null && ENDED_STATUSES.has(status);
+
+      // Caso B: ended/canceled e em dia — nunca mais reconsulta.
+      // Caso C: ainda ativa e em dia — só reconsulta se estiver stale.
+      if (!isEndedOrCanceled && isSeriesCacheStale(cachedSeries) && budget.remaining > 0) {
+        budget.remaining -= 2; // getOrCacheSeries faz até 2 requests (detalhe + créditos)
+        cachedSeries = await getOrCacheSeries(env, db, seriesId);
+        seasons = sortedSeasons(cachedSeries);
+
+        if (hasKnownGap(seasons, watchedCountBySeason)) {
+          nextEpisode = await findNextUnwatchedEpisode(
+            env,
+            seriesId,
+            seasons,
+            watchedCountBySeason,
+            watchedKeys,
+            budget,
+          );
+        }
+      }
+    }
+
+    if (!nextEpisode) {
+      continue;
+    }
+
+    const lastWatchedAt = lastWatchedBySeries.get(seriesId);
     const recentlyActive =
       lastWatchedAt !== undefined && now - lastWatchedAt <= RECENT_ACTIVITY_WINDOW_MS;
 
-    return {
-      series: mapCachedSeriesToSummary(row.series),
-      nextEpisode: {
-        seasonNumber: row.nextEpisodeSeasonNumber,
-        episodeNumber: row.nextEpisodeNumber,
-        name: row.nextEpisodeName,
-        airDate: row.nextEpisodeAirDate.toISOString().slice(0, 10),
-      },
+    items.push({
+      series: mapCachedSeriesToSummary(cachedSeries),
+      nextEpisode,
       recentlyActive,
-    };
-  });
+    });
+  }
 
   // Ativa nos últimos 3 meses primeiro; dentro de cada grupo, episódio
   // liberado mais recentemente primeiro.

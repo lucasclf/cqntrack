@@ -1,10 +1,10 @@
 import { env } from "cloudflare:workers";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
 import { createAuthenticatedUser } from "../../test/auth-helpers";
 import { app } from "../app";
 import { createDb } from "../db/client";
-import { series, seriesEpisodeWatch, seriesWatchProgress, user } from "../db/schema";
+import { series } from "../db/schema";
 import { refreshTrackedSeriesEpisodes } from "./refresh-episodes.job";
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -155,140 +155,5 @@ describe("refreshTrackedSeriesEpisodes", () => {
       name: "Final",
       airDate: "2026-06-01",
     });
-  });
-});
-
-describe("refreshTrackedSeriesEpisodes — progresso de episódio pendente (series_watch_progress)", () => {
-  async function getUserId(db: ReturnType<typeof createDb>, email: string): Promise<string> {
-    const [row] = await db.select({ id: user.id }).from(user).where(eq(user.email, email));
-    if (!row) throw new Error("usuário de teste não encontrado");
-    return row.id;
-  }
-
-  it("acha o episódio pulado (fora de ordem), não o mais recente lançado", async () => {
-    const { cookie, email } = await createAuthenticatedUser(app, env);
-    const db = createDb(env);
-    const userId = await getUserId(db, email);
-
-    // Assiste o 1x1 (cria o cache da série) e pula direto pro 1x3, sem
-    // passar pelo 1x2 — grava direto no banco, sem precisar de mais uma
-    // rodada de fetch mockado só pra isso.
-    await markEpisodeWatched(cookie, 901);
-    await db
-      .insert(seriesEpisodeWatch)
-      .values({ userId, seriesId: 901, seasonNumber: 1, episodeNumber: 3 });
-    await ageSeriesCache(db, 901);
-
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (url: string) => {
-        if (url.includes("/aggregate_credits")) {
-          return jsonResponse({ cast: [], crew: [] });
-        }
-        if (url.includes("/season/")) {
-          return jsonResponse({
-            season_number: 1,
-            episodes: [
-              { episode_number: 1, season_number: 1, name: "Episódio 1", air_date: "2020-01-01" },
-              { episode_number: 2, season_number: 1, name: "Episódio 2", air_date: "2020-01-08" },
-              { episode_number: 3, season_number: 1, name: "Episódio 3", air_date: "2020-01-15" },
-            ],
-          });
-        }
-        return jsonResponse({
-          ...tmdbSeriesDetail(901, "2020-01-15"),
-          seasons: [
-            {
-              season_number: 1,
-              name: "Temporada 1",
-              episode_count: 3,
-              air_date: "2020-01-01",
-              poster_path: null,
-            },
-          ],
-        });
-      }),
-    );
-
-    await refreshTrackedSeriesEpisodes(env, db);
-    vi.unstubAllGlobals();
-
-    const [progress] = await db
-      .select()
-      .from(seriesWatchProgress)
-      .where(and(eq(seriesWatchProgress.userId, userId), eq(seriesWatchProgress.seriesId, 901)));
-
-    // O 1x3 já foi assistido (fora de ordem) e o 1x1 também — o pendente de
-    // verdade é o 1x2, não "o mais recente lançado" (que seria o 1x3).
-    expect(progress?.nextEpisodeSeasonNumber).toBe(1);
-    expect(progress?.nextEpisodeNumber).toBe(2);
-    expect(progress?.nextEpisodeName).toBe("Episódio 2");
-  });
-
-  it("remove o registro quando o usuário termina de assistir tudo que já foi ao ar", async () => {
-    const { cookie, email } = await createAuthenticatedUser(app, env);
-    const db = createDb(env);
-    const userId = await getUserId(db, email);
-
-    await markEpisodeWatched(cookie, 902);
-    await ageSeriesCache(db, 902);
-
-    function stubFetch() {
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(async (url: string) => {
-          if (url.includes("/aggregate_credits")) {
-            return jsonResponse({ cast: [], crew: [] });
-          }
-          if (url.includes("/season/")) {
-            return jsonResponse({
-              season_number: 1,
-              episodes: [
-                { episode_number: 1, season_number: 1, name: "Episódio 1", air_date: "2020-01-01" },
-                { episode_number: 2, season_number: 1, name: "Episódio 2", air_date: "2020-01-08" },
-              ],
-            });
-          }
-          return jsonResponse({
-            ...tmdbSeriesDetail(902, "2020-01-08"),
-            seasons: [
-              {
-                season_number: 1,
-                name: "Temporada 1",
-                episode_count: 2,
-                air_date: "2020-01-01",
-                poster_path: null,
-              },
-            ],
-          });
-        }),
-      );
-    }
-
-    // 1ª rodada: só o 1x1 assistido — o 1x2 fica pendente, gera registro.
-    stubFetch();
-    await refreshTrackedSeriesEpisodes(env, db);
-    vi.unstubAllGlobals();
-
-    const [pending] = await db
-      .select()
-      .from(seriesWatchProgress)
-      .where(and(eq(seriesWatchProgress.userId, userId), eq(seriesWatchProgress.seriesId, 902)));
-    expect(pending?.nextEpisodeNumber).toBe(2);
-
-    // Assiste o 1x2 — não sobra episódio pendente já lançado.
-    await db
-      .insert(seriesEpisodeWatch)
-      .values({ userId, seriesId: 902, seasonNumber: 1, episodeNumber: 2 });
-
-    stubFetch();
-    await refreshTrackedSeriesEpisodes(env, db);
-    vi.unstubAllGlobals();
-
-    const remaining = await db
-      .select()
-      .from(seriesWatchProgress)
-      .where(and(eq(seriesWatchProgress.userId, userId), eq(seriesWatchProgress.seriesId, 902)));
-    expect(remaining).toHaveLength(0);
   });
 });

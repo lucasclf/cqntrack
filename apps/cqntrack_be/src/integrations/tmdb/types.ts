@@ -50,6 +50,12 @@ export interface TmdbSeriesDetail {
   // ainda não estreou nenhum episódio (sem último).
   next_episode_to_air?: TmdbUpcomingEpisode | null;
   last_episode_to_air?: TmdbUpcomingEpisode | null;
+  // "Returning Series" | "Planned" | "In Production" | "Ended" | "Canceled" |
+  // "Pilot" — campo independente de in_production (ver comentário em
+  // db/schema/series.schema.ts). Usado por continue-watching.service.ts pra
+  // nunca mais reconsultar a TMDB de uma série ended/canceled.
+  status?: string;
+  in_production?: boolean;
 }
 
 // GET /tv/{series_id}/season/{season_number} — buscado ao vivo, sem cache

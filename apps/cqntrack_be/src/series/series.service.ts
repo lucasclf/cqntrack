@@ -259,6 +259,8 @@ function mapSeriesDetailToRow(detail: NonNullable<Awaited<ReturnType<typeof getS
     rating: detail.vote_average ?? null,
     nextEpisodeToAir: mapUpcomingEpisode(detail.next_episode_to_air),
     lastEpisodeToAir: mapUpcomingEpisode(detail.last_episode_to_air),
+    status: detail.status ?? null,
+    inProduction: detail.in_production ?? null,
   };
 }
 

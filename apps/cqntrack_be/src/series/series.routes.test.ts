@@ -1,10 +1,10 @@
 import { env } from "cloudflare:workers";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
 import { createAuthenticatedUser } from "../../test/auth-helpers";
 import { app } from "../app";
 import { createDb } from "../db/client";
-import { series, seriesEpisodeWatch, seriesWatchProgress, user } from "../db/schema";
+import { series, seriesEpisodeWatch, user } from "../db/schema";
 
 const TMDB_SEARCH_RESULT = {
   id: 1396,
@@ -852,24 +852,28 @@ describe("GET /api/series/continue-watching", () => {
     return row.id;
   }
 
-  // A rota só lê series_watch_progress (já calculado pelo cron, ver
-  // refresh-episodes.job.test.ts) — insere direto no banco em vez de rodar
-  // o cron de verdade aqui, foco é testar ordenação/filtro da rota.
-  async function insertProgress(
-    userId: string,
-    seriesId: number,
-    nextEpisode: { seasonNumber: number; episodeNumber: number; name: string; airDate: string },
-  ): Promise<void> {
+  async function ageSeriesCache(tmdbId: number): Promise<void> {
     await createDb(env)
-      .insert(seriesWatchProgress)
-      .values({
-        userId,
-        seriesId,
-        nextEpisodeSeasonNumber: nextEpisode.seasonNumber,
-        nextEpisodeNumber: nextEpisode.episodeNumber,
-        nextEpisodeName: nextEpisode.name,
-        nextEpisodeAirDate: new Date(nextEpisode.airDate),
-      });
+      .update(series)
+      .set({ updatedAt: new Date(Date.now() - 25 * 60 * 60 * 1000) })
+      .where(eq(series.tmdbId, tmdbId));
+  }
+
+  // Cacheia a série (temporada 1 com 3 episódios, ver tmdbSeriesDetail) e
+  // marca o 1x1 assistido — mesmo request de sempre, 2 responses (detalhe +
+  // créditos) pela ordem de getOrCacheSeries.
+  async function watchFirstEpisode(cookie: string, tmdbId: number, name: string): Promise<void> {
+    stubSeriesCacheFetch(tmdbId, name);
+    await app.request(
+      `/api/series/${tmdbId}/episodes/1/1`,
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ watched: true }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
   }
 
   it("sem sessão retorna 401", async () => {
@@ -886,11 +890,9 @@ describe("GET /api/series/continue-watching", () => {
     await expect(res.json()).resolves.toEqual({ items: [] });
   });
 
-  it("só traz séries com progresso pendente, com o próximo episódio", async () => {
-    const { cookie, email } = await createAuthenticatedUser(app, env);
-    const userId = await getUserId(email);
-
-    stubSeriesCacheFetch(701, "Série sem progresso");
+  it("série só favoritada (nenhum episódio assistido) não aparece", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubSeriesCacheFetch(701, "Série sem episódio assistido");
     await app.request(
       "/api/series/701/entry",
       { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: "{}" },
@@ -898,19 +900,17 @@ describe("GET /api/series/continue-watching", () => {
     );
     vi.unstubAllGlobals();
 
-    stubSeriesCacheFetch(702, "Série com progresso");
-    await app.request(
-      "/api/series/702/entry",
-      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: "{}" },
-      env,
-    );
-    vi.unstubAllGlobals();
-    await insertProgress(userId, 702, {
-      seasonNumber: 2,
-      episodeNumber: 5,
-      name: "O episódio pendente",
-      airDate: "2026-03-10",
-    });
+    const res = await app.request("/api/series/continue-watching", { headers: { cookie } }, env);
+    await expect(res.json()).resolves.toEqual({ items: [] });
+  });
+
+  it("caso A: lacuna já visível pelo cache (assistidos < episódios da temporada) acha o episódio exato", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    await watchFirstEpisode(cookie, 702, "Série com lacuna");
+
+    // Só falta consultar a temporada 1 — o cache da série já está fresco,
+    // não deveria gerar nenhuma outra chamada.
+    stubTmdbFetchOnce(tmdbSeasonDetail(1, 3));
 
     const res = await app.request("/api/series/continue-watching", { headers: { cookie } }, env);
     const body = (await res.json()) as {
@@ -920,67 +920,169 @@ describe("GET /api/series/continue-watching", () => {
         recentlyActive: boolean;
       }>;
     };
+    vi.unstubAllGlobals();
 
     expect(body.items).toHaveLength(1);
     expect(body.items[0]?.series.tmdbId).toBe(702);
     expect(body.items[0]?.nextEpisode).toEqual({
-      seasonNumber: 2,
-      episodeNumber: 5,
-      name: "O episódio pendente",
-      airDate: "2026-03-10",
+      seasonNumber: 1,
+      episodeNumber: 2,
+      name: "Episódio 2",
+      airDate: "2008-01-20",
     });
-    expect(body.items[0]?.recentlyActive).toBe(false);
   });
 
-  it("ordena quem assistiu algo nos últimos 3 meses primeiro; dentro de cada grupo, episódio liberado mais recentemente primeiro", async () => {
+  it("caso B: série ended com tudo assistido não aparece, mesmo com cache velho (não reconsulta a TMDB)", async () => {
     const { cookie, email } = await createAuthenticatedUser(app, env);
     const userId = await getUserId(email);
     const db = createDb(env);
 
-    for (const [id, name] of [
-      [711, "Sem atividade recente, episódio mais antigo"],
-      [712, "Sem atividade recente, episódio mais novo"],
-      [713, "Atividade recente"],
-    ] as const) {
-      stubSeriesCacheFetch(id, name);
-      await app.request(
-        `/api/series/${id}/entry`,
-        { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: "{}" },
-        env,
-      );
-      vi.unstubAllGlobals();
+    await watchFirstEpisode(cookie, 703, "Série encerrada");
+    await db.insert(seriesEpisodeWatch).values([
+      { userId, seriesId: 703, seasonNumber: 1, episodeNumber: 2 },
+      { userId, seriesId: 703, seasonNumber: 1, episodeNumber: 3 },
+    ]);
+    await db.update(series).set({ status: "Ended" }).where(eq(series.tmdbId, 703));
+    await ageSeriesCache(703);
+
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const res = await app.request("/api/series/continue-watching", { headers: { cookie } }, env);
+    await expect(res.json()).resolves.toEqual({ items: [] });
+    expect(fetchSpy).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it("caso C, cache fresco: série ativa com tudo assistido não aparece nem gasta chamada dentro de 24h", async () => {
+    const { cookie, email } = await createAuthenticatedUser(app, env);
+    const userId = await getUserId(email);
+    const db = createDb(env);
+
+    await watchFirstEpisode(cookie, 704, "Série ativa em dia");
+    await db.insert(seriesEpisodeWatch).values([
+      { userId, seriesId: 704, seasonNumber: 1, episodeNumber: 2 },
+      { userId, seriesId: 704, seasonNumber: 1, episodeNumber: 3 },
+    ]);
+    await db.update(series).set({ status: "Returning Series" }).where(eq(series.tmdbId, 704));
+
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const res = await app.request("/api/series/continue-watching", { headers: { cookie } }, env);
+    await expect(res.json()).resolves.toEqual({ items: [] });
+    expect(fetchSpy).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it("caso C, cache velho: reconsulta a TMDB e revela episódio novo lançado desde a última checagem", async () => {
+    const { cookie, email } = await createAuthenticatedUser(app, env);
+    const userId = await getUserId(email);
+    const db = createDb(env);
+
+    await watchFirstEpisode(cookie, 705, "Série ativa desatualizada");
+    await db.insert(seriesEpisodeWatch).values([
+      { userId, seriesId: 705, seasonNumber: 1, episodeNumber: 2 },
+      { userId, seriesId: 705, seasonNumber: 1, episodeNumber: 3 },
+    ]);
+    await db.update(series).set({ status: "Returning Series" }).where(eq(series.tmdbId, 705));
+    await ageSeriesCache(705);
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (url.includes("/aggregate_credits")) {
+          return jsonResponse(tmdbSeriesCredits());
+        }
+        if (url.includes("/season/")) {
+          return jsonResponse(tmdbSeasonDetail(1, 4));
+        }
+        return jsonResponse({
+          ...tmdbSeriesDetail(705, "Série ativa desatualizada"),
+          status: "Returning Series",
+          seasons: [
+            {
+              season_number: 1,
+              name: "Temporada 1",
+              episode_count: 4,
+              air_date: "2008-01-20",
+              poster_path: "/poster-705-s1.jpg",
+            },
+          ],
+        });
+      }),
+    );
+
+    const res = await app.request("/api/series/continue-watching", { headers: { cookie } }, env);
+    const body = (await res.json()) as {
+      items: Array<{ nextEpisode: { seasonNumber: number; episodeNumber: number } }>;
+    };
+    vi.unstubAllGlobals();
+
+    expect(body.items).toHaveLength(1);
+    expect(body.items[0]?.nextEpisode).toEqual({
+      seasonNumber: 1,
+      episodeNumber: 4,
+      name: "Episódio 4",
+      airDate: "2008-01-20",
+    });
+  });
+
+  it("ordena quem assistiu algo nos últimos 3 meses primeiro; dentro de cada grupo, episódio liberado mais recentemente primeiro", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    const db = createDb(env);
+
+    const setups = [
+      { id: 711, name: "Sem atividade recente, episódio mais antigo", airDate: "2020-01-01" },
+      { id: 712, name: "Sem atividade recente, episódio mais novo", airDate: "2020-02-01" },
+      { id: 713, name: "Atividade recente", airDate: "2019-12-01" },
+    ];
+    const airDateById = new Map(setups.map((s) => [s.id, s.airDate]));
+
+    for (const s of setups) {
+      await watchFirstEpisode(cookie, s.id, s.name);
     }
 
-    await insertProgress(userId, 711, {
-      seasonNumber: 1,
-      episodeNumber: 1,
-      name: "Ep",
-      airDate: "2026-01-01",
-    });
-    await insertProgress(userId, 712, {
-      seasonNumber: 1,
-      episodeNumber: 1,
-      name: "Ep",
-      airDate: "2026-02-01",
-    });
-    await insertProgress(userId, 713, {
-      seasonNumber: 1,
-      episodeNumber: 1,
-      name: "Ep",
-      airDate: "2025-12-01",
-    });
-    // Atividade recente (< 3 meses) só na 713 — faz ela vir primeiro mesmo
-    // com o episódio pendente mais antigo dos três.
-    await db.insert(seriesEpisodeWatch).values({
-      userId,
-      seriesId: 713,
-      seasonNumber: 1,
-      episodeNumber: 0,
-      watchedAt: new Date(),
-    });
+    // Atividade recente (< 3 meses) só na 713; as demais ficam velhas de
+    // propósito (> 3 meses) pra não contar como recentlyActive.
+    await db
+      .update(seriesEpisodeWatch)
+      .set({ watchedAt: new Date() })
+      .where(eq(seriesEpisodeWatch.seriesId, 713));
+    await db
+      .update(seriesEpisodeWatch)
+      .set({ watchedAt: new Date(Date.now() - 200 * 24 * 60 * 60 * 1000) })
+      .where(inArray(seriesEpisodeWatch.seriesId, [711, 712]));
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        const match = /\/tv\/(\d+)\/season\//.exec(url);
+        const id = Number(match?.[1]);
+        return jsonResponse({
+          season_number: 1,
+          episodes: [
+            { episode_number: 1, name: "Episódio 1", air_date: "2008-01-20", still_path: null },
+            {
+              episode_number: 2,
+              name: "Episódio 2",
+              air_date: airDateById.get(id),
+              still_path: null,
+            },
+            {
+              episode_number: 3,
+              name: "Episódio 3",
+              air_date: airDateById.get(id),
+              still_path: null,
+            },
+          ],
+        });
+      }),
+    );
 
     const res = await app.request("/api/series/continue-watching", { headers: { cookie } }, env);
     const body = (await res.json()) as { items: Array<{ series: { tmdbId: number } }> };
+    vi.unstubAllGlobals();
 
     expect(body.items.map((item) => item.series.tmdbId)).toEqual([713, 712, 711]);
   });
