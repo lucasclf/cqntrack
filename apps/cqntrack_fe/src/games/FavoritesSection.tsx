@@ -8,11 +8,14 @@ interface FavoritesSectionProps {
   // "/api/users/:username/games/favorites" — leitura pública, sem interação
   // (favoritar só acontece na própria tela de detalhe do jogo, logado).
   favoritesEndpoint: string;
+  // Mostrada quando a lista vem vazia — omitido (perfil público, ver
+  // GameTabPanel) continua sumindo em silêncio, como sempre foi.
+  emptyMessage?: string;
 }
 
 type LoadStatus = "loading" | "ready" | "error";
 
-export function FavoritesSection({ favoritesEndpoint }: FavoritesSectionProps) {
+export function FavoritesSection({ favoritesEndpoint, emptyMessage }: FavoritesSectionProps) {
   const [data, setData] = useState<FavoritesResponse | null>(null);
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
 
@@ -43,7 +46,7 @@ export function FavoritesSection({ favoritesEndpoint }: FavoritesSectionProps) {
   }
 
   if (data.items.length === 0) {
-    return null;
+    return emptyMessage ? <p className={styles.hint}>{emptyMessage}</p> : null;
   }
 
   return (

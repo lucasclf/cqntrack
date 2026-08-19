@@ -8,6 +8,9 @@ interface RecentlyPlayedGamesProps {
   // "/api/users/:username" (perfil público) ou "/api" (home, dados
   // próprios) — mesmo componente serve os dois, só troca o prefixo.
   basePath: string;
+  // Mostrada quando a lista vem vazia — omitido (perfil público, ver
+  // GameTabPanel) continua sumindo em silêncio, como sempre foi.
+  emptyMessage?: string;
 }
 
 type LoadStatus = "loading" | "ready" | "error";
@@ -21,7 +24,7 @@ const FETCH_PAGE_SIZE = 20;
 // cobre vários ("playing"/"completed"/"platinum", nunca "not_started") —
 // busca as mais recentemente atualizadas e filtra aqui, em vez de mudar o
 // filtro genérico de status pra aceitar múltiplos valores.
-export function RecentlyPlayedGames({ basePath }: RecentlyPlayedGamesProps) {
+export function RecentlyPlayedGames({ basePath, emptyMessage }: RecentlyPlayedGamesProps) {
   const [data, setData] = useState<PaginatedGameEntriesResponse | null>(null);
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
 
@@ -55,7 +58,7 @@ export function RecentlyPlayedGames({ basePath }: RecentlyPlayedGamesProps) {
     .filter((entry) => entry.status !== null && entry.status !== "not_started")
     .slice(0, RECENT_LIMIT);
   if (played.length === 0) {
-    return null;
+    return emptyMessage ? <p className={styles.hint}>{emptyMessage}</p> : null;
   }
 
   return (

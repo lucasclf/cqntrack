@@ -8,11 +8,17 @@ interface BookFavoritesSectionProps {
   // "/api/users/:username/books/favorites" — leitura pública, sem interação
   // (favoritar só acontece na própria tela de detalhe do livro, logado).
   favoritesEndpoint: string;
+  // Mostrada quando a lista vem vazia — omitido (perfil público, ver
+  // BookTabPanel) continua sumindo em silêncio, como sempre foi.
+  emptyMessage?: string;
 }
 
 type LoadStatus = "loading" | "ready" | "error";
 
-export function BookFavoritesSection({ favoritesEndpoint }: BookFavoritesSectionProps) {
+export function BookFavoritesSection({
+  favoritesEndpoint,
+  emptyMessage,
+}: BookFavoritesSectionProps) {
   const [data, setData] = useState<BookFavoritesResponse | null>(null);
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
 
@@ -43,7 +49,7 @@ export function BookFavoritesSection({ favoritesEndpoint }: BookFavoritesSection
   }
 
   if (data.items.length === 0) {
-    return null;
+    return emptyMessage ? <p className={styles.hint}>{emptyMessage}</p> : null;
   }
 
   return (

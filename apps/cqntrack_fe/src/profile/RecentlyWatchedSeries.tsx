@@ -8,13 +8,16 @@ interface RecentlyWatchedSeriesProps {
   // "/api/users/:username" (perfil público) ou "/api" (home, dados
   // próprios) — mesmo componente serve os dois, só troca o prefixo.
   basePath: string;
+  // Mostrada quando a lista vem vazia — omitido (perfil público, ver
+  // SeriesTabPanel) continua sumindo em silêncio, como sempre foi.
+  emptyMessage?: string;
 }
 
 type LoadStatus = "loading" | "ready" | "error";
 
 const RECENT_LIMIT = 12;
 
-export function RecentlyWatchedSeries({ basePath }: RecentlyWatchedSeriesProps) {
+export function RecentlyWatchedSeries({ basePath, emptyMessage }: RecentlyWatchedSeriesProps) {
   const [data, setData] = useState<RecentlyWatchedSeriesResponse | null>(null);
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
 
@@ -40,8 +43,12 @@ export function RecentlyWatchedSeries({ basePath }: RecentlyWatchedSeriesProps) 
     };
   }, [basePath]);
 
-  if (loadStatus !== "ready" || !data || data.items.length === 0) {
+  if (loadStatus !== "ready" || !data) {
     return null;
+  }
+
+  if (data.items.length === 0) {
+    return emptyMessage ? <p className={styles.hint}>{emptyMessage}</p> : null;
   }
 
   return (

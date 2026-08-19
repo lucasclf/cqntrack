@@ -13,6 +13,7 @@ const EMPTY_FAVORITES = { items: [] };
 const EMPTY_ENTRIES = { items: [], page: 1, pageSize: 24, total: 0 };
 const EMPTY_ACTIVITY = { items: [], nextCursor: null };
 const EMPTY_CONTINUE_WATCHING = { items: [] };
+const EMPTY_RECENTLY_WATCHED_SERIES = { items: [], page: 1, pageSize: 12, total: 0 };
 
 const MOVIE = {
   tmdbId: 27205,
@@ -48,7 +49,7 @@ function homeTabsNav() {
   return screen.getByRole("navigation", { name: "Seções da home" });
 }
 
-// Mock genérico cobrindo tudo que a Home carrega de cara (as 5 abas, todas
+// Mock genérico cobrindo tudo que a Home carrega de cara (as 6 abas, todas
 // com "/api" em vez de "/api/users/:username") — cada rota devolve vazio
 // por padrão. Testes que precisam de dado real sobrescrevem a rota
 // específica.
@@ -56,6 +57,10 @@ function mockHomeEmpty(overrides: Record<string, unknown> = {}) {
   getMock.mockImplementation((path: string) => {
     if (path in overrides) return Promise.resolve(overrides[path]);
     if (path === "/api/series/continue-watching") return Promise.resolve(EMPTY_CONTINUE_WATCHING);
+    if (path === "/api/series/favorites") return Promise.resolve(EMPTY_FAVORITES);
+    if (path.startsWith("/api/series/recently-watched")) {
+      return Promise.resolve(EMPTY_RECENTLY_WATCHED_SERIES);
+    }
     if (path === "/api/movies/favorites") return Promise.resolve(EMPTY_FAVORITES);
     if (path === "/api/books/favorites") return Promise.resolve(EMPTY_FAVORITES);
     if (path === "/api/games/favorites") return Promise.resolve(EMPTY_FAVORITES);
@@ -72,7 +77,7 @@ describe("Home", () => {
     getMock.mockReset();
   });
 
-  it("mostra as 5 abas, com Continuar assistindo ativa por padrão", async () => {
+  it("mostra as 6 abas, com Continuar assistindo ativa por padrão", async () => {
     mockHomeEmpty();
     renderHome();
 
@@ -83,6 +88,7 @@ describe("Home", () => {
     const nav = homeTabsNav();
     for (const label of [
       "Continuar assistindo",
+      "Séries",
       "Filmes",
       "Jogos",
       "Livros",
@@ -124,6 +130,7 @@ describe("Home", () => {
 
     expect(getMock).toHaveBeenCalledWith("/api/movies/favorites");
     expect(getMock).toHaveBeenCalledWith("/api/activity");
+    expect(getMock).toHaveBeenCalledWith("/api/series/favorites");
     expect(getMock.mock.calls.filter(([path]) => path === "/api/movies/favorites")).toHaveLength(1);
 
     // Já buscado, mas escondido — a aba ativa ainda é "Continuar assistindo".
@@ -164,6 +171,43 @@ describe("Home", () => {
 
     const link = screen.getByRole("link", { name: /Game of Thrones/ });
     expect(link).toHaveAttribute("href", "/series/1399/temporadas/2/episodios/3");
+  });
+
+  it("aba Séries mostra favoritos + estatísticas, com dado próprio", async () => {
+    mockHomeEmpty({
+      "/api/series/favorites": {
+        items: [
+          {
+            id: "1",
+            rating: null,
+            watchedEpisodeCount: 12,
+            favoritedAt: "2026-01-01T00:00:00.000Z",
+            abandonedAt: null,
+            review: null,
+            updatedAt: "2026-01-01T00:00:00.000Z",
+            availableEpisode: null,
+            upcomingEpisode: null,
+            series: SERIES,
+          },
+        ],
+      },
+      "/api/series/recently-watched?page=1&pageSize=1": {
+        items: [],
+        page: 1,
+        pageSize: 1,
+        total: 3,
+      },
+    });
+    renderHome();
+
+    fireEvent.click(within(homeTabsNav()).getByRole("button", { name: "Séries" }));
+
+    expect(await screen.findByRole("heading", { name: "Séries favoritas" })).toBeInTheDocument();
+    expect(screen.getAllByText("Game of Thrones")).not.toHaveLength(0);
+
+    const sidebar = screen.getByRole("complementary");
+    const link = await within(sidebar).findByRole("link", { name: /Séries acompanhadas/ });
+    expect(link).toHaveAttribute("href", "/series/marcacoes");
   });
 
   it("aba Filmes mostra favoritos + assistido recentemente + estatísticas, com dado próprio", async () => {
@@ -228,5 +272,28 @@ describe("Home", () => {
     const sidebar = screen.getByRole("complementary");
     const link = await within(sidebar).findByRole("link", { name: /Jogando/ });
     expect(link).toHaveAttribute("href", "/jogos/marcacoes?status=playing");
+  });
+
+  it("categorias vazias mostram mensagem de que não há itens, em vez de sumirem em silêncio", async () => {
+    mockHomeEmpty();
+    renderHome();
+
+    const nav = homeTabsNav();
+
+    fireEvent.click(within(nav).getByRole("button", { name: "Séries" }));
+    expect(await screen.findByText("Nenhuma série favoritada ainda.")).toBeVisible();
+    expect(screen.getByText("Nenhuma série assistida recentemente.")).toBeVisible();
+
+    fireEvent.click(within(nav).getByRole("button", { name: "Filmes" }));
+    expect(await screen.findByText("Nenhum filme favoritado ainda.")).toBeVisible();
+    expect(screen.getByText("Nenhum filme assistido recentemente.")).toBeVisible();
+
+    fireEvent.click(within(nav).getByRole("button", { name: "Jogos" }));
+    expect(await screen.findByText("Nenhum jogo favoritado ainda.")).toBeVisible();
+    expect(screen.getByText("Nenhum jogo jogado recentemente.")).toBeVisible();
+
+    fireEvent.click(within(nav).getByRole("button", { name: "Livros" }));
+    expect(await screen.findByText("Nenhum livro favoritado ainda.")).toBeVisible();
+    expect(screen.getByText("Nenhum livro lido recentemente.")).toBeVisible();
   });
 });

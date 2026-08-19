@@ -19,6 +19,11 @@
   font-size: 13px;
 }
 
+.hint {
+  color: var(--text-secondary);
+  margin: 0 0 32px;
+}
+
 /* Carrossel horizontal (estilo Filmow) em vez de grade que quebra linha. */
 .grid {
   display: flex;

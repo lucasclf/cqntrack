@@ -1,9 +1,10 @@
 import styles from "./HomeTabs.module.css";
 
-export type HomeTab = "continueWatching" | "movies" | "games" | "books" | "activity";
+export type HomeTab = "continueWatching" | "series" | "movies" | "games" | "books" | "activity";
 
 const TABS: { key: HomeTab; label: string }[] = [
   { key: "continueWatching", label: "Continuar assistindo" },
+  { key: "series", label: "Séries" },
   { key: "movies", label: "Filmes" },
   { key: "games", label: "Jogos" },
   { key: "books", label: "Livros" },
@@ -15,12 +16,12 @@ interface HomeTabsProps {
   onChange: (tab: HomeTab) => void;
 }
 
-// Abas puramente visuais (estado local, não rota) — todo o conteúdo das 5
+// Abas puramente visuais (estado local, não rota) — todo o conteúdo das 6
 // já carrega assim que a Home monta (ver Home.tsx, cada seção fica no DOM
 // o tempo todo, só escondida via `hidden`), trocar de aba não refaz
-// nenhum fetch. Os caminhos "/filmes", "/jogos" etc. já são as telas de
-// Descobrir/marcações de cada seção (ver router.tsx), então as abas daqui
-// não podem reivindicar esses paths.
+// nenhum fetch. Os caminhos "/filmes", "/series", "/jogos" etc. já são as
+// telas de Descobrir/marcações de cada seção (ver router.tsx), então as
+// abas daqui não podem reivindicar esses paths.
 export function HomeTabs({ active, onChange }: HomeTabsProps) {
   return (
     <nav className={styles.tabs} aria-label="Seções da home">
