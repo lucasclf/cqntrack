@@ -16,24 +16,11 @@
   color: var(--text-secondary);
 }
 
-.form {
-  display: flex;
+.fileLabel {
+  display: inline-flex;
+  align-items: center;
   gap: 8px;
-}
-
-.form input {
-  flex: 1;
-  height: 36px;
-  border-radius: var(--radius);
-  border: 1px solid var(--input-border);
-  background: var(--input-bg);
-  color: var(--text-primary);
-  font-size: 13px;
-  padding: 0 12px;
-}
-
-.form button {
-  padding: 0 16px;
+  padding: 8px 16px;
   border-radius: var(--radius);
   border: 1px solid var(--input-border);
   background: var(--input-bg);
@@ -43,9 +30,8 @@
   cursor: pointer;
 }
 
-.form button:disabled {
-  opacity: 0.6;
-  cursor: default;
+.fileLabel input {
+  display: none;
 }
 
 .summary {
@@ -55,6 +41,20 @@
 
 .summary p {
   margin: 0 0 6px;
+}
+
+.downloadButton {
+  display: inline-flex;
+  align-items: center;
+  margin: 4px 0 8px;
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .notFoundList {

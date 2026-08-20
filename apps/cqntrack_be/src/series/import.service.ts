@@ -1,17 +1,23 @@
 import type {
+  ImportCinopsysShow,
+  ImportCinopsysShowResult,
   ImportTvTimeEpisode,
   ImportTvTimeResponse,
-  ImportTraktShowResponse,
-  TraktImportableShow,
-  TraktShowsPreviewResponse,
 } from "@cqntrack/shared";
 import type { createDb } from "../db/client";
 import { activity, seriesEpisodeWatch } from "../db/schema";
 import { findSeriesByTvdbId } from "../integrations/tmdb/series";
-import { getShowRatings, getWatchedShows, toCqntrackRating } from "../integrations/trakt/client";
-import { ensureSeriesEntry, upsertSeriesEntry } from "./entries.service";
+import { ensureSeriesEntry } from "./entries.service";
 
 type Db = ReturnType<typeof createDb>;
+
+// Só entra em jogo pro import do Cinopsys — Trakt/tvtime sempre
+// processavam 1 série por request (não precisavam de paralelismo). Aqui um
+// único request pode trazer várias séries (ver ImportCinopsysSeriesRequestSchema),
+// então processar em paralelo com um teto baixo reduz a latência total sem
+// aumentar o CPU gasto (o fetch de getOrCacheSeries é I/O, não conta pro
+// budget de CPU do Free tier).
+const CONCURRENCY = 3;
 
 // D1 tem um teto de ~100 parâmetros vinculados por statement (confirmado na
 // prática: um insert de 150 linhas — 5-6 parâmetros cada, incluindo o `id`
@@ -108,91 +114,25 @@ export async function logTvTimeImportActivity(
   });
 }
 
-// Busca as séries assistidas + notas do Trakt (só perfil público — ver
-// integrations/trakt/client.ts) e junta os dois por tmdb_id — diferente do
-// tvtime, nem precisa do passo findSeriesByTvdbId (o Trakt já entrega o
-// tmdb_id, com o detalhamento de temporada/episódio na mesma resposta).
-// null quando o perfil está privado ou não existe.
-export async function getTraktShowsToImport(
-  env: Env,
-  username: string,
-): Promise<TraktShowsPreviewResponse | null> {
-  const [watched, ratings] = await Promise.all([
-    getWatchedShows(env, username),
-    getShowRatings(env, username),
-  ]);
-  if (!watched) {
-    return null;
-  }
-
-  const ratingByTmdbId = new Map<number, number>();
-  for (const entry of ratings ?? []) {
-    const tmdbId = entry.show.ids.tmdb;
-    if (tmdbId) {
-      ratingByTmdbId.set(tmdbId, toCqntrackRating(entry.rating));
-    }
-  }
-
-  const importable: TraktImportableShow[] = [];
-  const notFound: { title: string }[] = [];
-  for (const entry of watched) {
-    const tmdbId = entry.show.ids.tmdb;
-    if (!tmdbId) {
-      notFound.push({ title: entry.show.title });
-      continue;
-    }
-
-    const episodes: ImportTvTimeEpisode[] = entry.seasons.flatMap((season) =>
-      season.episodes.map((episode) => ({
-        season: season.number,
-        episode: episode.number,
-        watchedAt: episode.last_watched_at,
-      })),
-    );
-
-    importable.push({
-      tmdbId,
-      title: entry.show.title,
-      rating: ratingByTmdbId.get(tmdbId) ?? null,
-      episodes,
-    });
-  }
-
-  return { importable, notFound };
-}
-
 // Mesmo espírito de importTvTimeSeries, mas sem o passo findSeriesByTvdbId
-// (o tmdb_id já vem resolvido pelo Trakt, ver getTraktShowsToImport) e com
-// nota opcional. Só 1 chamada de getOrCacheSeries (via upsertSeriesEntry,
-// não ensureSeriesEntry + upsertSeriesEntry separados) — cast fica null com
-// fetchCredits: false (ver getOrCacheSeries em series.service.ts), o que
-// isStale() sempre considera "desatualizado"; uma 2ª chamada pra mesma
-// série no mesmo import refaria o fetch de detalhe à toa. `rating: null`
-// vira `undefined` no patch de propósito (mesmo racional de importTraktOne
-// em movies/import.service.ts) — não apaga uma nota que o usuário já
-// tivesse posto manualmente antes.
-export async function importTraktShow(
+// (o tmdbId já vem resolvido no backup do Cinopsys, processado no
+// navegador — ver ImportCinopsysJson.tsx) e sem rating (o backup só tem a
+// nota agregada da própria TMDB, não uma nota pessoal do usuário).
+async function importCinopsysOne(
   env: Env,
   db: Db,
   userId: string,
-  tmdbId: number,
-  title: string,
-  rating: number | null,
-  episodes: ImportTvTimeEpisode[],
-): Promise<ImportTraktShowResponse> {
+  show: ImportCinopsysShow,
+): Promise<ImportCinopsysShowResult> {
   try {
-    await upsertSeriesEntry(
-      env,
-      db,
-      userId,
-      tmdbId,
-      { rating: rating ?? undefined },
-      { logActivity: false, fetchCredits: false, fetchOverviewFallback: false },
-    );
+    await ensureSeriesEntry(env, db, userId, show.tmdbId, {
+      fetchCredits: false,
+      fetchOverviewFallback: false,
+    });
 
-    const rows = episodes.map((episode) => ({
+    const rows = show.episodes.map((episode) => ({
       userId,
-      seriesId: tmdbId,
+      seriesId: show.tmdbId,
       seasonNumber: episode.season,
       episodeNumber: episode.episode,
       ...(episode.watchedAt ? { watchedAt: new Date(episode.watchedAt) } : {}),
@@ -202,15 +142,46 @@ export async function importTraktShow(
       await db.insert(seriesEpisodeWatch).values(batch).onConflictDoNothing();
     }
 
-    return { tmdbId, title, status: "imported", episodesImported: rows.length };
+    return {
+      tmdbId: show.tmdbId,
+      title: show.title,
+      status: "imported",
+      episodesImported: rows.length,
+    };
   } catch {
-    return { tmdbId, title, status: "error", episodesImported: 0 };
+    return { tmdbId: show.tmdbId, title: show.title, status: "error", episodesImported: 0 };
   }
 }
 
+// Um request pode trazer várias séries (ver ImportCinopsysSeriesRequestSchema
+// em packages/shared) — processadas com CONCURRENCY baixo (ver constante no
+// topo do arquivo), cada uma com seu próprio ensureSeriesEntry + inserts em
+// lote, sem risco de corrida (tmdbId não se repete dentro do array).
+export async function importCinopsysSeries(
+  env: Env,
+  db: Db,
+  userId: string,
+  shows: ImportCinopsysShow[],
+): Promise<ImportCinopsysShowResult[]> {
+  const results: ImportCinopsysShowResult[] = new Array<ImportCinopsysShowResult>(shows.length);
+
+  let cursor = 0;
+  async function worker() {
+    while (cursor < shows.length) {
+      const index = cursor;
+      cursor += 1;
+      results[index] = await importCinopsysOne(env, db, userId, shows[index]!);
+    }
+  }
+
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, shows.length) }, () => worker()));
+
+  return results;
+}
+
 // Mesmo racional de logTvTimeImportActivity — resumo agregado, não 1 por
-// série (import roda com logActivity: false, ver importTraktShow acima).
-export async function logTraktSeriesImportActivity(
+// série (import roda com logActivity: false, ver importCinopsysOne acima).
+export async function logCinopsysSeriesImportActivity(
   db: Db,
   userId: string,
   importedSeriesCount: number,
@@ -228,6 +199,10 @@ export async function logTraktSeriesImportActivity(
     itemHref: "/series/marcacoes",
     itemCoverUrl: null,
     type: "imported",
-    metadata: { source: "trakt", count: importedSeriesCount, episodeCount: importedEpisodeCount },
+    metadata: {
+      source: "cinopsys",
+      count: importedSeriesCount,
+      episodeCount: importedEpisodeCount,
+    },
   });
 }

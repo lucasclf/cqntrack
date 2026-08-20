@@ -2,8 +2,8 @@ import { type FormEvent, useState } from "react";
 import { useNavigate } from "react-router";
 import styles from "./Account.module.css";
 import { AvatarUpload } from "./AvatarUpload";
+import { ImportCinopsysJson } from "./ImportCinopsysJson";
 import { ImportFilmowCsv } from "./ImportFilmowCsv";
-import { ImportTraktUsername } from "./ImportTraktUsername";
 import { ImportTvTimeCsv } from "./ImportTvTimeCsv";
 import { APK_DOWNLOAD_URL } from "./lib/apk-download-url";
 import { authClient } from "./lib/auth-client";
@@ -134,7 +134,7 @@ export function Account() {
         <section className={styles.section}>
           <h2>Importar dados</h2>
           <div className={styles.importList}>
-            <ImportTraktUsername />
+            <ImportCinopsysJson />
             <ImportFilmowCsv />
             <ImportTvTimeCsv />
           </div>

@@ -367,66 +367,53 @@ export const LogTvTimeImportActivityRequestSchema = z.object({
 
 export type LogTvTimeImportActivityRequest = z.infer<typeof LogTvTimeImportActivityRequestSchema>;
 
-// Importação a partir do Trakt ("Conta" > "Importar dados", só perfil
-// público por enquanto) — diferente do tvtime, o Trakt tem API própria
-// (api.trakt.tv) e já devolve o tmdb_id de cada série assistida, com o
-// detalhamento por temporada/episódio incluso na mesma resposta (ver
-// integrations/trakt/client.ts no backend) — não precisa do passo de
-// resolver tvdb_id → tmdb_id que o tvtime precisa (findSeriesByTvdbId).
-// `rating` já vem convertido da escala 1-10 do Trakt pra 0-5 em
-// meio-ponto.
-export const ImportTraktSeriesQuerySchema = z.object({
-  username: z.string().min(1).max(50),
-});
-
-export type ImportTraktSeriesQuery = z.infer<typeof ImportTraktSeriesQuerySchema>;
-
-export const TraktImportableShowSchema = z.object({
-  tmdbId: z.number().int(),
-  title: z.string(),
-  rating: z.number().min(0).max(5).multipleOf(0.5).nullable(),
-  episodes: z.array(ImportTvTimeEpisodeSchema),
-});
-
-export type TraktImportableShow = z.infer<typeof TraktImportableShowSchema>;
-
-// Série assistida no Trakt sem ids.tmdb — mesmo espírito de
-// TraktNotFoundMovieSchema (movies.ts).
-export const TraktNotFoundShowSchema = z.object({
-  title: z.string(),
-});
-
-export const TraktShowsPreviewResponseSchema = z.object({
-  importable: z.array(TraktImportableShowSchema),
-  notFound: z.array(TraktNotFoundShowSchema),
-});
-
-export type TraktShowsPreviewResponse = z.infer<typeof TraktShowsPreviewResponseSchema>;
-
-export const ImportTraktShowRequestSchema = z.object({
+// Importação a partir de um backup JSON do Cinopsys ("Conta" > "Importar
+// dados") — mesmo espírito de ImportTvTimeRequestSchema (tmdbId + episódios
+// já resolvidos no navegador, ver ImportCinopsysJson.tsx), mas agrupando
+// MÚLTIPLAS séries por request: o volume do Cinopsys (até ~290 séries, até
+// centenas de episódios cada) é grande demais pro padrão "1 série por
+// request" do tvtime/Trakt gerar poucas viagens de rede. Sem "not_found"
+// (tmdbId sempre vem pronto) e sem `rating` (o backup só tem a nota
+// agregada da TMDB, não uma nota pessoal do usuário).
+export const ImportCinopsysShowSchema = z.object({
   tmdbId: z.number().int(),
   title: z.string().min(1).max(300),
-  rating: z.number().min(0).max(5).multipleOf(0.5).nullable(),
-  episodes: z.array(ImportTvTimeEpisodeSchema).min(1).max(5000),
+  episodes: z.array(ImportTvTimeEpisodeSchema).min(1).max(1000),
 });
 
-export type ImportTraktShowRequest = z.infer<typeof ImportTraktShowRequestSchema>;
+export type ImportCinopsysShow = z.infer<typeof ImportCinopsysShowSchema>;
 
-export const ImportTraktShowResponseSchema = z.object({
+// Teto de 15 séries por request — o front também limita o total de
+// episódios acumulados por lote (ver chunkShows em ImportCinopsysJson.tsx)
+// pra evitar um lote raro com várias séries de centenas de episódios cada
+// estourando o teto de CPU do plano Free de Workers.
+export const ImportCinopsysSeriesRequestSchema = z.object({
+  shows: z.array(ImportCinopsysShowSchema).min(1).max(15),
+});
+
+export type ImportCinopsysSeriesRequest = z.infer<typeof ImportCinopsysSeriesRequestSchema>;
+
+export const ImportCinopsysShowResultSchema = z.object({
   tmdbId: z.number().int(),
   title: z.string(),
   status: z.enum(["imported", "error"]),
   episodesImported: z.number().int(),
 });
 
-export type ImportTraktShowResponse = z.infer<typeof ImportTraktShowResponseSchema>;
+export type ImportCinopsysShowResult = z.infer<typeof ImportCinopsysShowResultSchema>;
+
+export const ImportCinopsysSeriesResponseSchema = z.object({
+  results: z.array(ImportCinopsysShowResultSchema),
+});
+
+export type ImportCinopsysSeriesResponse = z.infer<typeof ImportCinopsysSeriesResponseSchema>;
 
 // Mesmo racional de LogTvTimeImportActivityRequestSchema.
-export const LogTraktSeriesImportActivityRequestSchema = z.object({
+export const LogCinopsysSeriesImportActivityRequestSchema = z.object({
   importedSeriesCount: z.number().int().min(0),
   importedEpisodeCount: z.number().int().min(0),
 });
 
-export type LogTraktSeriesImportActivityRequest = z.infer<
-  typeof LogTraktSeriesImportActivityRequestSchema
+export type LogCinopsysSeriesImportActivityRequest = z.infer<
+  typeof LogCinopsysSeriesImportActivityRequestSchema
 >;

@@ -61,11 +61,9 @@ function stubMovieCacheFetch(id: number, title: string, voteAverage = 8.4): void
 }
 
 // Responde por conteúdo da URL em vez de ordem de chamada — necessário
-// sempre que o fluxo faz requests concorrentes (import do Filmow, ver
-// CONCURRENCY em import.service.ts) ou bate em domínios diferentes na
-// mesma chamada (import do Trakt: preview em api.trakt.tv, import em si na
-// TMDB). `status` default 200; usado pra simular erro (ex.: perfil privado
-// na Trakt).
+// sempre que o fluxo faz requests concorrentes (import do Filmow/Cinopsys,
+// ver CONCURRENCY em import.service.ts). `status` default 200; usado pra
+// simular erro de rede/API externa.
 function stubFetchByUrl(handlers: [pattern: string, body: unknown, status?: number][]): void {
   vi.stubGlobal(
     "fetch",
@@ -911,118 +909,48 @@ describe("POST /api/movies/import/filmow/activity", () => {
   });
 });
 
-describe("GET /api/movies/import/trakt", () => {
-  it("sem sessão retorna 401", async () => {
-    const res = await app.request("/api/movies/import/trakt?username=alguem", undefined, env);
-    expect(res.status).toBe(401);
-  });
-
-  it("sem username retorna 400", async () => {
-    const { cookie } = await createAuthenticatedUser(app, env);
-    const res = await app.request("/api/movies/import/trakt", { headers: { cookie } }, env);
-    expect(res.status).toBe(400);
-  });
-
-  it("perfil privado ou inexistente na Trakt retorna 404 trakt_profile_unavailable", async () => {
-    const { cookie } = await createAuthenticatedUser(app, env);
-    stubFetchByUrl([["api.trakt.tv", { error: "not found" }, 404]]);
-
-    const res = await app.request(
-      "/api/movies/import/trakt?username=privado",
-      { headers: { cookie } },
-      env,
-    );
-    vi.unstubAllGlobals();
-
-    expect(res.status).toBe(404);
-    await expect(res.json()).resolves.toEqual({ error: "trakt_profile_unavailable" });
-  });
-
-  it("junta assistidos + notas por tmdb_id; filme sem ids.tmdb vira notFound", async () => {
-    const { cookie } = await createAuthenticatedUser(app, env);
-    stubFetchByUrl([
-      [
-        "/watched/movies",
-        [
-          {
-            plays: 1,
-            last_watched_at: "2026-01-01T00:00:00Z",
-            movie: { title: "Inception", ids: { trakt: 1, tmdb: 27205 } },
-          },
-          {
-            plays: 1,
-            last_watched_at: "2026-01-02T00:00:00Z",
-            movie: { title: "Obscuro sem tmdb", ids: { trakt: 2, tmdb: null } },
-          },
-        ],
-      ],
-      [
-        "/ratings/movies",
-        [
-          {
-            rated_at: "2026-01-01T00:00:00Z",
-            rating: 8,
-            movie: { title: "Inception", ids: { trakt: 1, tmdb: 27205 } },
-          },
-        ],
-      ],
-    ]);
-
-    const res = await app.request(
-      "/api/movies/import/trakt?username=alguem",
-      { headers: { cookie } },
-      env,
-    );
-    vi.unstubAllGlobals();
-
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as {
-      importable: Array<{ tmdbId: number; title: string; rating: number | null }>;
-      notFound: Array<{ title: string }>;
-    };
-    expect(body.importable).toEqual([{ tmdbId: 27205, title: "Inception", rating: 4 }]);
-    expect(body.notFound).toEqual([{ title: "Obscuro sem tmdb" }]);
-  });
-});
-
-describe("POST /api/movies/import/trakt", () => {
+describe("POST /api/movies/import/cinopsys", () => {
   it("sem sessão retorna 401", async () => {
     const res = await app.request(
-      "/api/movies/import/trakt",
+      "/api/movies/import/cinopsys",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: [{ tmdbId: 27205, title: "Inception", rating: 4 }] }),
+        body: JSON.stringify({
+          movies: [{ tmdbId: 27205, title: "Inception", status: "watched" }],
+        }),
       },
       env,
     );
     expect(res.status).toBe(401);
   });
 
-  it("corpo inválido (sem items) retorna 400", async () => {
+  it("corpo inválido (sem movies) retorna 400", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
     const res = await app.request(
-      "/api/movies/import/trakt",
+      "/api/movies/import/cinopsys",
       {
         method: "POST",
         headers: { cookie, "Content-Type": "application/json" },
-        body: JSON.stringify({ items: [] }),
+        body: JSON.stringify({ movies: [] }),
       },
       env,
     );
     expect(res.status).toBe(400);
   });
 
-  it("importa como 'Já vi' com a nota convertida, sem gerar atividade", async () => {
+  it("importa filmes com o status já resolvido (watched/want_to_watch), sem nota nem atividade", async () => {
     const { cookie, username } = await createAuthenticatedUser(app, env);
     stubFetchByUrl([["/movie/27205", tmdbMovieDetail(27205, "Inception")]]);
 
     const res = await app.request(
-      "/api/movies/import/trakt",
+      "/api/movies/import/cinopsys",
       {
         method: "POST",
         headers: { cookie, "Content-Type": "application/json" },
-        body: JSON.stringify({ items: [{ tmdbId: 27205, title: "Inception", rating: 4 }] }),
+        body: JSON.stringify({
+          movies: [{ tmdbId: 27205, title: "Inception", status: "watched" }],
+        }),
       },
       env,
     );
@@ -1042,60 +970,22 @@ describe("POST /api/movies/import/trakt", () => {
     const entriesBody = (await entriesRes.json()) as {
       items: Array<{ rating: number | null; movie: { tmdbId: number } }>;
     };
-    expect(entriesBody.items).toEqual([expect.objectContaining({ rating: 4 })]);
+    expect(entriesBody.items).toEqual([expect.objectContaining({ rating: null })]);
 
     const activities = await createDb(env).query.activity.findMany();
     expect(activities.filter((item) => item.itemId === "27205")).toHaveLength(0);
   });
-
-  it("rating: null (Trakt sem nota) não apaga uma nota que o usuário já tinha posto manualmente", async () => {
-    const { cookie, username } = await createAuthenticatedUser(app, env);
-    stubMovieCacheFetch(27205, "Inception");
-    await app.request(
-      "/api/movies/27205/entry",
-      {
-        method: "PUT",
-        headers: { cookie, "Content-Type": "application/json" },
-        body: JSON.stringify({ rating: 3.5 }),
-      },
-      env,
-    );
-    vi.unstubAllGlobals();
-
-    // Já cacheado — só o detalhe é reconsultado (revalidação dentro de 24h
-    // nem chega a acontecer, mas stub por garantia caso o request role).
-    stubFetchByUrl([["/movie/27205", tmdbMovieDetail(27205, "Inception")]]);
-    const res = await app.request(
-      "/api/movies/import/trakt",
-      {
-        method: "POST",
-        headers: { cookie, "Content-Type": "application/json" },
-        body: JSON.stringify({ items: [{ tmdbId: 27205, title: "Inception", rating: null }] }),
-      },
-      env,
-    );
-    vi.unstubAllGlobals();
-    expect(res.status).toBe(200);
-
-    const entriesRes = await app.request(
-      `/api/users/${username}/movies/entries?status=watched`,
-      undefined,
-      env,
-    );
-    const entriesBody = (await entriesRes.json()) as { items: Array<{ rating: number | null }> };
-    expect(entriesBody.items).toEqual([expect.objectContaining({ rating: 3.5 })]);
-  });
 });
 
-describe("POST /api/movies/import/trakt/activity", () => {
-  it("gera 1 activity-resumo com source: trakt", async () => {
+describe("POST /api/movies/import/cinopsys/activity", () => {
+  it("gera 1 activity-resumo com source: cinopsys", async () => {
     const { cookie, email } = await createAuthenticatedUser(app, env);
     const db = createDb(env);
     const [row] = await db.select({ id: user.id }).from(user).where(eq(user.email, email));
     if (!row) throw new Error("usuário de teste não encontrado");
 
     const res = await app.request(
-      "/api/movies/import/trakt/activity",
+      "/api/movies/import/cinopsys/activity",
       {
         method: "POST",
         headers: { cookie, "Content-Type": "application/json" },
@@ -1108,6 +998,6 @@ describe("POST /api/movies/import/trakt/activity", () => {
     const activities = await db.query.activity.findMany({ where: eq(activity.userId, row.id) });
     const imported = activities.filter((item) => item.type === "imported");
     expect(imported).toHaveLength(1);
-    expect(imported[0]).toMatchObject({ metadata: { source: "trakt", count: 12 } });
+    expect(imported[0]).toMatchObject({ metadata: { source: "cinopsys", count: 12 } });
   });
 });

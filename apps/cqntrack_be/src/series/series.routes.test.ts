@@ -80,12 +80,10 @@ function stubSeriesCacheFetch(id: number, name: string): void {
   stubTmdbFetchOnce(tmdbSeriesDetail(id, name), tmdbSeriesCredits());
 }
 
-// Responde por conteúdo da URL em vez de ordem de chamada — necessário pro
-// preview do import do Trakt (getTraktShowsToImport faz Promise.all de
-// /watched/shows + /ratings/shows, ordem de chegada não é garantida) e pra
-// mockar dois domínios diferentes na mesma chamada (Trakt no preview, TMDB
-// no import em si). `status` default 200; usado pra simular erro (ex.:
-// perfil privado na Trakt).
+// Responde por conteúdo da URL em vez de ordem de chamada — necessário
+// sempre que o fluxo faz requests concorrentes (import do Cinopsys com
+// várias séries no mesmo request, ver CONCURRENCY em import.service.ts).
+// `status` default 200; usado pra simular erro de rede/API externa.
 function stubFetchByUrl(handlers: [pattern: string, body: unknown, status?: number][]): void {
   vi.stubGlobal(
     "fetch",
@@ -1947,117 +1945,15 @@ describe("POST /api/series/import/tvtime/activity", () => {
   });
 });
 
-describe("GET /api/series/import/trakt", () => {
-  it("sem sessão retorna 401", async () => {
-    const res = await app.request("/api/series/import/trakt?username=alguem", undefined, env);
-    expect(res.status).toBe(401);
-  });
-
-  it("sem username retorna 400", async () => {
-    const { cookie } = await createAuthenticatedUser(app, env);
-    const res = await app.request("/api/series/import/trakt", { headers: { cookie } }, env);
-    expect(res.status).toBe(400);
-  });
-
-  it("perfil privado ou inexistente na Trakt retorna 404 trakt_profile_unavailable", async () => {
-    const { cookie } = await createAuthenticatedUser(app, env);
-    stubFetchByUrl([["api.trakt.tv", { error: "not found" }, 404]]);
-
-    const res = await app.request(
-      "/api/series/import/trakt?username=privado",
-      { headers: { cookie } },
-      env,
-    );
-    vi.unstubAllGlobals();
-
-    expect(res.status).toBe(404);
-    await expect(res.json()).resolves.toEqual({ error: "trakt_profile_unavailable" });
-  });
-
-  it("junta assistidos + notas por tmdb_id, com episódios por temporada; série sem ids.tmdb vira notFound", async () => {
-    const { cookie } = await createAuthenticatedUser(app, env);
-    stubFetchByUrl([
-      [
-        "/watched/shows",
-        [
-          {
-            plays: 62,
-            last_watched_at: "2026-01-05T00:00:00Z",
-            show: { title: "Breaking Bad", ids: { trakt: 1, tmdb: 1396 } },
-            seasons: [
-              {
-                number: 1,
-                episodes: [
-                  { number: 1, plays: 1, last_watched_at: "2020-03-05T03:05:10.000Z" },
-                  { number: 2, plays: 1, last_watched_at: "2020-03-06T03:05:10.000Z" },
-                ],
-              },
-            ],
-          },
-          {
-            plays: 1,
-            last_watched_at: "2026-01-01T00:00:00Z",
-            show: { title: "Série obscura sem tmdb", ids: { trakt: 2, tmdb: null } },
-            seasons: [],
-          },
-        ],
-      ],
-      [
-        "/ratings/shows",
-        [
-          {
-            rated_at: "2026-01-01T00:00:00Z",
-            rating: 9,
-            show: { title: "Breaking Bad", ids: { trakt: 1, tmdb: 1396 } },
-          },
-        ],
-      ],
-    ]);
-
-    const res = await app.request(
-      "/api/series/import/trakt?username=alguem",
-      { headers: { cookie } },
-      env,
-    );
-    vi.unstubAllGlobals();
-
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as {
-      importable: Array<{
-        tmdbId: number;
-        title: string;
-        rating: number | null;
-        episodes: Array<{ season: number; episode: number; watchedAt: string | null }>;
-      }>;
-      notFound: Array<{ title: string }>;
-    };
-    expect(body.importable).toEqual([
-      {
-        tmdbId: 1396,
-        title: "Breaking Bad",
-        rating: 4.5,
-        episodes: [
-          { season: 1, episode: 1, watchedAt: "2020-03-05T03:05:10.000Z" },
-          { season: 1, episode: 2, watchedAt: "2020-03-06T03:05:10.000Z" },
-        ],
-      },
-    ]);
-    expect(body.notFound).toEqual([{ title: "Série obscura sem tmdb" }]);
-  });
-});
-
-describe("POST /api/series/import/trakt", () => {
+describe("POST /api/series/import/cinopsys", () => {
   it("sem sessão retorna 401", async () => {
     const res = await app.request(
-      "/api/series/import/trakt",
+      "/api/series/import/cinopsys",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tmdbId: 1396,
-          title: "Breaking Bad",
-          rating: 4.5,
-          episodes: [{ season: 1, episode: 1 }],
+          shows: [{ tmdbId: 1396, title: "Breaking Bad", episodes: [{ season: 1, episode: 1 }] }],
         }),
       },
       env,
@@ -2065,14 +1961,14 @@ describe("POST /api/series/import/trakt", () => {
     expect(res.status).toBe(401);
   });
 
-  it("corpo inválido (sem episódios) retorna 400", async () => {
+  it("corpo inválido (sem shows) retorna 400", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
     const res = await app.request(
-      "/api/series/import/trakt",
+      "/api/series/import/cinopsys",
       {
         method: "POST",
         headers: { cookie, "Content-Type": "application/json" },
-        body: JSON.stringify({ tmdbId: 1396, title: "Breaking Bad", rating: null, episodes: [] }),
+        body: JSON.stringify({ shows: [] }),
       },
       env,
     );
@@ -2088,27 +1984,38 @@ describe("POST /api/series/import/trakt", () => {
     return row.id;
   }
 
-  it("marca os episódios e a nota, sem buscar créditos nem gerar atividade (sem passo de resolução tvdb_id)", async () => {
+  it("marca os episódios de várias séries do mesmo request, sem buscar créditos, rating nem gerar atividade", async () => {
     const { cookie, email } = await createAuthenticatedUser(app, env);
     const userId = await getUserId(email);
-    // Só 1 fetch: detalhe da série — sem aggregate_credits (fetchCredits:
-    // false) nem o /find de tvdb_id que o tvtime precisa (o tmdb_id já vem
-    // resolvido pelo Trakt). Se o código chamar um 2º fetch, o mock não tem
-    // resposta e o teste falha.
-    stubTmdbFetchOnce(tmdbSeriesDetail(1950, "Breaking Bad"));
+    // 1 fetch por série nova (detalhe, sem aggregate_credits — fetchCredits:
+    // false) — por URL, já que as 2 séries são processadas em paralelo
+    // (CONCURRENCY, ver import.service.ts) e a ordem de chegada não é
+    // garantida.
+    stubFetchByUrl([
+      ["/tv/1950", tmdbSeriesDetail(1950, "Breaking Bad")],
+      ["/tv/1960", tmdbSeriesDetail(1960, "Better Call Saul")],
+    ]);
 
     const res = await app.request(
-      "/api/series/import/trakt",
+      "/api/series/import/cinopsys",
       {
         method: "POST",
         headers: { cookie, "Content-Type": "application/json" },
         body: JSON.stringify({
-          tmdbId: 1950,
-          title: "Breaking Bad",
-          rating: 4.5,
-          episodes: [
-            { season: 1, episode: 1, watchedAt: "2020-03-05T03:05:10.000Z" },
-            { season: 1, episode: 2, watchedAt: "2020-03-06T03:05:10.000Z" },
+          shows: [
+            {
+              tmdbId: 1950,
+              title: "Breaking Bad",
+              episodes: [
+                { season: 1, episode: 1, watchedAt: "2020-03-05T03:05:10.000Z" },
+                { season: 1, episode: 2, watchedAt: "2020-03-06T03:05:10.000Z" },
+              ],
+            },
+            {
+              tmdbId: 1960,
+              title: "Better Call Saul",
+              episodes: [{ season: 1, episode: 1, watchedAt: "2020-03-07T03:05:10.000Z" }],
+            },
           ],
         }),
       },
@@ -2118,19 +2025,20 @@ describe("POST /api/series/import/trakt", () => {
 
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
-      tmdbId: number;
-      title: string;
-      status: string;
-      episodesImported: number;
+      results: Array<{ tmdbId: number; title: string; status: string; episodesImported: number }>;
     };
-    expect(body).toMatchObject({ tmdbId: 1950, status: "imported", episodesImported: 2 });
+    expect(body.results).toEqual(
+      expect.arrayContaining([
+        { tmdbId: 1950, title: "Breaking Bad", status: "imported", episodesImported: 2 },
+        { tmdbId: 1960, title: "Better Call Saul", status: "imported", episodesImported: 1 },
+      ]),
+    );
 
     const db = createDb(env);
     const watches = await db.query.seriesEpisodeWatch.findMany({
-      where: (table, { and: andOp, eq: eqOp }) =>
-        andOp(eqOp(table.seriesId, 1950), eqOp(table.userId, userId)),
+      where: (table, { eq: eqOp }) => eqOp(table.userId, userId),
     });
-    expect(watches).toHaveLength(2);
+    expect(watches).toHaveLength(3);
 
     const seriesRow = await db.query.series.findFirst({
       where: (table, { eq: eqOp }) => eqOp(table.tmdbId, 1950),
@@ -2141,13 +2049,13 @@ describe("POST /api/series/import/trakt", () => {
       where: (table, { and: andOp, eq: eqOp }) =>
         andOp(eqOp(table.seriesId, 1950), eqOp(table.userId, userId)),
     });
-    expect(entry?.rating).toBe(4.5);
+    expect(entry?.rating).toBeNull();
 
     const activities = await db.query.activity.findMany();
     expect(activities.filter((item) => item.itemId === "1950")).toHaveLength(0);
   });
 
-  it("rating: null (Trakt sem nota) não apaga uma nota que o usuário já tinha posto manualmente", async () => {
+  it("série já com marcação existente preserva a nota que o usuário já tinha posto manualmente", async () => {
     const { cookie, email } = await createAuthenticatedUser(app, env);
     const userId = await getUserId(email);
     stubSeriesCacheFetch(1951, "Better Call Saul");
@@ -2163,15 +2071,14 @@ describe("POST /api/series/import/trakt", () => {
     vi.unstubAllGlobals();
 
     const res = await app.request(
-      "/api/series/import/trakt",
+      "/api/series/import/cinopsys",
       {
         method: "POST",
         headers: { cookie, "Content-Type": "application/json" },
         body: JSON.stringify({
-          tmdbId: 1951,
-          title: "Better Call Saul",
-          rating: null,
-          episodes: [{ season: 1, episode: 1 }],
+          shows: [
+            { tmdbId: 1951, title: "Better Call Saul", episodes: [{ season: 1, episode: 1 }] },
+          ],
         }),
       },
       env,
@@ -2187,7 +2094,7 @@ describe("POST /api/series/import/trakt", () => {
   });
 });
 
-describe("POST /api/series/import/trakt/activity", () => {
+describe("POST /api/series/import/cinopsys/activity", () => {
   async function getUserId(email: string): Promise<string> {
     const [row] = await createDb(env)
       .select({ id: user.id })
@@ -2197,13 +2104,13 @@ describe("POST /api/series/import/trakt/activity", () => {
     return row.id;
   }
 
-  it("gera 1 activity-resumo com source: trakt", async () => {
+  it("gera 1 activity-resumo com source: cinopsys", async () => {
     const { cookie, email } = await createAuthenticatedUser(app, env);
     const userId = await getUserId(email);
     const db = createDb(env);
 
     const res = await app.request(
-      "/api/series/import/trakt/activity",
+      "/api/series/import/cinopsys/activity",
       {
         method: "POST",
         headers: { cookie, "Content-Type": "application/json" },
@@ -2217,7 +2124,7 @@ describe("POST /api/series/import/trakt/activity", () => {
     const imported = activities.filter((item) => item.type === "imported");
     expect(imported).toHaveLength(1);
     expect(imported[0]).toMatchObject({
-      metadata: { source: "trakt", count: 5, episodeCount: 200 },
+      metadata: { source: "cinopsys", count: 5, episodeCount: 200 },
     });
   });
 });

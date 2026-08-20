@@ -3,13 +3,12 @@ import {
   ContinueWatchingResponseSchema,
   DiscoverSeriesQuerySchema,
   DiscoverSeriesResponseSchema,
-  ImportTraktSeriesQuerySchema,
-  ImportTraktShowRequestSchema,
-  ImportTraktShowResponseSchema,
+  ImportCinopsysSeriesRequestSchema,
+  ImportCinopsysSeriesResponseSchema,
   ImportTvTimeRequestSchema,
   ImportTvTimeResponseSchema,
   ListSeriesEntriesQuerySchema,
-  LogTraktSeriesImportActivityRequestSchema,
+  LogCinopsysSeriesImportActivityRequestSchema,
   LogTvTimeImportActivityRequestSchema,
   PaginatedSeriesEntriesResponseSchema,
   RecentlyWatchedSeriesQuerySchema,
@@ -22,7 +21,6 @@ import {
   SeriesFavoritesResponseSchema,
   SeriesSeasonEpisodesResponseSchema,
   SetWatchedRequestSchema,
-  TraktShowsPreviewResponseSchema,
   UpsertSeriesEntryRequestSchema,
 } from "@cqntrack/shared";
 import { Hono } from "hono";
@@ -45,10 +43,9 @@ import {
   setSeasonWatched,
 } from "./episodes.service";
 import {
-  getTraktShowsToImport,
-  importTraktShow,
+  importCinopsysSeries,
   importTvTimeSeries,
-  logTraktSeriesImportActivity,
+  logCinopsysSeriesImportActivity,
   logTvTimeImportActivity,
 } from "./import.service";
 import {
@@ -161,54 +158,33 @@ seriesRouter.post("/import/tvtime/activity", async (c) => {
   return c.body(null, 204);
 });
 
-// "Conta" > "Importar dados" > Trakt (só perfil público) — devolve a lista
-// pronta pra importar (tmdb_id + episódios já resolvidos pelo próprio
-// Trakt, ver getTraktShowsToImport) pro front rodar o mesmo loop (1 série
-// por request) que já usa pro tvtime. 404 quando o perfil está privado ou
-// o username não existe.
-seriesRouter.get("/import/trakt", async (c) => {
-  const parsed = ImportTraktSeriesQuerySchema.safeParse({ username: c.req.query("username") });
-  if (!parsed.success) {
-    return c.json({ error: "invalid_query" }, 400);
-  }
-
-  const preview = await getTraktShowsToImport(c.env, parsed.data.username);
-  if (!preview) {
-    return c.json({ error: "trakt_profile_unavailable" }, 404);
-  }
-  return c.json(TraktShowsPreviewResponseSchema.parse(preview));
-});
-
-seriesRouter.post("/import/trakt", async (c) => {
+// "Conta" > "Importar dados" > backup JSON do Cinopsys — diferente do
+// Trakt/tvtime, o "preview" já foi calculado no navegador a partir do JSON
+// (ver ImportCinopsysJson.tsx no frontend), e um único request pode trazer
+// várias séries de uma vez (ver ImportCinopsysSeriesRequestSchema) — não
+// existe rota GET de preview aqui.
+seriesRouter.post("/import/cinopsys", async (c) => {
   const json = await c.req.json().catch(() => null);
-  const parsed = ImportTraktShowRequestSchema.safeParse(json);
+  const parsed = ImportCinopsysSeriesRequestSchema.safeParse(json);
   if (!parsed.success) {
     return c.json({ error: "invalid_body" }, 400);
   }
 
   const db = createDb(c.env);
-  const result = await importTraktShow(
-    c.env,
-    db,
-    c.get("userId"),
-    parsed.data.tmdbId,
-    parsed.data.title,
-    parsed.data.rating,
-    parsed.data.episodes,
-  );
-  return c.json(ImportTraktShowResponseSchema.parse(result));
+  const results = await importCinopsysSeries(c.env, db, c.get("userId"), parsed.data.shows);
+  return c.json(ImportCinopsysSeriesResponseSchema.parse({ results }));
 });
 
-// Chamada 1x pelo front ao final do loop de import (ver logTraktSeriesImportActivity).
-seriesRouter.post("/import/trakt/activity", async (c) => {
+// Chamada 1x pelo front ao final do loop de import (ver logCinopsysSeriesImportActivity).
+seriesRouter.post("/import/cinopsys/activity", async (c) => {
   const json = await c.req.json().catch(() => null);
-  const parsed = LogTraktSeriesImportActivityRequestSchema.safeParse(json);
+  const parsed = LogCinopsysSeriesImportActivityRequestSchema.safeParse(json);
   if (!parsed.success) {
     return c.json({ error: "invalid_body" }, 400);
   }
 
   const db = createDb(c.env);
-  await logTraktSeriesImportActivity(
+  await logCinopsysSeriesImportActivity(
     db,
     c.get("userId"),
     parsed.data.importedSeriesCount,

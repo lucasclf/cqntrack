@@ -13,7 +13,6 @@ interface __BaseEnv_Env {
   IGDB_CLIENT_ID: string;
   IGDB_CLIENT_SECRET: string;
   TMDB_ACCESS_TOKEN: string;
-  TRAKT_CLIENT_ID: string;
   GOOGLE_BOOKS_API_KEY: string;
   CLOUDINARY_CLOUD_NAME: string;
   CLOUDINARY_API_KEY: string;
@@ -44,7 +43,6 @@ declare namespace NodeJS {
       | "IGDB_CLIENT_ID"
       | "IGDB_CLIENT_SECRET"
       | "TMDB_ACCESS_TOKEN"
-      | "TRAKT_CLIENT_ID"
       | "GOOGLE_BOOKS_API_KEY"
       | "CLOUDINARY_CLOUD_NAME"
       | "CLOUDINARY_API_KEY"

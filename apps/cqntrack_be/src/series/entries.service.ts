@@ -219,14 +219,13 @@ export async function upsertSeriesEntry(
   userId: string,
   tmdbId: number,
   input: UpsertSeriesEntryRequest,
-  // logActivity: false pro import em lote do Trakt (ver import.service.ts)
-  // — uma "avaliou" por série de uma vez enterraria o feed, mesmo racional
-  // de upsertMovieEntry. fetchCredits/fetchOverviewFallback repassados pro
+  // logActivity: false existe pro mesmo racional de upsertMovieEntry — um
+  // import em lote que gravasse nota série por série enterraria o feed com
+  // uma "avaliou" por vez. fetchCredits/fetchOverviewFallback repassados pro
   // getOrCacheSeries interno pelo mesmo motivo: sem isso, gravar só a nota
-  // de uma série já cacheada de forma barata pelo import (ver
-  // ensureSeriesEntry) acabaria forçando um refetch caro de créditos aqui
-  // (getOrCacheSeries completa o que falta no cache quando não avisado do
-  // contrário).
+  // de uma série já cacheada de forma barata acabaria forçando um refetch
+  // caro de créditos aqui (getOrCacheSeries completa o que falta no cache
+  // quando não avisado do contrário).
   options: { logActivity?: boolean; fetchCredits?: boolean; fetchOverviewFallback?: boolean } = {},
 ): Promise<SeriesEntry> {
   const cachedSeries = await getOrCacheSeries(env, db, tmdbId, {
