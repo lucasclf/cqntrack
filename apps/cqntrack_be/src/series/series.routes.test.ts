@@ -215,6 +215,7 @@ describe("GET /api/series/:tmdbId", () => {
         directors: [],
       },
       entry: null,
+      nextSeasonToWatch: null,
     });
     vi.unstubAllGlobals();
   });
@@ -433,6 +434,55 @@ describe("GET /api/series/:tmdbId", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as { series: { name: string } };
     expect(body.series.name).toBe("Ozark");
+    vi.unstubAllGlobals();
+  });
+
+  it("nextSeasonToWatch pula a temporada já toda vista e aponta pra próxima com episódios pendentes", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    const twoSeasonDetail = {
+      ...tmdbSeriesDetail(510, "The Wire"),
+      number_of_seasons: 2,
+      seasons: [
+        ...tmdbSeriesDetail(510, "The Wire").seasons,
+        {
+          season_number: 2,
+          name: "Temporada 2",
+          episode_count: 2,
+          air_date: "2009-01-01",
+          poster_path: "/poster-510-s2.jpg",
+        },
+      ],
+    };
+    stubTmdbFetchOnce(twoSeasonDetail, tmdbSeriesCredits(), tmdbSeasonDetail(1, 3));
+
+    const markRes = await app.request(
+      "/api/series/510/seasons/1",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ watched: true }),
+      },
+      env,
+    );
+    expect(markRes.status).toBe(204);
+    vi.unstubAllGlobals();
+
+    const res = await app.request("/api/series/510", { headers: { cookie } }, env);
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { nextSeasonToWatch: number | null };
+    expect(body.nextSeasonToWatch).toBe(2);
+  });
+
+  it("nextSeasonToWatch vem null quando não há entry (nunca assistiu nada)", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubSeriesCacheFetch(511, "The Wire");
+
+    const res = await app.request("/api/series/511", { headers: { cookie } }, env);
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { nextSeasonToWatch: number | null };
+    expect(body.nextSeasonToWatch).toBeNull();
     vi.unstubAllGlobals();
   });
 });

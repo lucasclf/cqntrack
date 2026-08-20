@@ -200,6 +200,7 @@ export function SeriesDetail() {
         seasons={series.seasons ?? []}
         initialSeasonData={initialSeasonData}
         initialSeasonNumber={initialSeasonNumber}
+        nextSeasonToWatch={detail.nextSeasonToWatch}
         abandoned={abandoned}
         onResume={() => savePatch({ abandoned: false })}
       />

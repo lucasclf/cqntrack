@@ -139,6 +139,37 @@ async function logSeriesEntryActivities(
   }
 }
 
+// Descobre a próxima temporada com episódios não assistidos, olhando só o
+// banco (sem TMDB) — compara a contagem de watch por temporada com o
+// episodeCount já cacheado em `series.seasons`. Usada pra abrir a tela de
+// detalhe já na temporada certa (ver SeriesDetail/SeriesEpisodeList no FE)
+// em vez de sempre cair na Temporada 1, mesmo com temporadas inteiras já
+// vistas. null quando tudo já foi assistido.
+export async function getNextSeasonToWatch(
+  db: Db,
+  userId: string,
+  tmdbId: number,
+  seasons: { seasonNumber: number; episodeCount: number }[],
+): Promise<number | null> {
+  const rows = await db
+    .select({ seasonNumber: seriesEpisodeWatch.seasonNumber, count: sql<number>`count(*)` })
+    .from(seriesEpisodeWatch)
+    .where(and(eq(seriesEpisodeWatch.userId, userId), eq(seriesEpisodeWatch.seriesId, tmdbId)))
+    .groupBy(seriesEpisodeWatch.seasonNumber);
+
+  const watchedBySeason = new Map(rows.map((row) => [row.seasonNumber, Number(row.count)]));
+
+  const nextSeason = [...seasons]
+    .sort((a, b) => a.seasonNumber - b.seasonNumber)
+    .find(
+      (season) =>
+        season.episodeCount > 0 &&
+        (watchedBySeason.get(season.seasonNumber) ?? 0) < season.episodeCount,
+    );
+
+  return nextSeason?.seasonNumber ?? null;
+}
+
 export async function getSeriesEntryForUser(
   db: Db,
   userId: string,

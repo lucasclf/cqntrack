@@ -241,6 +241,82 @@ describe("SeriesDetail", () => {
     expect(newPaths).not.toContain("/api/series/1396/seasons/1");
   });
 
+  it("sem ?temporada=, abre na nextSeasonToWatch do detalhe (temporada 1 já toda vista)", async () => {
+    const seriesWithSeasons = {
+      ...SERIES,
+      seasons: [
+        {
+          seasonNumber: 1,
+          name: "Temporada 1",
+          episodeCount: 7,
+          airDate: "2008-01-20",
+          posterUrl: null,
+        },
+        {
+          seasonNumber: 2,
+          name: "Temporada 2",
+          episodeCount: 13,
+          airDate: "2009-03-08",
+          posterUrl: null,
+        },
+      ],
+    };
+    getMock.mockImplementation((path: string) => {
+      if (path === "/api/series/1396") {
+        return Promise.resolve({
+          series: seriesWithSeasons,
+          entry: {
+            id: "1",
+            rating: null,
+            watchedEpisodeCount: 7,
+            favoritedAt: null,
+            abandonedAt: null,
+            review: null,
+            updatedAt: "2026-01-01T00:00:00.000Z",
+          },
+          nextSeasonToWatch: 2,
+        });
+      }
+      // A 1 ainda é pré-buscada em paralelo (só se sabe da nextSeasonToWatch
+      // depois que o detalhe volta — ver comentário em SeriesDetail.tsx),
+      // mas fica só guardada em cache; quem decide a aba aberta é a 2.
+      if (path === "/api/series/1396/seasons/1") {
+        return Promise.resolve({
+          seasonNumber: 1,
+          episodes: Array.from({ length: 7 }, (_, index) => ({
+            episodeNumber: index + 1,
+            name: `Episódio ${index + 1}`,
+            airDate: "2008-01-20",
+            stillUrl: null,
+            watched: true,
+          })),
+        });
+      }
+      if (path === "/api/series/1396/seasons/2") {
+        return Promise.resolve({
+          seasonNumber: 2,
+          episodes: [
+            {
+              episodeNumber: 1,
+              name: "Grilled",
+              airDate: "2009-03-08",
+              stillUrl: null,
+              watched: false,
+            },
+          ],
+        });
+      }
+      return Promise.reject(new Error("rota inesperada: " + path));
+    });
+    renderDetail("/series/1396");
+
+    expect(await screen.findByText("1. Grilled")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Temporada 2" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
   it("salva a nota ao clicar numa estrela, criando a marcação quando ainda não existe entry", async () => {
     getMock.mockResolvedValue({ series: SERIES, entry: null });
     putMock.mockResolvedValue({

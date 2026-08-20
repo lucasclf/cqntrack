@@ -27,6 +27,7 @@ import { createDb } from "../db/client";
 import {
   deleteSeriesEntry,
   getFavorites,
+  getNextSeasonToWatch,
   getRecentlyWatchedSeries,
   getSeriesEntryForUser,
   listSeriesEntries,
@@ -215,6 +216,11 @@ seriesRouter.get("/:tmdbId", async (c) => {
   try {
     const cachedSeries = await getOrCacheSeries(c.env, db, tmdbId);
     const entry = await getSeriesEntryForUser(db, c.get("userId"), tmdbId);
+    // Sem entry não há episódio assistido (ensureSeriesEntry sempre roda
+    // antes de qualquer watch, ver episodes.service.ts) — pula a query.
+    const nextSeasonToWatch = entry
+      ? await getNextSeasonToWatch(db, c.get("userId"), tmdbId, cachedSeries.seasons ?? [])
+      : null;
 
     const body = SeriesDetailResponseSchema.parse({
       series: {
@@ -225,6 +231,7 @@ seriesRouter.get("/:tmdbId", async (c) => {
         directors: mapCachedSeriesDirectors(cachedSeries),
       },
       entry,
+      nextSeasonToWatch,
     });
     return c.json(body);
   } catch (error) {

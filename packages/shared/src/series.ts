@@ -127,6 +127,12 @@ export type SeriesEntryWithSeries = z.infer<typeof SeriesEntryWithSeriesSchema>;
 export const SeriesDetailResponseSchema = z.object({
   series: SeriesDetailSchema,
   entry: SeriesEntrySchema.nullable(),
+  // Primeira temporada (em ordem) com episódios assistidos < episodeCount
+  // já cacheado (sem chamada à TMDB — cálculo aproximado, só pra escolher
+  // a aba padrão, diferente do getContinueWatching que resolve o episódio
+  // exato). null quando não há entry, ou quando tudo já foi assistido (aí
+  // o front cai no padrão de sempre, Temporada 1).
+  nextSeasonToWatch: z.number().int().nullable(),
 });
 
 export type SeriesDetailResponse = z.infer<typeof SeriesDetailResponseSchema>;
