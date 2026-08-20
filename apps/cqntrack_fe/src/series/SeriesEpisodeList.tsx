@@ -12,6 +12,10 @@ interface SeriesEpisodeListProps {
   // aparecer. null quando a série não tem essa temporada (ou o pai ainda
   // não terminou de buscar); nesses casos a busca cai pro fluxo normal.
   initialSeasonData?: SeriesSeasonEpisodesResponse | null;
+  // Temporada pedida via link externo (ex.: "Continuar assistindo" na
+  // Home, que já sabe o próximo episódio pendente — ver ContinueWatching.tsx)
+  // — null/inexistente na série cai no padrão de sempre (Temporada 1).
+  initialSeasonNumber?: number | null;
   // Série marcada como abandonada (ver SeriesDetail) — ao marcar qualquer
   // episódio como assistido, pergunta se quer voltar a acompanhar.
   abandoned: boolean;
@@ -20,15 +24,28 @@ interface SeriesEpisodeListProps {
 
 type SeasonCache = ReadonlyMap<number, SeriesSeasonEpisodesResponse>;
 
-function pickDefaultSeason(seasons: SeriesSeasonSummary[]): number | null {
+function pickDefaultSeason(
+  seasons: SeriesSeasonSummary[],
+  initialSeasonNumber?: number | null,
+): number | null {
+  if (
+    initialSeasonNumber != null &&
+    seasons.some((season) => season.seasonNumber === initialSeasonNumber)
+  ) {
+    return initialSeasonNumber;
+  }
   return (seasons.find((season) => season.seasonNumber === 1) ?? seasons[0])?.seasonNumber ?? null;
 }
 
 function buildInitialCache(
   seasons: SeriesSeasonSummary[],
+  initialSeasonNumber: number | null | undefined,
   initialSeasonData: SeriesSeasonEpisodesResponse | null | undefined,
 ): SeasonCache {
-  if (initialSeasonData && initialSeasonData.seasonNumber === pickDefaultSeason(seasons)) {
+  if (
+    initialSeasonData &&
+    initialSeasonData.seasonNumber === pickDefaultSeason(seasons, initialSeasonNumber)
+  ) {
     return new Map([[initialSeasonData.seasonNumber, initialSeasonData]]);
   }
   return new Map();
@@ -36,21 +53,24 @@ function buildInitialCache(
 
 // Lista de episódios de uma temporada, buscada ao vivo na TMDB (sem cache
 // local, ver comentário em db/schema/series.schema.ts no backend) — só o
-// "assistido" é nosso. Abre sempre na Temporada 1. Cada temporada já vista
-// fica guardada em memória (`cache`) pelo tempo de vida do componente, pra
-// trocar de aba ser instantâneo em vez de recarregar tudo toda vez — e a
-// temporada inicial já chega pronta via `initialSeasonData`, sem flash nem
-// na primeira vez.
+// "assistido" é nosso. Abre na Temporada 1, a não ser que initialSeasonNumber
+// diga outra. Cada temporada já vista fica guardada em memória (`cache`)
+// pelo tempo de vida do componente, pra trocar de aba ser instantâneo em
+// vez de recarregar tudo toda vez — e a temporada inicial já chega pronta
+// via `initialSeasonData`, sem flash nem na primeira vez.
 export function SeriesEpisodeList({
   tmdbId,
   seasons,
   initialSeasonData,
+  initialSeasonNumber,
   abandoned,
   onResume,
 }: SeriesEpisodeListProps) {
-  const [selectedSeason, setSelectedSeason] = useState<number | null>(pickDefaultSeason(seasons));
+  const [selectedSeason, setSelectedSeason] = useState<number | null>(
+    pickDefaultSeason(seasons, initialSeasonNumber),
+  );
   const [cache, setCache] = useState<SeasonCache>(() =>
-    buildInitialCache(seasons, initialSeasonData),
+    buildInitialCache(seasons, initialSeasonNumber, initialSeasonData),
   );
   const [loadError, setLoadError] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -62,7 +82,7 @@ export function SeriesEpisodeList({
   const [trackedTmdbId, setTrackedTmdbId] = useState(tmdbId);
   if (tmdbId !== trackedTmdbId) {
     setTrackedTmdbId(tmdbId);
-    setSelectedSeason(pickDefaultSeason(seasons));
+    setSelectedSeason(pickDefaultSeason(seasons, initialSeasonNumber));
     setCache(new Map());
     setLoadError(false);
   }

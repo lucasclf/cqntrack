@@ -34,9 +34,9 @@ const SERIES = {
   directors: [{ personId: 29779, name: "Michelle MacLaren", profileUrl: null, episodeCount: 11 }],
 };
 
-function renderDetail() {
+function renderDetail(initialEntry = "/series/1396") {
   render(
-    <MemoryRouter initialEntries={["/series/1396"]}>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
         <Route path="/series/:tmdbId" element={<SeriesDetail />} />
       </Routes>
@@ -183,6 +183,62 @@ describe("SeriesDetail", () => {
 
     expect(putMock).toHaveBeenCalledWith("/api/series/1396/episodes/1/1", { watched: true });
     expect(putMock).toHaveBeenCalledWith("/api/series/1396/entry", { abandoned: false });
+  });
+
+  it("abre direto na temporada pedida via ?temporada= (ex.: link do Continuar assistindo), sem passar pela 1", async () => {
+    const seriesWithSeasons = {
+      ...SERIES,
+      seasons: [
+        {
+          seasonNumber: 1,
+          name: "Temporada 1",
+          episodeCount: 7,
+          airDate: "2008-01-20",
+          posterUrl: null,
+        },
+        {
+          seasonNumber: 2,
+          name: "Temporada 2",
+          episodeCount: 13,
+          airDate: "2009-03-08",
+          posterUrl: null,
+        },
+      ],
+    };
+    getMock.mockImplementation((path: string) => {
+      if (path === "/api/series/1396") {
+        return Promise.resolve({ series: seriesWithSeasons, entry: null });
+      }
+      if (path === "/api/series/1396/seasons/2") {
+        return Promise.resolve({
+          seasonNumber: 2,
+          episodes: [
+            {
+              episodeNumber: 1,
+              name: "Grilled",
+              airDate: "2009-03-08",
+              stillUrl: null,
+              watched: false,
+            },
+          ],
+        });
+      }
+      return Promise.reject(new Error("rota inesperada: " + path));
+    });
+    // getMock não é resetado entre testes neste arquivo (sem beforeEach) —
+    // só olha as chamadas feitas a partir daqui, senão pegaria requests de
+    // testes anteriores que legitimamente buscam a temporada 1.
+    const callsBeforeCount = getMock.mock.calls.length;
+    renderDetail("/series/1396?temporada=2");
+
+    expect(await screen.findByText("1. Grilled")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Temporada 2" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    const newPaths = getMock.mock.calls.slice(callsBeforeCount).map(([path]) => path);
+    expect(newPaths).toContain("/api/series/1396/seasons/2");
+    expect(newPaths).not.toContain("/api/series/1396/seasons/1");
   });
 
   it("salva a nota ao clicar numa estrela, criando a marcação quando ainda não existe entry", async () => {

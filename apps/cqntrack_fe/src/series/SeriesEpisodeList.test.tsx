@@ -81,6 +81,32 @@ describe("SeriesEpisodeList", () => {
     expect(getMock).toHaveBeenCalledWith("/api/series/1396/seasons/1");
   });
 
+  it("com initialSeasonNumber, abre direto naquela temporada em vez da 1", async () => {
+    getMock.mockImplementation((path: string) => {
+      if (path === "/api/series/1396/seasons/2") return Promise.resolve(season2Response());
+      return Promise.reject(new Error("rota inesperada: " + path));
+    });
+    renderList({ tmdbId: 1396, seasons: SEASONS, initialSeasonNumber: 2 });
+
+    expect(await screen.findByText("1. Grilled")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Temporada 2" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(getMock).not.toHaveBeenCalledWith("/api/series/1396/seasons/1");
+  });
+
+  it("initialSeasonNumber que não existe na série cai no padrão (Temporada 1)", async () => {
+    getMock.mockResolvedValue(season1Response());
+    renderList({ tmdbId: 1396, seasons: SEASONS, initialSeasonNumber: 99 });
+
+    expect(await screen.findByText("1. Pilot")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Temporada 1" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
   it("com initialSeasonData da Temporada 1, renderiza direto sem buscar nem 'carregando'", () => {
     renderList({ tmdbId: 1396, seasons: SEASONS, initialSeasonData: season1Response() });
 

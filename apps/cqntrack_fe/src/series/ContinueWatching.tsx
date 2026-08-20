@@ -84,7 +84,7 @@ export function ContinueWatching() {
         {items.map((item) => (
           <li key={item.series.tmdbId} className={styles.item}>
             <Link
-              to={`/series/${item.series.tmdbId}/temporadas/${item.nextEpisode.seasonNumber}/episodios/${item.nextEpisode.episodeNumber}`}
+              to={`/series/${item.series.tmdbId}?temporada=${item.nextEpisode.seasonNumber}`}
               className={styles.link}
             >
               {item.series.posterUrl ? (

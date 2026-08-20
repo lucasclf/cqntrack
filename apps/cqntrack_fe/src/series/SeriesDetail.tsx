@@ -5,7 +5,7 @@ import type {
   UpsertSeriesEntryRequest,
 } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
-import { useParams } from "react-router";
+import { useParams, useSearchParams } from "react-router";
 import { CastList } from "../components/CastList";
 import { CrewList } from "../components/CrewList";
 import { StarRating } from "../components/StarRating";
@@ -16,19 +16,37 @@ import { SeriesEpisodeList } from "./SeriesEpisodeList";
 
 type LoadStatus = "loading" | "ready" | "not-found" | "error";
 
+// "?temporada=" — link externo que já sabe qual temporada abrir (ex.:
+// "Continuar assistindo" na Home, ver ContinueWatching.tsx) em vez de ir
+// direto pro episódio. null quando ausente/inválido, cai no padrão de
+// sempre (Temporada 1, ver SeriesEpisodeList).
+function parseSeasonFromUrl(searchParams: URLSearchParams): number | null {
+  const raw = searchParams.get("temporada");
+  if (!raw) return null;
+  const parsed = Number(raw);
+  return Number.isInteger(parsed) ? parsed : null;
+}
+
 export function SeriesDetail() {
   const { tmdbId } = useParams<{ tmdbId: string }>();
+  const [searchParams] = useSearchParams();
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
   const [detail, setDetail] = useState<SeriesDetailResponse | null>(null);
-  // Temporada 1 buscada junto do detalhe (em paralelo, não em sequência) —
-  // assim, quando a página aparece, a lista de episódios já chega pronta,
-  // sem um segundo "carregando" logo depois do primeiro. null quando a
-  // série não tem Temporada 1 (aí SeriesEpisodeList busca o padrão sozinho).
+  // Temporada pedida (ou a 1, padrão) buscada junto do detalhe (em
+  // paralelo, não em sequência) — assim, quando a página aparece, a lista
+  // de episódios já chega pronta, sem um segundo "carregando" logo depois
+  // do primeiro. null quando a série não tem essa temporada (aí
+  // SeriesEpisodeList busca o padrão sozinho).
   const [initialSeasonData, setInitialSeasonData] = useState<SeriesSeasonEpisodesResponse | null>(
     null,
   );
   const [saveError, setSaveError] = useState<string | null>(null);
   const [reviewDraft, setReviewDraft] = useState("");
+
+  // Lido 1x por :tmdbId (mesmo padrão de initialStatusFromUrl em
+  // MyMovieEntries.tsx) — não deve reagir se o usuário trocar de temporada
+  // manualmente depois, só serve pra abertura vinda de outra tela.
+  const initialSeasonNumber = parseSeasonFromUrl(searchParams);
 
   // Reseta o status assim que o :tmdbId da rota muda — feito durante o
   // render (padrão do React pra "adjusting state when props change"), pra
@@ -41,17 +59,18 @@ export function SeriesDetail() {
 
   useEffect(() => {
     let cancelled = false;
+    const seasonToPrefetch = initialSeasonNumber ?? 1;
 
     Promise.all([
       apiClient.get<SeriesDetailResponse>(`/api/series/${tmdbId}`),
       apiClient
-        .get<SeriesSeasonEpisodesResponse>(`/api/series/${tmdbId}/seasons/1`)
+        .get<SeriesSeasonEpisodesResponse>(`/api/series/${tmdbId}/seasons/${seasonToPrefetch}`)
         .catch(() => null),
     ])
-      .then(([data, season1]) => {
+      .then(([data, season]) => {
         if (cancelled) return;
         setDetail(data);
-        setInitialSeasonData(season1);
+        setInitialSeasonData(season);
         setReviewDraft(data.entry?.review ?? "");
         setLoadStatus("ready");
       })
@@ -63,6 +82,10 @@ export function SeriesDetail() {
     return () => {
       cancelled = true;
     };
+    // initialSeasonNumber de propósito fora das deps — é lido 1x por
+    // :tmdbId (ver comentário acima), refazer a busca se ele mudasse
+    // sozinho quebraria esse "1x só".
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tmdbId]);
 
   async function savePatch(patch: UpsertSeriesEntryRequest) {
@@ -176,6 +199,7 @@ export function SeriesDetail() {
         tmdbId={series.tmdbId}
         seasons={series.seasons ?? []}
         initialSeasonData={initialSeasonData}
+        initialSeasonNumber={initialSeasonNumber}
         abandoned={abandoned}
         onResume={() => savePatch({ abandoned: false })}
       />

@@ -171,7 +171,7 @@ describe("Home", () => {
     expect(screen.getByText("Lançado em 15/04/2012")).toBeInTheDocument();
 
     const link = screen.getByRole("link", { name: /Game of Thrones/ });
-    expect(link).toHaveAttribute("href", "/series/1399/temporadas/2/episodios/3");
+    expect(link).toHaveAttribute("href", "/series/1399?temporada=2");
   });
 
   it("aba Séries mostra favoritos + estatísticas, com dado próprio", async () => {
