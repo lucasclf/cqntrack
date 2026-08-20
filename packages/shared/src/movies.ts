@@ -226,3 +226,75 @@ export const LogFilmowImportActivityRequestSchema = z.object({
 export type LogFilmowImportActivityRequest = z.infer<typeof LogFilmowImportActivityRequestSchema>;
 
 export type ImportFilmowResponse = z.infer<typeof ImportFilmowResponseSchema>;
+
+// Importação a partir do Trakt ("Conta" > "Importar dados", só perfil
+// público por enquanto) — diferente do Filmow, o Trakt tem API própria
+// (api.trakt.tv) e já devolve o tmdb_id de cada filme assistido (ver
+// integrations/trakt/client.ts no backend), então não precisa de busca por
+// texto na TMDB. `rating` já vem convertido da escala 1-10 do Trakt pra
+// 0-5 em meio-ponto (mesma escala de UpsertMovieEntryRequestSchema).
+export const ImportTraktMoviesQuerySchema = z.object({
+  username: z.string().min(1).max(50),
+});
+
+export type ImportTraktMoviesQuery = z.infer<typeof ImportTraktMoviesQuerySchema>;
+
+export const TraktImportableMovieSchema = z.object({
+  tmdbId: z.number().int(),
+  title: z.string(),
+  rating: z.number().min(0).max(5).multipleOf(0.5).nullable(),
+});
+
+export type TraktImportableMovie = z.infer<typeof TraktImportableMovieSchema>;
+
+// Filme assistido no Trakt sem ids.tmdb (raro — títulos muito obscuros/
+// regionais) — sem busca de desambiguação por texto (mesmo nível de
+// esforço que o Filmow já aceita pros próprios "not_found").
+export const TraktNotFoundMovieSchema = z.object({
+  title: z.string(),
+});
+
+export const TraktMoviesPreviewResponseSchema = z.object({
+  importable: z.array(TraktImportableMovieSchema),
+  notFound: z.array(TraktNotFoundMovieSchema),
+});
+
+export type TraktMoviesPreviewResponse = z.infer<typeof TraktMoviesPreviewResponseSchema>;
+
+export const ImportTraktMoviesRequestSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        tmdbId: z.number().int(),
+        title: z.string().min(1).max(300),
+        rating: z.number().min(0).max(5).multipleOf(0.5).nullable(),
+      }),
+    )
+    .min(1)
+    .max(10),
+});
+
+export type ImportTraktMoviesRequest = z.infer<typeof ImportTraktMoviesRequestSchema>;
+
+export const ImportTraktMovieResultSchema = z.object({
+  tmdbId: z.number().int(),
+  title: z.string(),
+  status: z.enum(["imported", "error"]),
+});
+
+export type ImportTraktMovieResult = z.infer<typeof ImportTraktMovieResultSchema>;
+
+export const ImportTraktMoviesResponseSchema = z.object({
+  results: z.array(ImportTraktMovieResultSchema),
+});
+
+export type ImportTraktMoviesResponse = z.infer<typeof ImportTraktMoviesResponseSchema>;
+
+// Mesmo racional de LogFilmowImportActivityRequestSchema.
+export const LogTraktMoviesImportActivityRequestSchema = z.object({
+  importedCount: z.number().int().min(0),
+});
+
+export type LogTraktMoviesImportActivityRequest = z.infer<
+  typeof LogTraktMoviesImportActivityRequestSchema
+>;

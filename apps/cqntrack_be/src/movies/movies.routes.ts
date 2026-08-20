@@ -3,14 +3,19 @@ import {
   DiscoverMoviesResponseSchema,
   ImportFilmowRequestSchema,
   ImportFilmowResponseSchema,
+  ImportTraktMoviesQuerySchema,
+  ImportTraktMoviesRequestSchema,
+  ImportTraktMoviesResponseSchema,
   ListMovieEntriesQuerySchema,
   LogFilmowImportActivityRequestSchema,
+  LogTraktMoviesImportActivityRequestSchema,
   MovieDetailResponseSchema,
   MovieEntrySchema,
   MovieFavoritesResponseSchema,
   PaginatedMovieEntriesResponseSchema,
   SearchMoviesQuerySchema,
   SearchMoviesResponseSchema,
+  TraktMoviesPreviewResponseSchema,
   UpsertMovieEntryRequestSchema,
 } from "@cqntrack/shared";
 import { Hono } from "hono";
@@ -23,7 +28,13 @@ import {
   listMovieEntries,
   upsertMovieEntry,
 } from "./entries.service";
-import { importFilmowTitles, logFilmowImportActivity } from "./import.service";
+import {
+  getTraktMoviesToImport,
+  importFilmowTitles,
+  importTraktMovies,
+  logFilmowImportActivity,
+  logTraktMoviesImportActivity,
+} from "./import.service";
 import {
   getOrCacheMovie,
   getPopularMoviesForUser,
@@ -110,6 +121,49 @@ moviesRouter.post("/import/filmow/activity", async (c) => {
 
   const db = createDb(c.env);
   await logFilmowImportActivity(db, c.get("userId"), parsed.data.importedCount);
+  return c.body(null, 204);
+});
+
+// "Conta" > "Importar dados" > Trakt (só perfil público) — devolve a lista
+// pronta pra importar (tmdb_id já resolvido pelo próprio Trakt, ver
+// getTraktMoviesToImport) pro front rodar o mesmo loop com barra de
+// progresso que já usa pro Filmow. 404 quando o perfil está privado ou o
+// username não existe (a Trakt não distingue os dois com clareza).
+moviesRouter.get("/import/trakt", async (c) => {
+  const parsed = ImportTraktMoviesQuerySchema.safeParse({ username: c.req.query("username") });
+  if (!parsed.success) {
+    return c.json({ error: "invalid_query" }, 400);
+  }
+
+  const preview = await getTraktMoviesToImport(c.env, parsed.data.username);
+  if (!preview) {
+    return c.json({ error: "trakt_profile_unavailable" }, 404);
+  }
+  return c.json(TraktMoviesPreviewResponseSchema.parse(preview));
+});
+
+moviesRouter.post("/import/trakt", async (c) => {
+  const json = await c.req.json().catch(() => null);
+  const parsed = ImportTraktMoviesRequestSchema.safeParse(json);
+  if (!parsed.success) {
+    return c.json({ error: "invalid_body" }, 400);
+  }
+
+  const db = createDb(c.env);
+  const results = await importTraktMovies(c.env, db, c.get("userId"), parsed.data.items);
+  return c.json(ImportTraktMoviesResponseSchema.parse({ results }));
+});
+
+// Chamada 1x pelo front ao final do loop de import (ver logTraktMoviesImportActivity).
+moviesRouter.post("/import/trakt/activity", async (c) => {
+  const json = await c.req.json().catch(() => null);
+  const parsed = LogTraktMoviesImportActivityRequestSchema.safeParse(json);
+  if (!parsed.success) {
+    return c.json({ error: "invalid_body" }, 400);
+  }
+
+  const db = createDb(c.env);
+  await logTraktMoviesImportActivity(db, c.get("userId"), parsed.data.importedCount);
   return c.body(null, 204);
 });
 

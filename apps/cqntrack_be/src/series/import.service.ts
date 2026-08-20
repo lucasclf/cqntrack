@@ -1,8 +1,15 @@
-import type { ImportTvTimeEpisode, ImportTvTimeResponse } from "@cqntrack/shared";
+import type {
+  ImportTvTimeEpisode,
+  ImportTvTimeResponse,
+  ImportTraktShowResponse,
+  TraktImportableShow,
+  TraktShowsPreviewResponse,
+} from "@cqntrack/shared";
 import type { createDb } from "../db/client";
 import { activity, seriesEpisodeWatch } from "../db/schema";
 import { findSeriesByTvdbId } from "../integrations/tmdb/series";
-import { ensureSeriesEntry } from "./entries.service";
+import { getShowRatings, getWatchedShows, toCqntrackRating } from "../integrations/trakt/client";
+import { ensureSeriesEntry, upsertSeriesEntry } from "./entries.service";
 
 type Db = ReturnType<typeof createDb>;
 
@@ -98,5 +105,129 @@ export async function logTvTimeImportActivity(
     itemCoverUrl: null,
     type: "imported",
     metadata: { source: "tvtime", count: importedSeriesCount, episodeCount: importedEpisodeCount },
+  });
+}
+
+// Busca as séries assistidas + notas do Trakt (só perfil público — ver
+// integrations/trakt/client.ts) e junta os dois por tmdb_id — diferente do
+// tvtime, nem precisa do passo findSeriesByTvdbId (o Trakt já entrega o
+// tmdb_id, com o detalhamento de temporada/episódio na mesma resposta).
+// null quando o perfil está privado ou não existe.
+export async function getTraktShowsToImport(
+  env: Env,
+  username: string,
+): Promise<TraktShowsPreviewResponse | null> {
+  const [watched, ratings] = await Promise.all([
+    getWatchedShows(env, username),
+    getShowRatings(env, username),
+  ]);
+  if (!watched) {
+    return null;
+  }
+
+  const ratingByTmdbId = new Map<number, number>();
+  for (const entry of ratings ?? []) {
+    const tmdbId = entry.show.ids.tmdb;
+    if (tmdbId) {
+      ratingByTmdbId.set(tmdbId, toCqntrackRating(entry.rating));
+    }
+  }
+
+  const importable: TraktImportableShow[] = [];
+  const notFound: { title: string }[] = [];
+  for (const entry of watched) {
+    const tmdbId = entry.show.ids.tmdb;
+    if (!tmdbId) {
+      notFound.push({ title: entry.show.title });
+      continue;
+    }
+
+    const episodes: ImportTvTimeEpisode[] = entry.seasons.flatMap((season) =>
+      season.episodes.map((episode) => ({
+        season: season.number,
+        episode: episode.number,
+        watchedAt: episode.last_watched_at,
+      })),
+    );
+
+    importable.push({
+      tmdbId,
+      title: entry.show.title,
+      rating: ratingByTmdbId.get(tmdbId) ?? null,
+      episodes,
+    });
+  }
+
+  return { importable, notFound };
+}
+
+// Mesmo espírito de importTvTimeSeries, mas sem o passo findSeriesByTvdbId
+// (o tmdb_id já vem resolvido pelo Trakt, ver getTraktShowsToImport) e com
+// nota opcional. Só 1 chamada de getOrCacheSeries (via upsertSeriesEntry,
+// não ensureSeriesEntry + upsertSeriesEntry separados) — cast fica null com
+// fetchCredits: false (ver getOrCacheSeries em series.service.ts), o que
+// isStale() sempre considera "desatualizado"; uma 2ª chamada pra mesma
+// série no mesmo import refaria o fetch de detalhe à toa. `rating: null`
+// vira `undefined` no patch de propósito (mesmo racional de importTraktOne
+// em movies/import.service.ts) — não apaga uma nota que o usuário já
+// tivesse posto manualmente antes.
+export async function importTraktShow(
+  env: Env,
+  db: Db,
+  userId: string,
+  tmdbId: number,
+  title: string,
+  rating: number | null,
+  episodes: ImportTvTimeEpisode[],
+): Promise<ImportTraktShowResponse> {
+  try {
+    await upsertSeriesEntry(
+      env,
+      db,
+      userId,
+      tmdbId,
+      { rating: rating ?? undefined },
+      { logActivity: false, fetchCredits: false, fetchOverviewFallback: false },
+    );
+
+    const rows = episodes.map((episode) => ({
+      userId,
+      seriesId: tmdbId,
+      seasonNumber: episode.season,
+      episodeNumber: episode.episode,
+      ...(episode.watchedAt ? { watchedAt: new Date(episode.watchedAt) } : {}),
+    }));
+
+    for (const batch of chunk(rows, INSERT_CHUNK_SIZE)) {
+      await db.insert(seriesEpisodeWatch).values(batch).onConflictDoNothing();
+    }
+
+    return { tmdbId, title, status: "imported", episodesImported: rows.length };
+  } catch {
+    return { tmdbId, title, status: "error", episodesImported: 0 };
+  }
+}
+
+// Mesmo racional de logTvTimeImportActivity — resumo agregado, não 1 por
+// série (import roda com logActivity: false, ver importTraktShow acima).
+export async function logTraktSeriesImportActivity(
+  db: Db,
+  userId: string,
+  importedSeriesCount: number,
+  importedEpisodeCount: number,
+): Promise<void> {
+  if (importedSeriesCount <= 0) {
+    return;
+  }
+
+  await db.insert(activity).values({
+    userId,
+    mediaType: "series",
+    itemId: crypto.randomUUID(),
+    itemTitle: `${importedSeriesCount} ${importedSeriesCount === 1 ? "série" : "séries"}`,
+    itemHref: "/series/marcacoes",
+    itemCoverUrl: null,
+    type: "imported",
+    metadata: { source: "trakt", count: importedSeriesCount, episodeCount: importedEpisodeCount },
   });
 }

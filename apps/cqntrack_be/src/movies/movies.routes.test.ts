@@ -60,6 +60,24 @@ function stubMovieCacheFetch(id: number, title: string, voteAverage = 8.4): void
   );
 }
 
+// Responde por conteúdo da URL em vez de ordem de chamada — necessário
+// sempre que o fluxo faz requests concorrentes (import do Filmow, ver
+// CONCURRENCY em import.service.ts) ou bate em domínios diferentes na
+// mesma chamada (import do Trakt: preview em api.trakt.tv, import em si na
+// TMDB). `status` default 200; usado pra simular erro (ex.: perfil privado
+// na Trakt).
+function stubFetchByUrl(handlers: [pattern: string, body: unknown, status?: number][]): void {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string) => {
+      for (const [pattern, body, status] of handlers) {
+        if (url.includes(pattern)) return jsonResponse(body, status ?? 200);
+      }
+      throw new Error("URL inesperada no teste: " + url);
+    }),
+  );
+}
+
 describe("GET /api/movies/search", () => {
   it("sem sessão retorna 401", async () => {
     const res = await app.request("/api/movies/search?q=inception", undefined, env);
@@ -710,22 +728,6 @@ describe("GET /api/movies/favorites", () => {
 });
 
 describe("POST /api/movies/import/filmow", () => {
-  // Roda com CONCURRENCY>1 dentro do service (ver import.service.ts), então
-  // um mock de fetch baseado em fila (fifo) não é confiável — os fetches
-  // dos vários títulos intercalam. Responde por conteúdo da URL em vez de
-  // ordem de chamada.
-  function stubTmdbByUrl(handlers: [pattern: string, body: unknown][]): void {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (url: string) => {
-        for (const [pattern, body] of handlers) {
-          if (url.includes(pattern)) return jsonResponse(body);
-        }
-        throw new Error("URL inesperada no teste: " + url);
-      }),
-    );
-  }
-
   it("sem sessão retorna 401", async () => {
     const res = await app.request(
       "/api/movies/import/filmow",
@@ -772,7 +774,7 @@ describe("POST /api/movies/import/filmow", () => {
     // Sem stub de "/movie/27205/credits" de propósito — import em massa
     // pula esse request (fetchCredits: false, ver import.service.ts); se o
     // código voltar a chamá-lo, o mock lança "URL inesperada" e o teste falha.
-    stubTmdbByUrl([
+    stubFetchByUrl([
       ["/search/movie?query=Inception", { results: [TMDB_SEARCH_RESULT] }],
       ["/movie/27205", tmdbMovieDetail(27205, "Inception")],
       ["/search/movie?query=Zzznotfound", { results: [] }],
@@ -906,5 +908,206 @@ describe("POST /api/movies/import/filmow/activity", () => {
 
     const activities = await db.query.activity.findMany({ where: eq(activity.userId, userId) });
     expect(activities.filter((item) => item.type === "imported")).toHaveLength(0);
+  });
+});
+
+describe("GET /api/movies/import/trakt", () => {
+  it("sem sessão retorna 401", async () => {
+    const res = await app.request("/api/movies/import/trakt?username=alguem", undefined, env);
+    expect(res.status).toBe(401);
+  });
+
+  it("sem username retorna 400", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    const res = await app.request("/api/movies/import/trakt", { headers: { cookie } }, env);
+    expect(res.status).toBe(400);
+  });
+
+  it("perfil privado ou inexistente na Trakt retorna 404 trakt_profile_unavailable", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubFetchByUrl([["api.trakt.tv", { error: "not found" }, 404]]);
+
+    const res = await app.request(
+      "/api/movies/import/trakt?username=privado",
+      { headers: { cookie } },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    expect(res.status).toBe(404);
+    await expect(res.json()).resolves.toEqual({ error: "trakt_profile_unavailable" });
+  });
+
+  it("junta assistidos + notas por tmdb_id; filme sem ids.tmdb vira notFound", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubFetchByUrl([
+      [
+        "/watched/movies",
+        [
+          {
+            plays: 1,
+            last_watched_at: "2026-01-01T00:00:00Z",
+            movie: { title: "Inception", ids: { trakt: 1, tmdb: 27205 } },
+          },
+          {
+            plays: 1,
+            last_watched_at: "2026-01-02T00:00:00Z",
+            movie: { title: "Obscuro sem tmdb", ids: { trakt: 2, tmdb: null } },
+          },
+        ],
+      ],
+      [
+        "/ratings/movies",
+        [
+          {
+            rated_at: "2026-01-01T00:00:00Z",
+            rating: 8,
+            movie: { title: "Inception", ids: { trakt: 1, tmdb: 27205 } },
+          },
+        ],
+      ],
+    ]);
+
+    const res = await app.request(
+      "/api/movies/import/trakt?username=alguem",
+      { headers: { cookie } },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      importable: Array<{ tmdbId: number; title: string; rating: number | null }>;
+      notFound: Array<{ title: string }>;
+    };
+    expect(body.importable).toEqual([{ tmdbId: 27205, title: "Inception", rating: 4 }]);
+    expect(body.notFound).toEqual([{ title: "Obscuro sem tmdb" }]);
+  });
+});
+
+describe("POST /api/movies/import/trakt", () => {
+  it("sem sessão retorna 401", async () => {
+    const res = await app.request(
+      "/api/movies/import/trakt",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: [{ tmdbId: 27205, title: "Inception", rating: 4 }] }),
+      },
+      env,
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("corpo inválido (sem items) retorna 400", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    const res = await app.request(
+      "/api/movies/import/trakt",
+      {
+        method: "POST",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ items: [] }),
+      },
+      env,
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("importa como 'Já vi' com a nota convertida, sem gerar atividade", async () => {
+    const { cookie, username } = await createAuthenticatedUser(app, env);
+    stubFetchByUrl([["/movie/27205", tmdbMovieDetail(27205, "Inception")]]);
+
+    const res = await app.request(
+      "/api/movies/import/trakt",
+      {
+        method: "POST",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ items: [{ tmdbId: 27205, title: "Inception", rating: 4 }] }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      results: Array<{ tmdbId: number; title: string; status: string }>;
+    };
+    expect(body.results).toEqual([{ tmdbId: 27205, title: "Inception", status: "imported" }]);
+
+    const entriesRes = await app.request(
+      `/api/users/${username}/movies/entries?status=watched`,
+      undefined,
+      env,
+    );
+    const entriesBody = (await entriesRes.json()) as {
+      items: Array<{ rating: number | null; movie: { tmdbId: number } }>;
+    };
+    expect(entriesBody.items).toEqual([expect.objectContaining({ rating: 4 })]);
+
+    const activities = await createDb(env).query.activity.findMany();
+    expect(activities.filter((item) => item.itemId === "27205")).toHaveLength(0);
+  });
+
+  it("rating: null (Trakt sem nota) não apaga uma nota que o usuário já tinha posto manualmente", async () => {
+    const { cookie, username } = await createAuthenticatedUser(app, env);
+    stubMovieCacheFetch(27205, "Inception");
+    await app.request(
+      "/api/movies/27205/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ rating: 3.5 }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    // Já cacheado — só o detalhe é reconsultado (revalidação dentro de 24h
+    // nem chega a acontecer, mas stub por garantia caso o request role).
+    stubFetchByUrl([["/movie/27205", tmdbMovieDetail(27205, "Inception")]]);
+    const res = await app.request(
+      "/api/movies/import/trakt",
+      {
+        method: "POST",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ items: [{ tmdbId: 27205, title: "Inception", rating: null }] }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+    expect(res.status).toBe(200);
+
+    const entriesRes = await app.request(
+      `/api/users/${username}/movies/entries?status=watched`,
+      undefined,
+      env,
+    );
+    const entriesBody = (await entriesRes.json()) as { items: Array<{ rating: number | null }> };
+    expect(entriesBody.items).toEqual([expect.objectContaining({ rating: 3.5 })]);
+  });
+});
+
+describe("POST /api/movies/import/trakt/activity", () => {
+  it("gera 1 activity-resumo com source: trakt", async () => {
+    const { cookie, email } = await createAuthenticatedUser(app, env);
+    const db = createDb(env);
+    const [row] = await db.select({ id: user.id }).from(user).where(eq(user.email, email));
+    if (!row) throw new Error("usuário de teste não encontrado");
+
+    const res = await app.request(
+      "/api/movies/import/trakt/activity",
+      {
+        method: "POST",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ importedCount: 12 }),
+      },
+      env,
+    );
+    expect(res.status).toBe(204);
+
+    const activities = await db.query.activity.findMany({ where: eq(activity.userId, row.id) });
+    const imported = activities.filter((item) => item.type === "imported");
+    expect(imported).toHaveLength(1);
+    expect(imported[0]).toMatchObject({ metadata: { source: "trakt", count: 12 } });
   });
 });
