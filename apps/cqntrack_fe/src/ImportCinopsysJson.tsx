@@ -76,8 +76,19 @@ interface MovieToImport {
 interface ParsedBackup {
   movies: MovieToImport[];
   shows: ImportCinopsysShow[];
-  moviesIgnored: number;
-  showsIgnored: number;
+  ignoredMovies: string[];
+  ignoredShows: string[];
+}
+
+// Rótulo pro item ignorado na lista de transparência do resumo — cai no
+// tmdbId (ou num texto fixo) quando nem o título veio preenchido, já que
+// esse é justamente um dos motivos de descarte (ver parseBackup).
+function movieLabel(movie: CinopsysMovie): string {
+  return movie.title ?? (movie.tmdbId ? `tmdbId ${movie.tmdbId}` : "(sem título)");
+}
+
+function showLabel(show: CinopsysShow): string {
+  return show.title ?? (show.tmdbId ? `tmdbId ${show.tmdbId}` : "(sem título)");
 }
 
 // Todo o parse/filtro roda no navegador, 1x — o Worker só recebe os lotes
@@ -93,7 +104,7 @@ function parseBackup(data: CinopsysBackup): ParsedBackup | null {
   }
 
   const movies: MovieToImport[] = [];
-  let moviesIgnored = 0;
+  const ignoredMovies: string[] = [];
   for (const movie of rawMovies) {
     const status =
       movie.watchState === "WATCHED"
@@ -102,7 +113,7 @@ function parseBackup(data: CinopsysBackup): ParsedBackup | null {
           ? "want_to_watch"
           : null;
     if (!movie.tmdbId || !movie.title || movie.title.length > MAX_TITLE_LENGTH || !status) {
-      moviesIgnored += 1;
+      ignoredMovies.push(movieLabel(movie));
       continue;
     }
     movies.push({ tmdbId: movie.tmdbId, title: movie.title, status });
@@ -128,17 +139,17 @@ function parseBackup(data: CinopsysBackup): ParsedBackup | null {
   }
 
   const shows: ImportCinopsysShow[] = [];
-  let showsIgnored = 0;
+  const ignoredShows: string[] = [];
   for (const show of rawShows) {
     const episodes = show.backendId ? episodesByShow.get(show.backendId) : undefined;
     if (!show.tmdbId || !show.title || show.title.length > MAX_TITLE_LENGTH || !episodes?.length) {
-      showsIgnored += 1;
+      ignoredShows.push(showLabel(show));
       continue;
     }
     shows.push({ tmdbId: show.tmdbId, title: show.title, episodes });
   }
 
-  return { movies, shows, moviesIgnored, showsIgnored };
+  return { movies, shows, ignoredMovies, ignoredShows };
 }
 
 // Baixa um JSON no mesmo formato aceito por essa tela (ver CinopsysBackup)
@@ -224,7 +235,10 @@ export function ImportCinopsysJson() {
   const [seriesProgress, setSeriesProgress] = useState({ done: 0, total: 0 });
   const [movieResults, setMovieResults] = useState<MovieOutcome[]>([]);
   const [seriesResults, setSeriesResults] = useState<SeriesOutcome[]>([]);
-  const [ignored, setIgnored] = useState({ movies: 0, shows: 0 });
+  const [ignored, setIgnored] = useState<{ movies: string[]; shows: string[] }>({
+    movies: [],
+    shows: [],
+  });
   // Guarda os itens já parseados (não só os resultados) pra poder
   // reconstruir o JSON de retry em downloadErroredBackup — não precisa
   // disparar re-render, então fica em ref em vez de state.
@@ -302,7 +316,7 @@ export function ImportCinopsysJson() {
     setError(null);
     setMovieResults([]);
     setSeriesResults([]);
-    setIgnored({ movies: 0, shows: 0 });
+    setIgnored({ movies: [], shows: [] });
     setPhase("reading");
 
     let data: CinopsysBackup;
@@ -326,7 +340,7 @@ export function ImportCinopsysJson() {
       return;
     }
 
-    setIgnored({ movies: parsed.moviesIgnored, shows: parsed.showsIgnored });
+    setIgnored({ movies: parsed.ignoredMovies, shows: parsed.ignoredShows });
     parsedMoviesRef.current = parsed.movies;
     parsedShowsRef.current = parsed.shows;
 
@@ -426,27 +440,41 @@ export function ImportCinopsysJson() {
             </button>
           )}
 
-          {(ignored.movies > 0 || ignored.shows > 0) && (
+          {(ignored.movies.length > 0 || ignored.shows.length > 0) && (
             <details>
               <summary>Itens ignorados no arquivo</summary>
-              <ul className={styles.notFoundList}>
-                {ignored.movies > 0 && (
-                  <li>
-                    {ignored.movies}{" "}
-                    {ignored.movies === 1
+              {ignored.movies.length > 0 && (
+                <>
+                  <p>
+                    {ignored.movies.length}{" "}
+                    {ignored.movies.length === 1
                       ? "filme sem tmdbId/status reconhecido"
                       : "filmes sem tmdbId/status reconhecido"}
-                  </li>
-                )}
-                {ignored.shows > 0 && (
-                  <li>
-                    {ignored.shows}{" "}
-                    {ignored.shows === 1
+                    :
+                  </p>
+                  <ul className={styles.notFoundList}>
+                    {ignored.movies.map((title, index) => (
+                      <li key={`movie-${index}`}>{title}</li>
+                    ))}
+                  </ul>
+                </>
+              )}
+              {ignored.shows.length > 0 && (
+                <>
+                  <p>
+                    {ignored.shows.length}{" "}
+                    {ignored.shows.length === 1
                       ? "série sem tmdbId ou sem episódio assistido (inclui watchlist-only)"
                       : "séries sem tmdbId ou sem episódio assistido (inclui watchlist-only)"}
-                  </li>
-                )}
-              </ul>
+                    :
+                  </p>
+                  <ul className={styles.notFoundList}>
+                    {ignored.shows.map((title, index) => (
+                      <li key={`show-${index}`}>{title}</li>
+                    ))}
+                  </ul>
+                </>
+              )}
             </details>
           )}
         </div>

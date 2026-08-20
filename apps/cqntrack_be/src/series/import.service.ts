@@ -4,6 +4,7 @@ import type {
   ImportTvTimeEpisode,
   ImportTvTimeResponse,
 } from "@cqntrack/shared";
+import { and, eq } from "drizzle-orm";
 import type { createDb } from "../db/client";
 import { activity, seriesEpisodeWatch } from "../db/schema";
 import { findSeriesByTvdbId } from "../integrations/tmdb/series";
@@ -37,6 +38,30 @@ function chunk<T>(items: T[], size: number): T[][] {
   return chunks;
 }
 
+// Filtra pra fora os episódios que já estão marcados como assistidos —
+// sem isso, todo reimport chamaria ensureSeriesEntry (que dispara
+// getOrCacheSeries) à toa: getOrCacheSeries considera qualquer linha com
+// cast===null sempre desatualizada (ver isStale em series.service.ts), e o
+// import roda com fetchCredits:false de propósito, então cast nunca deixa
+// de ser null por causa do próprio import — cada reimport bateria na TMDB
+// de novo mesmo sem nada novo pra gravar. O insert em seriesEpisodeWatch já
+// é idempotente por conta do onConflictDoNothing, mas isso só evita a
+// escrita duplicada — não evita a chamada à TMDB que ensureSeriesEntry faz
+// de qualquer forma antes de chegar lá.
+async function filterNewEpisodes(
+  db: Db,
+  userId: string,
+  seriesId: number,
+  episodes: ImportTvTimeEpisode[],
+): Promise<ImportTvTimeEpisode[]> {
+  const existing = await db.query.seriesEpisodeWatch.findMany({
+    where: and(eq(seriesEpisodeWatch.userId, userId), eq(seriesEpisodeWatch.seriesId, seriesId)),
+    columns: { seasonNumber: true, episodeNumber: true },
+  });
+  const watchedKeys = new Set(existing.map((e) => `${e.seasonNumber}-${e.episodeNumber}`));
+  return episodes.filter((e) => !watchedKeys.has(`${e.season}-${e.episode}`));
+}
+
 // Agrupado por série no front (ver ImportTvTimeCsv.tsx) — diferente do
 // Filmow (1 filme = 1 busca por texto na TMDB), a série já vem identificada
 // pelo tvdb_id do próprio tvtime, então é só resolver pro id da TMDB (1
@@ -58,6 +83,11 @@ export async function importTvTimeSeries(
       return { seriesTvdbId, title, status: "not_found", episodesImported: 0 };
     }
 
+    const newEpisodes = await filterNewEpisodes(db, userId, tmdbId, episodes);
+    if (newEpisodes.length === 0) {
+      return { seriesTvdbId, title, status: "imported", episodesImported: 0 };
+    }
+
     // fetchCredits/fetchOverviewFallback: false — mesmo racional do import
     // de filmes (ver movies/import.service.ts): cada série nova já bate o
     // teto de CPU do plano Free de Workers processando o JSON de
@@ -69,7 +99,7 @@ export async function importTvTimeSeries(
       fetchOverviewFallback: false,
     });
 
-    const rows = episodes.map((episode) => ({
+    const rows = newEpisodes.map((episode) => ({
       userId,
       seriesId: tmdbId,
       seasonNumber: episode.season,
@@ -125,12 +155,17 @@ async function importCinopsysOne(
   show: ImportCinopsysShow,
 ): Promise<ImportCinopsysShowResult> {
   try {
+    const newEpisodes = await filterNewEpisodes(db, userId, show.tmdbId, show.episodes);
+    if (newEpisodes.length === 0) {
+      return { tmdbId: show.tmdbId, title: show.title, status: "imported", episodesImported: 0 };
+    }
+
     await ensureSeriesEntry(env, db, userId, show.tmdbId, {
       fetchCredits: false,
       fetchOverviewFallback: false,
     });
 
-    const rows = show.episodes.map((episode) => ({
+    const rows = newEpisodes.map((episode) => ({
       userId,
       seriesId: show.tmdbId,
       seasonNumber: episode.season,

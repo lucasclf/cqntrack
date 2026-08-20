@@ -1858,6 +1858,66 @@ describe("POST /api/series/import/tvtime", () => {
     });
     expect(watches).toHaveLength(320);
   });
+
+  it("episódio já assistido não é regravado, e a série não é revalidada na TMDB de novo", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubTmdbFetchOnce(tmdbFindResponse(1600), tmdbSeriesDetail(1600, "Show Já Visto"));
+    await app.request(
+      "/api/series/import/tvtime",
+      {
+        method: "POST",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          seriesTvdbId: 55555,
+          title: "Show Já Visto",
+          episodes: [{ season: 1, episode: 1, watchedAt: "2020-03-05T03:05:10.000Z" }],
+        }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const db = createDb(env);
+    const [before] = await db.query.seriesEpisodeWatch.findMany({
+      where: (table, { and: andOp, eq: eqOp }) =>
+        andOp(eqOp(table.seriesId, 1600), eqOp(table.episodeNumber, 1)),
+    });
+    expect(before?.watchedAt.toISOString()).toBe("2020-03-05T03:05:10.000Z");
+
+    await new Promise((resolve) => setTimeout(resolve, 5));
+
+    // Só o /find (tvdb_id → tmdb_id) é stubado — ainda é necessário pra
+    // saber qual série checar, mesmo sem nada novo pra gravar. O detalhe da
+    // série (/tv/1600) NÃO deve ser chamado de novo (ensureSeriesEntry é
+    // pulado quando não há episódio novo) — se o código regredir, o mock
+    // não tem resposta pra esse fetch e o teste falha.
+    stubFetchByUrl([["/find/55555", tmdbFindResponse(1600)]]);
+
+    const res = await app.request(
+      "/api/series/import/tvtime",
+      {
+        method: "POST",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          seriesTvdbId: 55555,
+          title: "Show Já Visto",
+          episodes: [{ season: 1, episode: 1, watchedAt: "2099-01-01T00:00:00.000Z" }],
+        }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { status: string; episodesImported: number };
+    expect(body).toMatchObject({ status: "imported", episodesImported: 0 });
+
+    const [after] = await db.query.seriesEpisodeWatch.findMany({
+      where: (table, { and: andOp, eq: eqOp }) =>
+        andOp(eqOp(table.seriesId, 1600), eqOp(table.episodeNumber, 1)),
+    });
+    expect(after?.watchedAt.toISOString()).toBe("2020-03-05T03:05:10.000Z");
+  });
 });
 
 describe("POST /api/series/import/tvtime/activity", () => {
@@ -2091,6 +2151,78 @@ describe("POST /api/series/import/cinopsys", () => {
         andOp(eqOp(table.seriesId, 1951), eqOp(table.userId, userId)),
     });
     expect(entry?.rating).toBe(3);
+  });
+
+  it("episódio já assistido não é regravado, e a série não é revalidada na TMDB de novo", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubFetchByUrl([["/tv/1970", tmdbSeriesDetail(1970, "Show Já Visto")]]);
+    await app.request(
+      "/api/series/import/cinopsys",
+      {
+        method: "POST",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          shows: [
+            {
+              tmdbId: 1970,
+              title: "Show Já Visto",
+              episodes: [{ season: 1, episode: 1, watchedAt: "2020-03-05T03:05:10.000Z" }],
+            },
+          ],
+        }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const db = createDb(env);
+    const [before] = await db.query.seriesEpisodeWatch.findMany({
+      where: (table, { and: andOp, eq: eqOp }) =>
+        andOp(eqOp(table.seriesId, 1970), eqOp(table.episodeNumber, 1)),
+    });
+    expect(before?.watchedAt.toISOString()).toBe("2020-03-05T03:05:10.000Z");
+
+    await new Promise((resolve) => setTimeout(resolve, 5));
+
+    // Nenhum handler stubado — o tmdbId já vem resolvido no request (não
+    // precisa de nenhuma chamada pra saber qual série é, diferente do
+    // tvtime) e o episódio já está marcado, então o import deve pular
+    // ensureSeriesEntry (e o fetch de detalhe) por completo. Se o código
+    // regredir e chamar a TMDB de novo, o mock lança "URL inesperada".
+    stubFetchByUrl([]);
+
+    const res = await app.request(
+      "/api/series/import/cinopsys",
+      {
+        method: "POST",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          shows: [
+            {
+              tmdbId: 1970,
+              title: "Show Já Visto",
+              episodes: [{ season: 1, episode: 1, watchedAt: "2099-01-01T00:00:00.000Z" }],
+            },
+          ],
+        }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      results: Array<{ status: string; episodesImported: number }>;
+    };
+    expect(body.results).toEqual([
+      expect.objectContaining({ status: "imported", episodesImported: 0 }),
+    ]);
+
+    const [after] = await db.query.seriesEpisodeWatch.findMany({
+      where: (table, { and: andOp, eq: eqOp }) =>
+        andOp(eqOp(table.seriesId, 1970), eqOp(table.episodeNumber, 1)),
+    });
+    expect(after?.watchedAt.toISOString()).toBe("2020-03-05T03:05:10.000Z");
   });
 });
 

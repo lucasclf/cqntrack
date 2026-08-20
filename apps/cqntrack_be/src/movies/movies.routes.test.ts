@@ -823,6 +823,64 @@ describe("POST /api/movies/import/filmow", () => {
     expect(cachedMovie?.cast).toBeNull();
     expect(cachedMovie?.directors).toBeNull();
   });
+
+  it("filme já marcado como 'Já vi' não sobrescreve watchedAt nem chama a TMDB de novo", async () => {
+    // tmdbId dedicado (não 27205) — outros testes desse arquivo checam
+    // activity sem filtrar por usuário, e o PUT manual abaixo (diferente do
+    // import) loga activity de verdade; usar um id só desse teste evita
+    // colidir com essas asserções.
+    const { cookie, username } = await createAuthenticatedUser(app, env);
+    stubMovieCacheFetch(99001, "Filme Já Visto");
+    await app.request(
+      "/api/movies/99001/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "watched" }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const before = (await (
+      await app.request(`/api/users/${username}/movies/entries?status=watched`, undefined, env)
+    ).json()) as { items: Array<{ watchedAt: string }> };
+    const originalWatchedAt = before.items[0]?.watchedAt;
+    expect(originalWatchedAt).toBeTruthy();
+
+    await new Promise((resolve) => setTimeout(resolve, 5));
+
+    // Só a busca por texto é stubada — o filme já tem marcação "watched",
+    // então o import deve pular upsertMovieEntry (e o fetch de detalhe que
+    // ele faria) por completo. Se o código regredir e chamar de novo, o
+    // mock lança "URL inesperada" e o teste falha.
+    stubFetchByUrl([
+      [
+        "/search/movie",
+        { results: [{ ...TMDB_SEARCH_RESULT, id: 99001, title: "Filme Já Visto" }] },
+      ],
+    ]);
+
+    const res = await app.request(
+      "/api/movies/import/filmow",
+      {
+        method: "POST",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ titles: ["Filme Já Visto"] }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { results: Array<{ status: string }> };
+    expect(body.results).toEqual([expect.objectContaining({ status: "imported" })]);
+
+    const after = (await (
+      await app.request(`/api/users/${username}/movies/entries?status=watched`, undefined, env)
+    ).json()) as { items: Array<{ watchedAt: string }> };
+    expect(after.items[0]?.watchedAt).toBe(originalWatchedAt);
+  });
 });
 
 describe("POST /api/movies/import/filmow/activity", () => {
@@ -974,6 +1032,58 @@ describe("POST /api/movies/import/cinopsys", () => {
 
     const activities = await createDb(env).query.activity.findMany();
     expect(activities.filter((item) => item.itemId === "27205")).toHaveLength(0);
+  });
+
+  it("filme já no status pedido não sobrescreve watchedAt nem chama a TMDB de novo", async () => {
+    const { cookie, username } = await createAuthenticatedUser(app, env);
+    stubFetchByUrl([["/movie/27205", tmdbMovieDetail(27205, "Inception")]]);
+    await app.request(
+      "/api/movies/import/cinopsys",
+      {
+        method: "POST",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          movies: [{ tmdbId: 27205, title: "Inception", status: "watched" }],
+        }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const before = (await (
+      await app.request(`/api/users/${username}/movies/entries?status=watched`, undefined, env)
+    ).json()) as { items: Array<{ watchedAt: string }> };
+    const originalWatchedAt = before.items[0]?.watchedAt;
+    expect(originalWatchedAt).toBeTruthy();
+
+    await new Promise((resolve) => setTimeout(resolve, 5));
+
+    // Nenhum handler stubado — o filme já está com status "watched", então
+    // o import deve pular upsertMovieEntry (e o fetch de detalhe) por
+    // completo. Se o código regredir e chamar a TMDB de novo, o mock lança
+    // "URL inesperada" e o teste falha (em vez de bater na rede de verdade).
+    stubFetchByUrl([]);
+    const res = await app.request(
+      "/api/movies/import/cinopsys",
+      {
+        method: "POST",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          movies: [{ tmdbId: 27205, title: "Inception", status: "watched" }],
+        }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { results: Array<{ status: string }> };
+    expect(body.results).toEqual([expect.objectContaining({ status: "imported" })]);
+
+    const after = (await (
+      await app.request(`/api/users/${username}/movies/entries?status=watched`, undefined, env)
+    ).json()) as { items: Array<{ watchedAt: string }> };
+    expect(after.items[0]?.watchedAt).toBe(originalWatchedAt);
   });
 });
 

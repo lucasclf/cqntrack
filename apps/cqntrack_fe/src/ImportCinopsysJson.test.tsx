@@ -144,6 +144,9 @@ describe("ImportCinopsysJson", () => {
     fireEvent.click(screen.getByText("Itens ignorados no arquivo"));
     expect(screen.getByText(/1 filme sem tmdbId\/status reconhecido/)).toBeInTheDocument();
     expect(screen.getByText(/1 série sem tmdbId ou sem episódio assistido/)).toBeInTheDocument();
+    // Lista o nome de cada item ignorado, não só a contagem.
+    expect(screen.getByText("Sem tmdb")).toBeInTheDocument();
+    expect(screen.getByText("Watchlist Only")).toBeInTheDocument();
   });
 
   it("lote de filme que falha vira 'error'", async () => {

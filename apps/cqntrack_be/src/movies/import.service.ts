@@ -2,14 +2,36 @@ import type {
   ImportCinopsysMovie,
   ImportCinopsysMovieResult,
   ImportFilmowResult,
+  MovieStatus,
 } from "@cqntrack/shared";
+import { and, eq } from "drizzle-orm";
 import type { createDb } from "../db/client";
-import { activity } from "../db/schema";
+import { activity, movieEntry } from "../db/schema";
 import { searchMovies as tmdbSearchMovies } from "../integrations/tmdb/movies";
 import { upsertMovieEntry } from "./entries.service";
 import { mapTmdbSearchResultToSummary } from "./movies.service";
 
 type Db = ReturnType<typeof createDb>;
+
+// Pulado antes de chamar upsertMovieEntry sempre que o filme já está no
+// status pedido — sem isso, todo reimport reescreveria watchedAt pra agora
+// (upsertMovieEntry não distingue "status igual ao que já tinha" de "status
+// novo") e ainda chamaria a TMDB de novo à toa: getOrCacheMovie considera
+// qualquer linha com cast===null sempre desatualizada (ver isStale em
+// movies.service.ts), e o import roda com fetchCredits:false de propósito,
+// então cast nunca deixa de ser null por causa do próprio import.
+async function alreadyHasStatus(
+  db: Db,
+  userId: string,
+  tmdbId: number,
+  status: MovieStatus,
+): Promise<boolean> {
+  const existing = await db.query.movieEntry.findFirst({
+    where: and(eq(movieEntry.userId, userId), eq(movieEntry.movieId, tmdbId)),
+    columns: { status: true },
+  });
+  return existing?.status === status;
+}
 
 // Concorrência baixa — o front manda 1 título por request (ver BATCH_SIZE
 // em ImportFilmowCsv.tsx: o plano Free de Workers só dá 10ms de CPU por
@@ -42,6 +64,10 @@ async function importOne(
     const [top] = await tmdbSearchMovies(env, trimmed, 1);
     if (!top) {
       return { title, status: "not_found", movie: null };
+    }
+
+    if (await alreadyHasStatus(db, userId, top.id, "watched")) {
+      return { title, status: "imported", movie: mapTmdbSearchResultToSummary(top) };
     }
 
     await upsertMovieEntry(
@@ -118,6 +144,10 @@ async function importCinopsysOne(
   item: ImportCinopsysMovie,
 ): Promise<ImportCinopsysMovieResult> {
   try {
+    if (await alreadyHasStatus(db, userId, item.tmdbId, item.status)) {
+      return { tmdbId: item.tmdbId, title: item.title, status: "imported" };
+    }
+
     await upsertMovieEntry(
       env,
       db,
