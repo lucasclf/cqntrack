@@ -36,6 +36,28 @@
   box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
+.passwordWrapper {
+  position: relative;
+}
+
+.passwordWrapper input {
+  padding-right: 72px;
+}
+
+.togglePassword {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 4px;
+}
+
 .loginHint {
   text-align: center;
   font-size: 13px;

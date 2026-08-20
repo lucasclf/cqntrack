@@ -123,6 +123,24 @@ describe("Signup", () => {
     expect(signUpEmailMock).not.toHaveBeenCalled();
   });
 
+  it("botão 'Mostrar' revela a senha digitada, cada campo com seu próprio toggle", () => {
+    renderSignup();
+
+    const passwordInput = screen.getByLabelText("Senha");
+    const confirmInput = screen.getByLabelText("Confirmar senha");
+    expect(passwordInput).toHaveAttribute("type", "password");
+    expect(confirmInput).toHaveAttribute("type", "password");
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Mostrar" })[0]);
+
+    expect(passwordInput).toHaveAttribute("type", "text");
+    // O toggle da confirmação é independente do da senha.
+    expect(confirmInput).toHaveAttribute("type", "password");
+
+    fireEvent.click(screen.getByRole("button", { name: "Ocultar" }));
+    expect(passwordInput).toHaveAttribute("type", "password");
+  });
+
   it("mostra erro específico quando a confirmação de senha não bate com a senha", () => {
     renderSignup();
 

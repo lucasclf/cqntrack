@@ -6,6 +6,40 @@ import { AuthLayout } from "./AuthLayout";
 import { authClient } from "./lib/auth-client";
 import styles from "./Signup.module.css";
 
+interface PasswordFieldProps {
+  label: string;
+  autoComplete: string;
+  value: string;
+  onChange: (value: string) => void;
+}
+
+function PasswordField({ label, autoComplete, value, onChange }: PasswordFieldProps) {
+  const [visible, setVisible] = useState(false);
+
+  return (
+    <label className={styles.field}>
+      <span>{label}</span>
+      <div className={styles.passwordWrapper}>
+        <input
+          type={visible ? "text" : "password"}
+          placeholder="••••••••"
+          autoComplete={autoComplete}
+          required
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+        />
+        <button
+          type="button"
+          className={styles.togglePassword}
+          onClick={() => setVisible((current) => !current)}
+        >
+          {visible ? "Ocultar" : "Mostrar"}
+        </button>
+      </div>
+    </label>
+  );
+}
+
 export function Signup() {
   const navigate = useNavigate();
   const { refetch: refetchSession } = authClient.useSession();
@@ -125,28 +159,18 @@ export function Signup() {
             onChange={(event) => setEmail(event.target.value)}
           />
         </label>
-        <label className={styles.field}>
-          <span>Senha</span>
-          <input
-            type="password"
-            placeholder="••••••••"
-            autoComplete="new-password"
-            required
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
-        </label>
-        <label className={styles.field}>
-          <span>Confirmar senha</span>
-          <input
-            type="password"
-            placeholder="••••••••"
-            autoComplete="new-password"
-            required
-            value={confirmPassword}
-            onChange={(event) => setConfirmPassword(event.target.value)}
-          />
-        </label>
+        <PasswordField
+          label="Senha"
+          autoComplete="new-password"
+          value={password}
+          onChange={setPassword}
+        />
+        <PasswordField
+          label="Confirmar senha"
+          autoComplete="new-password"
+          value={confirmPassword}
+          onChange={setConfirmPassword}
+        />
         {error && (
           <p className={layoutStyles.error} role="alert">
             {error}
