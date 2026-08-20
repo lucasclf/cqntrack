@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Signup } from "./Signup";
@@ -128,16 +128,17 @@ describe("Signup", () => {
 
     const passwordInput = screen.getByLabelText("Senha");
     const confirmInput = screen.getByLabelText("Confirmar senha");
+    const passwordField = within(passwordInput.closest("label")!);
     expect(passwordInput).toHaveAttribute("type", "password");
     expect(confirmInput).toHaveAttribute("type", "password");
 
-    fireEvent.click(screen.getAllByRole("button", { name: "Mostrar" })[0]);
+    fireEvent.click(passwordField.getByRole("button", { name: "Mostrar" }));
 
     expect(passwordInput).toHaveAttribute("type", "text");
     // O toggle da confirmação é independente do da senha.
     expect(confirmInput).toHaveAttribute("type", "password");
 
-    fireEvent.click(screen.getByRole("button", { name: "Ocultar" }));
+    fireEvent.click(passwordField.getByRole("button", { name: "Ocultar" }));
     expect(passwordInput).toHaveAttribute("type", "password");
   });
 
