@@ -111,6 +111,10 @@ export function Signup() {
           Mandamos um link de confirmação pro seu e-mail. Clique nele pra ativar sua conta e poder
           entrar.
         </p>
+        <p className={layoutStyles.subtitle}>
+          Você tem <strong>1 hora</strong> pra confirmar — depois disso o link expira e, se alguém
+          mais quiser esse nome de usuário, ele fica disponível de novo.
+        </p>
         <p className={styles.loginHint}>
           <Link to="/login" className={layoutStyles.link}>
             Voltar pra tela de entrar

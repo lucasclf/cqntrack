@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { app } from "../app";
 import { createDb } from "../db/client";
-import { user } from "../db/schema";
+import { user, verification } from "../db/schema";
 
 const PASSWORD = "senha12345";
 
@@ -58,6 +58,16 @@ async function signIn(email: string, password: string) {
 // (isso é coberto separadamente no describe "confirmação de e-mail").
 async function verifyDirectly(email: string) {
   await createDb(env).update(user).set({ emailVerified: true }).where(eq(user.email, email));
+}
+
+// Simula a passagem do tempo sem esperar de verdade — usado pra testar a
+// liberação de username de cadastro abandonado (ver hooks.before em
+// auth.ts), que decide com base em createdAt.
+async function backdateSignup(email: string, minutesAgo: number) {
+  await createDb(env)
+    .update(user)
+    .set({ createdAt: new Date(Date.now() - minutesAgo * 60 * 1000) })
+    .where(eq(user.email, email));
 }
 
 async function requestPasswordReset(email: string) {
@@ -154,6 +164,51 @@ describe("autenticação", () => {
   it("cadastro com username duplicado falha", async () => {
     const testUser = uniqueUser();
     await signUp(testUser);
+    const res = await signUp({ ...testUser, email: `outro-${crypto.randomUUID()}@cqntrack.dev` });
+
+    expect(res.status).toBeGreaterThanOrEqual(400);
+  });
+
+  it("username de cadastro abandonado há mais de 1h10 fica livre pro próximo a pedir", async () => {
+    const testUser = uniqueUser();
+    await signUp(testUser);
+    await backdateSignup(testUser.email, 71);
+    const newEmail = `outro-${crypto.randomUUID()}@cqntrack.dev`;
+
+    const res = await signUp({ ...testUser, email: newEmail });
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toMatchObject({ token: null });
+
+    const db = createDb(env);
+    const oldUsers = await db.select().from(user).where(eq(user.email, testUser.email));
+    expect(oldUsers).toHaveLength(0);
+    const oldVerifications = await db
+      .select()
+      .from(verification)
+      .where(eq(verification.identifier, testUser.email));
+    expect(oldVerifications).toHaveLength(0);
+    const newUsers = await db.select().from(user).where(eq(user.email, newEmail));
+    expect(newUsers).toHaveLength(1);
+    expect(newUsers[0]?.username).toBe(testUser.username);
+  });
+
+  it("username de cadastro abandonado há menos de 1h10 (dentro da folga) continua bloqueado", async () => {
+    const testUser = uniqueUser();
+    await signUp(testUser);
+    await backdateSignup(testUser.email, 65);
+
+    const res = await signUp({ ...testUser, email: `outro-${crypto.randomUUID()}@cqntrack.dev` });
+
+    expect(res.status).toBeGreaterThanOrEqual(400);
+  });
+
+  it("username de quem já confirmou o e-mail nunca é liberado, mesmo há muito tempo", async () => {
+    const testUser = uniqueUser();
+    await signUp(testUser);
+    await verifyDirectly(testUser.email);
+    await backdateSignup(testUser.email, 60 * 24 * 30); // 30 dias
+
     const res = await signUp({ ...testUser, email: `outro-${crypto.randomUUID()}@cqntrack.dev` });
 
     expect(res.status).toBeGreaterThanOrEqual(400);

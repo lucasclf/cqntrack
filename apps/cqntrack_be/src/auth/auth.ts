@@ -1,9 +1,19 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { createAuthMiddleware } from "better-auth/api";
 import { bearer, username } from "better-auth/plugins";
+import { and, eq, lt } from "drizzle-orm";
 import { createDb } from "../db/client";
+import { user, verification } from "../db/schema";
 import { sendEmail } from "../integrations/resend/client";
 import { resetPasswordEmailHtml, verificationEmailHtml } from "../integrations/resend/templates";
+
+// Link de verificação expira em 1h (padrão do better-auth quando
+// emailVerification.expiresIn não é sobrescrito — ver createEmailVerificationToken
+// na lib). 1h10 dá 10min de folga contra corrida (ex.: dois cadastros
+// disputando o mesmo username bem no limite da 1ª hora) antes de considerar
+// o cadastro anterior abandonado de vez.
+const STALE_SIGNUP_GRACE_MS = 70 * 60 * 1000;
 
 // Montado por request: o binding env.DB só existe dentro do handler do Worker,
 // então a instância do better-auth não pode ser criada em escopo de módulo.
@@ -65,6 +75,35 @@ export function createAuth(env: Env) {
       // guarda esse token é o app mobile (ver auth-client.mobile.ts no FE).
       bearer(),
     ],
+    // Roda antes da checagem de unicidade do plugin username (que é um
+    // hook do próprio plugin, registrado depois deste na pipeline — ver
+    // getHooks() no better-auth). Se o username pedido pertence a um
+    // cadastro nunca confirmado e mais velho que a folga acima, libera o
+    // username apagando esse usuário (account/session somem junto via
+    // cascade; `verification` não tem FK pra user, precisa apagar à parte)
+    // antes do plugin sequer olhar se já existe alguém com esse nome.
+    hooks: {
+      before: createAuthMiddleware(async (ctx) => {
+        if (ctx.path !== "/sign-up/email") return;
+        const requestedUsername = ctx.body?.username;
+        if (typeof requestedUsername !== "string") return;
+
+        const [staleUser] = await db
+          .select({ id: user.id, email: user.email })
+          .from(user)
+          .where(
+            and(
+              eq(user.username, requestedUsername.toLowerCase()),
+              eq(user.emailVerified, false),
+              lt(user.createdAt, new Date(Date.now() - STALE_SIGNUP_GRACE_MS)),
+            ),
+          );
+        if (!staleUser) return;
+
+        await db.delete(verification).where(eq(verification.identifier, staleUser.email));
+        await db.delete(user).where(eq(user.id, staleUser.id));
+      }),
+    },
     advanced: env.COOKIE_DOMAIN
       ? {
           crossSubDomainCookies: {
