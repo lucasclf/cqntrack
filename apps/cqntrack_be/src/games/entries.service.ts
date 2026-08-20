@@ -4,7 +4,7 @@ import type {
   ListGameEntriesQuery,
   UpsertGameEntryRequest,
 } from "@cqntrack/shared";
-import { and, asc, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import type { createDb } from "../db/client";
 import { activity, gameEntry } from "../db/schema";
 import { withoutUndefined } from "../lib/without-undefined";
@@ -159,6 +159,9 @@ export async function listGameEntries(
     conditions.push(
       sql`EXISTS (SELECT 1 FROM json_each(${gameEntry.platforms}) WHERE json_each.value = ${query.platform})`,
     );
+  }
+  if (query.excludeNotStarted) {
+    conditions.push(isNotNull(gameEntry.status), ne(gameEntry.status, "not_started"));
   }
   const where = and(...conditions);
 

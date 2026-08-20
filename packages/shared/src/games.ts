@@ -140,6 +140,12 @@ export const ListGameEntriesQuerySchema = z.object({
   status: GameStatusSchema.optional(),
   favorite: z.coerce.boolean().optional(),
   platform: z.string().optional(),
+  // "Jogado" cobre vários status de uma vez (playing/dropped/completed/
+  // platinum, nunca not_started/sem status) — diferente de `status`, que só
+  // filtra por 1 valor. Usado por "jogado recentemente" (ver
+  // GameCategoryPanel.tsx no front), que antes buscava tudo e filtrava no
+  // cliente — não dava pra paginar direito assim.
+  excludeNotStarted: z.coerce.boolean().optional(),
   sortBy: z.enum(GAME_ENTRY_SORT_FIELDS).default("updatedAt"),
   order: z.enum(["asc", "desc"]).default("desc"),
   page: z.coerce.number().int().min(1).default(1),

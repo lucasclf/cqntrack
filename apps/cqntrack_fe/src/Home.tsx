@@ -1,20 +1,16 @@
 import { useState } from "react";
 import { ActivityTab } from "./ActivityTab";
-import { BookFavoritesSection } from "./books/BookFavoritesSection";
-import { FavoritesSection } from "./games/FavoritesSection";
+import { BookCategoryPanel } from "./books/BookCategoryPanel";
+import { GameCategoryPanel } from "./games/GameCategoryPanel";
 import styles from "./Home.module.css";
 import { HomeTabs, type HomeTab } from "./HomeTabs";
+import { MovieCategoryPanel } from "./movies/MovieCategoryPanel";
 import { BookStats } from "./profile/BookStats";
 import { GameStats } from "./profile/GameStats";
-import { MovieFavorites } from "./profile/MovieFavorites";
 import { MovieStats } from "./profile/MovieStats";
-import { RecentlyPlayedGames } from "./profile/RecentlyPlayedGames";
-import { RecentlyReadBooks } from "./profile/RecentlyReadBooks";
-import { RecentlyWatchedMovies } from "./profile/RecentlyWatchedMovies";
-import { SeriesFavorites } from "./profile/SeriesFavorites";
 import { SeriesStats } from "./profile/SeriesStats";
 import { ContinueWatching } from "./series/ContinueWatching";
-import { RecentlyWatchedSeries } from "./profile/RecentlyWatchedSeries";
+import { SeriesCategoryPanel } from "./series/SeriesCategoryPanel";
 
 const BASE_PATH = "/api";
 
@@ -25,6 +21,12 @@ const BASE_PATH = "/api";
 // fica visível via `hidden`, sem desmontar nada — voltar pra uma aba já
 // visitada não refaz o fetch. Sem <h1> aqui: o nome "cqntrack" já aparece
 // no header (ver TopBar), repetir no corpo era redundante.
+//
+// Cada uma das 4 seções de mídia (Séries/Filmes/Jogos/Livros) usa um
+// *CategoryPanel próprio (ver movies/MovieCategoryPanel.tsx e afins) —
+// favoritos e recentes viraram 2 sub-abas com rolagem infinita vertical,
+// no lugar do carrossel horizontal antigo (esse continua em uso no perfil
+// público, que não muda — ver MovieFavorites/RecentlyWatchedMovies etc.).
 export function Home() {
   const [activeTab, setActiveTab] = useState<HomeTab>("continueWatching");
 
@@ -48,11 +50,7 @@ export function Home() {
       <div hidden={activeTab !== "series"}>
         <div className={styles.layout}>
           <div className={styles.main}>
-            <SeriesFavorites basePath={BASE_PATH} emptyMessage="Nenhuma série favoritada ainda." />
-            <RecentlyWatchedSeries
-              basePath={BASE_PATH}
-              emptyMessage="Nenhuma série assistida recentemente."
-            />
+            <SeriesCategoryPanel basePath={BASE_PATH} />
           </div>
           <aside className={styles.sidebar}>
             <SeriesStats basePath={BASE_PATH} linkTo="/series/marcacoes" />
@@ -63,11 +61,7 @@ export function Home() {
       <div hidden={activeTab !== "movies"}>
         <div className={styles.layout}>
           <div className={styles.main}>
-            <MovieFavorites basePath={BASE_PATH} emptyMessage="Nenhum filme favoritado ainda." />
-            <RecentlyWatchedMovies
-              basePath={BASE_PATH}
-              emptyMessage="Nenhum filme assistido recentemente."
-            />
+            <MovieCategoryPanel basePath={BASE_PATH} />
           </div>
           <aside className={styles.sidebar}>
             <MovieStats basePath={BASE_PATH} linkBase="/filmes/marcacoes" />
@@ -78,14 +72,7 @@ export function Home() {
       <div hidden={activeTab !== "games"}>
         <div className={styles.layout}>
           <div className={styles.main}>
-            <FavoritesSection
-              favoritesEndpoint="/api/games/favorites"
-              emptyMessage="Nenhum jogo favoritado ainda."
-            />
-            <RecentlyPlayedGames
-              basePath={BASE_PATH}
-              emptyMessage="Nenhum jogo jogado recentemente."
-            />
+            <GameCategoryPanel basePath={BASE_PATH} />
           </div>
           <aside className={styles.sidebar}>
             <GameStats basePath={BASE_PATH} linkBase="/jogos/marcacoes" />
@@ -96,14 +83,7 @@ export function Home() {
       <div hidden={activeTab !== "books"}>
         <div className={styles.layout}>
           <div className={styles.main}>
-            <BookFavoritesSection
-              favoritesEndpoint="/api/books/favorites"
-              emptyMessage="Nenhum livro favoritado ainda."
-            />
-            <RecentlyReadBooks
-              basePath={BASE_PATH}
-              emptyMessage="Nenhum livro lido recentemente."
-            />
+            <BookCategoryPanel basePath={BASE_PATH} />
           </div>
           <aside className={styles.sidebar}>
             <BookStats basePath={BASE_PATH} linkBase="/livros/marcacoes" />

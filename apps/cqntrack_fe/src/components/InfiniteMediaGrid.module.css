@@ -1,0 +1,15 @@
+.hint {
+  color: var(--text-secondary);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 16px;
+}
+
+.sentinel {
+  min-height: 1px;
+  padding-top: 16px;
+  text-align: center;
+}

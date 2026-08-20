@@ -512,6 +512,69 @@ describe("GET /api/games/entries", () => {
     expect(body.items[0]).toMatchObject({ platforms: ["PC", "Switch"], game: { igdbId: 703 } });
   });
 
+  it("excludeNotStarted exclui quem está sem status ou 'not_started', mantendo os demais", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+
+    // Token IGDB fica em cache (memória + D1) entre chamadas — cada
+    // stubIgdbFetchOnce assume 2 fetches (token + jogo), então zera os dois
+    // caches antes de cada entry pra sempre bater com o que foi mockado
+    // (senão a 2ª/3ª chamada real usa só 1 fetch, e o mock de token vaza
+    // pra resposta de jogo).
+    async function resetIgdbToken() {
+      resetIgdbTokenMemoryCache();
+      await createDb(env).delete(igdbToken);
+    }
+
+    stubIgdbFetchOnce([igdbGame(705, "Sem status")]);
+    await app.request(
+      "/api/games/705/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ favorited: true }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+    await resetIgdbToken();
+
+    stubIgdbFetchOnce([igdbGame(706, "Quero jogar")]);
+    await app.request(
+      "/api/games/706/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "not_started" }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+    await resetIgdbToken();
+
+    stubIgdbFetchOnce([igdbGame(707, "Jogando")]);
+    await app.request(
+      "/api/games/707/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "playing" }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const res = await app.request(
+      "/api/games/entries?excludeNotStarted=true",
+      { headers: { cookie } },
+      env,
+    );
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as PaginatedGameEntriesResponse;
+    expect(body.total).toBe(1);
+    expect(body.items[0]).toMatchObject({ status: "playing", game: { igdbId: 707 } });
+  });
+
   it("sem sessão retorna 401", async () => {
     const res = await app.request("/api/games/entries", undefined, env);
 
