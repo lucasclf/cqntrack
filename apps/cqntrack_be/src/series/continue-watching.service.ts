@@ -131,6 +131,11 @@ async function findNextUnwatchedEpisode(
   return null;
 }
 
+export interface ContinueWatchingPage {
+  items: ContinueWatchingItem[];
+  nextCursor: number | null;
+}
+
 // Lista pronta pra Home ("Continuar assistindo"), calculada ao vivo a cada
 // carregamento — sem tabela de progresso pré-computada por cron (ver
 // histórico: processar todas as séries acompanhadas numa invocação só
@@ -150,11 +155,23 @@ async function findNextUnwatchedEpisode(
 // Série marcada como abandonada (seriesEntry.abandonedAt, ver
 // SeriesDetail) nunca entra nessas contas — filtrada antes de tudo,
 // independente de ter lacuna real ou não.
+//
+// Paginação: as séries candidatas são ordenadas uma vez, ANTES de resolver
+// qualquer episódio, usando só dado já em cache local (recentlyActive +
+// lastEpisodeToAir, sem TMDB) — critério aproximado (não é sempre
+// idêntico ao episódio pendente exato), mas estável entre páginas, o que
+// dá pra paginar de verdade sem pular/duplicar item na rolagem infinita.
+// `cursor` é o índice nessa lista ordenada; cada página resolve candidatas
+// a partir dele até juntar `pageSize` itens, estourar o orçamento de TMDB
+// (para a página no meio, sem consumir a candidata seguinte — ela vira o
+// `nextCursor`, tentada de novo na próxima página) ou acabar a lista.
 export async function getContinueWatching(
   env: Env,
   db: Db,
   userId: string,
-): Promise<ContinueWatchingItem[]> {
+  cursor = 0,
+  pageSize = 12,
+): Promise<ContinueWatchingPage> {
   const [trackedRows, abandonedRows] = await Promise.all([
     db
       .selectDistinct({ seriesId: seriesEpisodeWatch.seriesId })
@@ -171,7 +188,7 @@ export async function getContinueWatching(
     .map((row) => row.seriesId)
     .filter((seriesId) => !abandonedSeriesIds.has(seriesId));
   if (seriesIds.length === 0) {
-    return [];
+    return { items: [], nextCursor: null };
   }
 
   // watchedCountBySeries é derivado de watchedEpisodeRows em memória — uma
@@ -220,12 +237,52 @@ export async function getContinueWatching(
   }
 
   const lastWatchedBySeries = new Map(recentRows.map((row) => [row.seriesId, row.lastWatchedAt]));
+  const now = Date.now();
+  const recentlyActiveBySeries = new Map(
+    seriesIds.map((seriesId) => {
+      const lastWatchedAt = lastWatchedBySeries.get(seriesId);
+      return [
+        seriesId,
+        lastWatchedAt !== undefined && now - lastWatchedAt <= RECENT_ACTIVITY_WINDOW_MS,
+      ] as const;
+    }),
+  );
+
+  // Ordena as candidatas 1x, antes de resolver qualquer episódio — só com
+  // dado já em cache local (sem TMDB), pra ficar estável entre páginas:
+  // ativa nos últimos 3 meses primeiro; dentro de cada grupo, último
+  // episódio já lançado (segundo o cache da série) mais recente primeiro.
+  // Aproxima o critério de ordenação antigo (episódio pendente exato) sem
+  // depender da TMDB pra ordenar — só pra resolver o episódio de cada item
+  // da página atual.
+  const sortedCandidates = [...seriesIds].sort((a, b) => {
+    const aRecent = recentlyActiveBySeries.get(a) ?? false;
+    const bRecent = recentlyActiveBySeries.get(b) ?? false;
+    if (aRecent !== bRecent) {
+      return aRecent ? -1 : 1;
+    }
+    const aDate = seriesById.get(a)?.lastEpisodeToAir?.airDate ?? "";
+    const bDate = seriesById.get(b)?.lastEpisodeToAir?.airDate ?? "";
+    if (aDate !== bDate) {
+      return bDate.localeCompare(aDate);
+    }
+    return a - b; // tiebreaker estável (mesmo par nunca inverte entre páginas)
+  });
 
   const budget = { remaining: LIVE_TMDB_BUDGET };
-  const now = Date.now();
   const items: ContinueWatchingItem[] = [];
+  const startIndex = Math.min(cursor, sortedCandidates.length);
+  let index = startIndex;
 
-  for (const seriesId of seriesIds) {
+  for (; index < sortedCandidates.length; index++) {
+    if (items.length >= pageSize || budget.remaining <= 0) {
+      // Página cheia, ou orçamento de TMDB estourou nesta requisição — para
+      // sem consumir a candidata atual, ela vira o cursor da próxima
+      // página (não foi avaliada ainda, nem parcialmente).
+      break;
+    }
+
+    const seriesId = sortedCandidates[index]!;
     let cachedSeries = seriesById.get(seriesId);
     if (!cachedSeries) {
       continue; // referência órfã (não deveria acontecer, FK garante) — pula em vez de quebrar a Home inteira
@@ -275,25 +332,19 @@ export async function getContinueWatching(
       continue;
     }
 
-    const lastWatchedAt = lastWatchedBySeries.get(seriesId);
-    const recentlyActive =
-      lastWatchedAt !== undefined && now - lastWatchedAt <= RECENT_ACTIVITY_WINDOW_MS;
-
     items.push({
       series: mapCachedSeriesToSummary(cachedSeries),
       nextEpisode,
-      recentlyActive,
+      recentlyActive: recentlyActiveBySeries.get(seriesId) ?? false,
     });
   }
 
-  // Ativa nos últimos 3 meses primeiro; dentro de cada grupo, episódio
-  // liberado mais recentemente primeiro.
-  items.sort((a, b) => {
-    if (a.recentlyActive !== b.recentlyActive) {
-      return a.recentlyActive ? -1 : 1;
-    }
-    return b.nextEpisode.airDate.localeCompare(a.nextEpisode.airDate);
-  });
-
-  return items;
+  // Itens já saem na ordem certa (mesma ordem de sortedCandidates, que já
+  // é a ordem final de exibição) — sem reordenar de novo aqui, isso
+  // quebraria a estabilidade entre páginas que o pré-sort existe pra
+  // garantir.
+  return {
+    items,
+    nextCursor: index < sortedCandidates.length ? index : null,
+  };
 }

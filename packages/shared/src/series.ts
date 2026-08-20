@@ -172,11 +172,11 @@ export const PaginatedSeriesEntriesResponseSchema = z.object({
 
 export type PaginatedSeriesEntriesResponse = z.infer<typeof PaginatedSeriesEntriesResponseSchema>;
 
-// Item da Home ("Continuar assistindo") — pré-calculado pelo cron (ver
-// refresh-episodes.job.ts/watch-progress.service.ts no BE), não uma marcação
+// Item da Home ("Continuar assistindo") — calculado ao vivo a cada
+// carregamento (ver continue-watching.service.ts no BE), não uma marcação
 // qualquer: só existe pra série com episódio pendente de verdade.
 // `recentlyActive` = assistiu algum episódio dessa série nos últimos 3
-// meses (critério de ordenação, não de filtro — calculado ao vivo no BE).
+// meses (critério de ordenação, não de filtro).
 export const ContinueWatchingItemSchema = z.object({
   series: SeriesSummarySchema,
   nextEpisode: SeriesUpcomingEpisodeSchema,
@@ -185,8 +185,21 @@ export const ContinueWatchingItemSchema = z.object({
 
 export type ContinueWatchingItem = z.infer<typeof ContinueWatchingItemSchema>;
 
+// Paginação por cursor (índice na lista já ordenada de séries candidatas,
+// não um id) — a ordenação em si usa só dado já em cache local (sem TMDB),
+// pra ficar estável entre páginas; só a resolução do episódio exato de
+// cada item da página consulta a TMDB. `nextCursor: null` = não há mais
+// candidatas (chegou ao fim da lista, não necessariamente da página).
+export const ContinueWatchingQuerySchema = z.object({
+  cursor: z.coerce.number().int().min(0).default(0),
+  pageSize: z.coerce.number().int().min(1).max(50).default(12),
+});
+
+export type ContinueWatchingQuery = z.infer<typeof ContinueWatchingQuerySchema>;
+
 export const ContinueWatchingResponseSchema = z.object({
   items: z.array(ContinueWatchingItemSchema),
+  nextCursor: z.number().int().nullable(),
 });
 
 export type ContinueWatchingResponse = z.infer<typeof ContinueWatchingResponseSchema>;

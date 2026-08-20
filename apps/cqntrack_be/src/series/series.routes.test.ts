@@ -887,7 +887,7 @@ describe("GET /api/series/continue-watching", () => {
     const res = await app.request("/api/series/continue-watching", { headers: { cookie } }, env);
 
     expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toEqual({ items: [] });
+    await expect(res.json()).resolves.toEqual({ items: [], nextCursor: null });
   });
 
   it("série só favoritada (nenhum episódio assistido) não aparece", async () => {
@@ -901,7 +901,7 @@ describe("GET /api/series/continue-watching", () => {
     vi.unstubAllGlobals();
 
     const res = await app.request("/api/series/continue-watching", { headers: { cookie } }, env);
-    await expect(res.json()).resolves.toEqual({ items: [] });
+    await expect(res.json()).resolves.toEqual({ items: [], nextCursor: null });
   });
 
   it("caso A: lacuna já visível pelo cache (assistidos < episódios da temporada) acha o episódio exato", async () => {
@@ -950,7 +950,7 @@ describe("GET /api/series/continue-watching", () => {
     vi.stubGlobal("fetch", fetchSpy);
 
     const res = await app.request("/api/series/continue-watching", { headers: { cookie } }, env);
-    await expect(res.json()).resolves.toEqual({ items: [] });
+    await expect(res.json()).resolves.toEqual({ items: [], nextCursor: null });
     expect(fetchSpy).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
@@ -1003,7 +1003,7 @@ describe("GET /api/series/continue-watching", () => {
     vi.stubGlobal("fetch", fetchSpy);
 
     const res = await app.request("/api/series/continue-watching", { headers: { cookie } }, env);
-    await expect(res.json()).resolves.toEqual({ items: [] });
+    await expect(res.json()).resolves.toEqual({ items: [], nextCursor: null });
     expect(fetchSpy).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
@@ -1024,7 +1024,7 @@ describe("GET /api/series/continue-watching", () => {
     vi.stubGlobal("fetch", fetchSpy);
 
     const res = await app.request("/api/series/continue-watching", { headers: { cookie } }, env);
-    await expect(res.json()).resolves.toEqual({ items: [] });
+    await expect(res.json()).resolves.toEqual({ items: [], nextCursor: null });
     expect(fetchSpy).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
@@ -1095,6 +1095,20 @@ describe("GET /api/series/continue-watching", () => {
 
     for (const s of setups) {
       await watchFirstEpisode(cookie, s.id, s.name);
+      // A ordenação agora usa lastEpisodeToAir (já em cache, sem TMDB) em
+      // vez do episódio pendente resolvido ao vivo — grava direto pra
+      // simular o que o refresh normal da série teria preenchido.
+      await db
+        .update(series)
+        .set({
+          lastEpisodeToAir: {
+            seasonNumber: 1,
+            episodeNumber: 1,
+            name: "Episódio 1",
+            airDate: s.airDate,
+          },
+        })
+        .where(eq(series.tmdbId, s.id));
     }
 
     // Atividade recente (< 3 meses) só na 713; as demais ficam velhas de
@@ -1139,6 +1153,62 @@ describe("GET /api/series/continue-watching", () => {
     vi.unstubAllGlobals();
 
     expect(body.items.map((item) => item.series.tmdbId)).toEqual([713, 712, 711]);
+  });
+
+  it("pagina por cursor — próxima página continua exatamente de onde parou, sem repetir nem pular", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    const db = createDb(env);
+
+    const setups = [
+      { id: 721, airDate: "2020-01-01" },
+      { id: 722, airDate: "2020-02-01" },
+      { id: 723, airDate: "2020-03-01" },
+    ];
+    for (const s of setups) {
+      await watchFirstEpisode(cookie, s.id, `Série ${s.id}`);
+      await db
+        .update(series)
+        .set({
+          lastEpisodeToAir: {
+            seasonNumber: 1,
+            episodeNumber: 1,
+            name: "Episódio 1",
+            airDate: s.airDate,
+          },
+        })
+        .where(eq(series.tmdbId, s.id));
+    }
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse(tmdbSeasonDetail(1, 3))),
+    );
+
+    const page1Res = await app.request(
+      "/api/series/continue-watching?pageSize=2",
+      { headers: { cookie } },
+      env,
+    );
+    const page1 = (await page1Res.json()) as {
+      items: Array<{ series: { tmdbId: number } }>;
+      nextCursor: number | null;
+    };
+    expect(page1.items.map((item) => item.series.tmdbId)).toEqual([723, 722]);
+    expect(page1.nextCursor).toBe(2);
+
+    const page2Res = await app.request(
+      `/api/series/continue-watching?pageSize=2&cursor=${page1.nextCursor}`,
+      { headers: { cookie } },
+      env,
+    );
+    const page2 = (await page2Res.json()) as {
+      items: Array<{ series: { tmdbId: number } }>;
+      nextCursor: number | null;
+    };
+    vi.unstubAllGlobals();
+
+    expect(page2.items.map((item) => item.series.tmdbId)).toEqual([721]);
+    expect(page2.nextCursor).toBeNull();
   });
 
   // Regressão: D1 limita 100 parâmetros bindados por query — as queries em

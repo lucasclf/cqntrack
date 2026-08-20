@@ -1,4 +1,5 @@
 import {
+  ContinueWatchingQuerySchema,
   ContinueWatchingResponseSchema,
   DiscoverSeriesQuerySchema,
   DiscoverSeriesResponseSchema,
@@ -176,10 +177,22 @@ seriesRouter.get("/recently-watched", async (c) => {
 
 // "Continuar assistindo" da Home — calculado ao vivo (ver
 // continue-watching.service.ts), sem tabela pré-computada por cron.
+// Paginado por cursor (rolagem infinita no front, ver ContinueWatching.tsx).
 seriesRouter.get("/continue-watching", async (c) => {
+  const parsed = ContinueWatchingQuerySchema.safeParse(c.req.query());
+  if (!parsed.success) {
+    return c.json({ error: "invalid_query" }, 400);
+  }
+
   const db = createDb(c.env);
-  const items = await getContinueWatching(c.env, db, c.get("userId"));
-  return c.json(ContinueWatchingResponseSchema.parse({ items }));
+  const { items, nextCursor } = await getContinueWatching(
+    c.env,
+    db,
+    c.get("userId"),
+    parsed.data.cursor,
+    parsed.data.pageSize,
+  );
+  return c.json(ContinueWatchingResponseSchema.parse({ items, nextCursor }));
 });
 
 seriesRouter.get("/discover", async (c) => {
