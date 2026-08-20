@@ -130,6 +130,61 @@ describe("SeriesDetail", () => {
     );
   });
 
+  it("marcar um episódio de série abandonada pergunta se quer retomar; confirmando, desmarca o abandono", async () => {
+    const seriesWithSeasons = {
+      ...SERIES,
+      seasons: [
+        {
+          seasonNumber: 1,
+          name: "Temporada 1",
+          episodeCount: 1,
+          airDate: "2008-01-20",
+          posterUrl: null,
+        },
+      ],
+    };
+    getMock.mockImplementation((path: string) => {
+      if (path === "/api/series/1396") {
+        return Promise.resolve({
+          series: seriesWithSeasons,
+          entry: {
+            id: "1",
+            rating: null,
+            watchedEpisodeCount: 0,
+            favoritedAt: null,
+            abandonedAt: "2026-01-01T00:00:00.000Z",
+            review: null,
+            updatedAt: "2026-01-01T00:00:00.000Z",
+          },
+        });
+      }
+      if (path === "/api/series/1396/seasons/1") {
+        return Promise.resolve({
+          seasonNumber: 1,
+          episodes: [
+            {
+              episodeNumber: 1,
+              name: "Pilot",
+              airDate: "2008-01-20",
+              stillUrl: null,
+              watched: false,
+            },
+          ],
+        });
+      }
+      return Promise.reject(new Error("rota inesperada: " + path));
+    });
+    putMock.mockResolvedValue(undefined);
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    renderDetail();
+
+    await screen.findByText("1. Pilot");
+    fireEvent.click(screen.getByLabelText("Assistido"));
+
+    expect(putMock).toHaveBeenCalledWith("/api/series/1396/episodes/1/1", { watched: true });
+    expect(putMock).toHaveBeenCalledWith("/api/series/1396/entry", { abandoned: false });
+  });
+
   it("salva a nota ao clicar numa estrela, criando a marcação quando ainda não existe entry", async () => {
     getMock.mockResolvedValue({ series: SERIES, entry: null });
     putMock.mockResolvedValue({

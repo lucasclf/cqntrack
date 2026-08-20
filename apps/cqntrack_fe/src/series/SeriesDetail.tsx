@@ -176,6 +176,8 @@ export function SeriesDetail() {
         tmdbId={series.tmdbId}
         seasons={series.seasons ?? []}
         initialSeasonData={initialSeasonData}
+        abandoned={abandoned}
+        onResume={() => savePatch({ abandoned: false })}
       />
 
       <section className={styles.entrySection}>

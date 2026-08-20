@@ -12,6 +12,10 @@ interface SeriesEpisodeListProps {
   // aparecer. null quando a série não tem essa temporada (ou o pai ainda
   // não terminou de buscar); nesses casos a busca cai pro fluxo normal.
   initialSeasonData?: SeriesSeasonEpisodesResponse | null;
+  // Série marcada como abandonada (ver SeriesDetail) — ao marcar qualquer
+  // episódio como assistido, pergunta se quer voltar a acompanhar.
+  abandoned: boolean;
+  onResume: () => void;
 }
 
 type SeasonCache = ReadonlyMap<number, SeriesSeasonEpisodesResponse>;
@@ -37,7 +41,13 @@ function buildInitialCache(
 // trocar de aba ser instantâneo em vez de recarregar tudo toda vez — e a
 // temporada inicial já chega pronta via `initialSeasonData`, sem flash nem
 // na primeira vez.
-export function SeriesEpisodeList({ tmdbId, seasons, initialSeasonData }: SeriesEpisodeListProps) {
+export function SeriesEpisodeList({
+  tmdbId,
+  seasons,
+  initialSeasonData,
+  abandoned,
+  onResume,
+}: SeriesEpisodeListProps) {
   const [selectedSeason, setSelectedSeason] = useState<number | null>(pickDefaultSeason(seasons));
   const [cache, setCache] = useState<SeasonCache>(() =>
     buildInitialCache(seasons, initialSeasonData),
@@ -92,25 +102,64 @@ export function SeriesEpisodeList({ tmdbId, seasons, initialSeasonData }: Series
   // Otimista: atualiza a UI antes da resposta do PUT, reverte se falhar —
   // marcar episódio é uma ação frequente, esperar o round-trip toda vez
   // deixaria a lista visivelmente lenta.
+  //
+  // Ao marcar (não ao desmarcar) um episódio: (1) se há episódio(s)
+  // anterior(es) da mesma temporada ainda não assistido(s) — ex.: marcou o
+  // 3 sem ter visto o 1 e o 2 —, pergunta se quer marcar os anteriores
+  // junto; (2) se a série está abandonada, pergunta se quer voltar a
+  // acompanhar. As duas perguntas são independentes entre si.
   async function toggleEpisode(episodeNumber: number, watched: boolean) {
     if (selectedSeason === null) return;
+    const seasonData = cache.get(selectedSeason);
+
+    let episodeNumbersToMark = [episodeNumber];
+    if (watched && seasonData) {
+      const earlierUnwatched = seasonData.episodes
+        .filter((episode) => episode.episodeNumber < episodeNumber && !episode.watched)
+        .map((episode) => episode.episodeNumber);
+      if (
+        earlierUnwatched.length > 0 &&
+        window.confirm(
+          earlierUnwatched.length === 1
+            ? "Você ainda não marcou o episódio anterior desta temporada como assistido. Marcar ele também?"
+            : `Você ainda não marcou ${earlierUnwatched.length} episódios anteriores desta temporada como assistidos. Marcar eles também?`,
+        )
+      ) {
+        episodeNumbersToMark = [...earlierUnwatched, episodeNumber];
+      }
+    }
+
+    if (
+      watched &&
+      abandoned &&
+      window.confirm("Esta série está marcada como abandonada. Quer voltar a acompanhá-la?")
+    ) {
+      onResume();
+    }
+
     setActionError(null);
     updateCachedSeason(selectedSeason, (season) => ({
       ...season,
       episodes: season.episodes.map((episode) =>
-        episode.episodeNumber === episodeNumber ? { ...episode, watched } : episode,
+        episodeNumbersToMark.includes(episode.episodeNumber) ? { ...episode, watched } : episode,
       ),
     }));
     try {
-      await apiClient.put(`/api/series/${tmdbId}/episodes/${selectedSeason}/${episodeNumber}`, {
-        watched,
-      });
+      await Promise.all(
+        episodeNumbersToMark.map((number) =>
+          apiClient.put(`/api/series/${tmdbId}/episodes/${selectedSeason}/${number}`, {
+            watched,
+          }),
+        ),
+      );
     } catch {
       setActionError("Falha ao salvar. Tente novamente.");
       updateCachedSeason(selectedSeason, (season) => ({
         ...season,
         episodes: season.episodes.map((episode) =>
-          episode.episodeNumber === episodeNumber ? { ...episode, watched: !watched } : episode,
+          episodeNumbersToMark.includes(episode.episodeNumber)
+            ? { ...episode, watched: !watched }
+            : episode,
         ),
       }));
     }
