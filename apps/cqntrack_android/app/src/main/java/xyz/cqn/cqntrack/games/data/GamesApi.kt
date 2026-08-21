@@ -1,6 +1,8 @@
 package xyz.cqn.cqntrack.games.data
 
+import kotlinx.serialization.json.JsonObject
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.PUT
@@ -22,4 +24,11 @@ interface GamesApi {
         @Path("igdbId") igdbId: Int,
         @Body body: UpsertGameEntryRequestDto,
     ): GameEntryDto
+
+    /** Ver comentário equivalente em BooksApi.kt — corpo cru pra permitir limpar nota/review com null explícito. */
+    @PUT("api/games/{igdbId}/entry")
+    suspend fun upsertEntryRaw(@Path("igdbId") igdbId: Int, @Body body: JsonObject): GameEntryDto
+
+    @DELETE("api/games/{igdbId}/entry")
+    suspend fun deleteEntry(@Path("igdbId") igdbId: Int)
 }

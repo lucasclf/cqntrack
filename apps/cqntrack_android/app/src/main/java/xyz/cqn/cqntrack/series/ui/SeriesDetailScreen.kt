@@ -1,6 +1,7 @@
 package xyz.cqn.cqntrack.series.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -38,9 +39,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
+import xyz.cqn.cqntrack.core.designsystem.StarRating
 import xyz.cqn.cqntrack.series.data.SeriesEpisodeDto
 import xyz.cqn.cqntrack.series.data.SeriesListDto
 
@@ -51,6 +56,7 @@ fun SeriesDetailScreen(
     viewModel: SeriesDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val focusManager = LocalFocusManager.current
 
     Scaffold(
         topBar = {
@@ -83,7 +89,14 @@ fun SeriesDetailScreen(
             // corrigido aqui do mesmo jeito antes de acontecer de novo).
             else -> {
                 val series = uiState.series!!
-                LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                        .pointerInput(Unit) {
+                            detectTapGestures(onTap = { focusManager.clearFocus() })
+                        },
+                ) {
                     item {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Row {
@@ -128,6 +141,12 @@ fun SeriesDetailScreen(
                                 modifier = Modifier.padding(top = 16.dp),
                             )
 
+                            StarRating(
+                                value = uiState.entry?.rating,
+                                onChange = viewModel::setRating,
+                                modifier = Modifier.padding(top = 12.dp),
+                            )
+
                             if (series.overview != null) {
                                 Text(
                                     text = series.overview,
@@ -136,12 +155,41 @@ fun SeriesDetailScreen(
                                 )
                             }
 
+                            var reviewDraft by remember(uiState.entry?.review) {
+                                mutableStateOf(uiState.entry?.review.orEmpty())
+                            }
+                            OutlinedTextField(
+                                value = reviewDraft,
+                                onValueChange = { reviewDraft = it },
+                                label = { Text("Review") },
+                                minLines = 3,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 16.dp)
+                                    .onFocusChanged { focusState ->
+                                        if (!focusState.isFocused &&
+                                            reviewDraft != uiState.entry?.review.orEmpty()
+                                        ) {
+                                            viewModel.setReview(reviewDraft.ifBlank { null })
+                                        }
+                                    },
+                            )
+
                             if (uiState.errorMessage != null) {
                                 Text(
                                     text = uiState.errorMessage.orEmpty(),
                                     color = MaterialTheme.colorScheme.error,
                                     modifier = Modifier.padding(top = 16.dp),
                                 )
+                            }
+
+                            if (uiState.entry != null) {
+                                TextButton(
+                                    onClick = viewModel::removeEntry,
+                                    modifier = Modifier.padding(top = 8.dp),
+                                ) {
+                                    Text("Remover marcação")
+                                }
                             }
                         }
                     }

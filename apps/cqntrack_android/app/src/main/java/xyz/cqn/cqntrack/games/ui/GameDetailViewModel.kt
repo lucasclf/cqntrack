@@ -66,6 +66,39 @@ class GameDetailViewModel @Inject constructor(
         updateEntry(UpsertGameEntryRequestDto(favorited = !isFavorited))
     }
 
+    fun setRating(rating: Double?) {
+        viewModelScope.launch {
+            try {
+                val updated = gamesRepository.setRating(igdbId, rating)
+                _uiState.update { it.copy(entry = updated) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "Falha ao salvar. Tente de novo.") }
+            }
+        }
+    }
+
+    fun setReview(review: String?) {
+        viewModelScope.launch {
+            try {
+                val updated = gamesRepository.setReview(igdbId, review)
+                _uiState.update { it.copy(entry = updated) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "Falha ao salvar. Tente de novo.") }
+            }
+        }
+    }
+
+    fun removeEntry() {
+        viewModelScope.launch {
+            try {
+                gamesRepository.deleteEntry(igdbId)
+                _uiState.update { it.copy(entry = null) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "Falha ao remover marcação. Tente de novo.") }
+            }
+        }
+    }
+
     private fun updateEntry(body: UpsertGameEntryRequestDto) {
         viewModelScope.launch {
             try {

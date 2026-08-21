@@ -175,6 +175,39 @@ class MangaDetailViewModel @Inject constructor(
         }
     }
 
+    fun setRating(rating: Double?) {
+        viewModelScope.launch {
+            try {
+                val updated = mangaRepository.setRating(mangadexId, rating)
+                _uiState.update { it.copy(entry = updated) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "Falha ao salvar. Tente de novo.") }
+            }
+        }
+    }
+
+    fun setReview(review: String?) {
+        viewModelScope.launch {
+            try {
+                val updated = mangaRepository.setReview(mangadexId, review)
+                _uiState.update { it.copy(entry = updated) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "Falha ao salvar. Tente de novo.") }
+            }
+        }
+    }
+
+    fun removeEntry() {
+        viewModelScope.launch {
+            try {
+                mangaRepository.deleteEntry(mangadexId)
+                _uiState.update { it.copy(entry = null) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "Falha ao remover marcação. Tente de novo.") }
+            }
+        }
+    }
+
     private fun updateEntry(body: UpsertMangaEntryRequestDto) {
         viewModelScope.launch {
             try {

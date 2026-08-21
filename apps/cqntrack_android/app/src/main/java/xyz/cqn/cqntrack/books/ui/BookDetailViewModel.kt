@@ -67,7 +67,38 @@ class BookDetailViewModel @Inject constructor(
         updateEntry(UpsertBookEntryRequestDto(favorited = !isFavorited))
     }
 
-    fun setRating(rating: Double) = updateEntry(UpsertBookEntryRequestDto(rating = rating))
+    fun setRating(rating: Double?) {
+        viewModelScope.launch {
+            try {
+                val updated = booksRepository.setRating(googleBooksId, rating)
+                _uiState.update { it.copy(entry = updated) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "Falha ao salvar. Tente de novo.") }
+            }
+        }
+    }
+
+    fun setReview(review: String?) {
+        viewModelScope.launch {
+            try {
+                val updated = booksRepository.setReview(googleBooksId, review)
+                _uiState.update { it.copy(entry = updated) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "Falha ao salvar. Tente de novo.") }
+            }
+        }
+    }
+
+    fun removeEntry() {
+        viewModelScope.launch {
+            try {
+                booksRepository.deleteEntry(googleBooksId)
+                _uiState.update { it.copy(entry = null) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "Falha ao remover marcação. Tente de novo.") }
+            }
+        }
+    }
 
     /** Otimista seria mais responsivo, mas pra prova de conceito recarrega a entry do servidor após salvar — mesma fonte de verdade, menos estado pra sincronizar manualmente. */
     private fun updateEntry(body: UpsertBookEntryRequestDto) {

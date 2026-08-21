@@ -1,6 +1,8 @@
 package xyz.cqn.cqntrack.series.data
 
+import kotlinx.serialization.json.JsonObject
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.PUT
@@ -22,6 +24,13 @@ interface SeriesApi {
         @Path("tmdbId") tmdbId: Int,
         @Body body: UpsertSeriesEntryRequestDto,
     ): SeriesEntryDto
+
+    /** Ver comentário equivalente em BooksApi.kt — corpo cru pra permitir limpar nota/review com null explícito. */
+    @PUT("api/series/{tmdbId}/entry")
+    suspend fun upsertEntryRaw(@Path("tmdbId") tmdbId: Int, @Body body: JsonObject): SeriesEntryDto
+
+    @DELETE("api/series/{tmdbId}/entry")
+    suspend fun deleteEntry(@Path("tmdbId") tmdbId: Int)
 
     @GET("api/series/{tmdbId}/seasons/{seasonNumber}")
     suspend fun getSeasonEpisodes(

@@ -1,5 +1,7 @@
 package xyz.cqn.cqntrack.manga.data
 
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import retrofit2.HttpException
 import xyz.cqn.cqntrack.core.network.ApiException
 import javax.inject.Inject
@@ -20,6 +22,14 @@ class MangaRepository @Inject constructor(
 
     suspend fun upsertEntry(mangadexId: String, body: UpsertMangaEntryRequestDto): MangaEntryDto =
         runApiCall { mangaApi.upsertEntry(mangadexId, body) }
+
+    suspend fun setRating(mangadexId: String, rating: Double?): MangaEntryDto =
+        runApiCall { mangaApi.upsertEntryRaw(mangadexId, buildJsonObject { put("rating", rating) }) }
+
+    suspend fun setReview(mangadexId: String, review: String?): MangaEntryDto =
+        runApiCall { mangaApi.upsertEntryRaw(mangadexId, buildJsonObject { put("review", review) }) }
+
+    suspend fun deleteEntry(mangadexId: String) = runApiCall { mangaApi.deleteEntry(mangadexId) }
 
     suspend fun getVolumes(mangadexId: String): MangaVolumesResponseDto =
         runApiCall { mangaApi.getVolumes(mangadexId) }

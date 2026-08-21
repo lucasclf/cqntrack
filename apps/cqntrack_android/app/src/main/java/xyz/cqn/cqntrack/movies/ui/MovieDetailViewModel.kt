@@ -66,6 +66,39 @@ class MovieDetailViewModel @Inject constructor(
         updateEntry(UpsertMovieEntryRequestDto(favorited = !isFavorited))
     }
 
+    fun setRating(rating: Double?) {
+        viewModelScope.launch {
+            try {
+                val updated = moviesRepository.setRating(tmdbId, rating)
+                _uiState.update { it.copy(entry = updated) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "Falha ao salvar. Tente de novo.") }
+            }
+        }
+    }
+
+    fun setReview(review: String?) {
+        viewModelScope.launch {
+            try {
+                val updated = moviesRepository.setReview(tmdbId, review)
+                _uiState.update { it.copy(entry = updated) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "Falha ao salvar. Tente de novo.") }
+            }
+        }
+    }
+
+    fun removeEntry() {
+        viewModelScope.launch {
+            try {
+                moviesRepository.deleteEntry(tmdbId)
+                _uiState.update { it.copy(entry = null) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "Falha ao remover marcação. Tente de novo.") }
+            }
+        }
+    }
+
     private fun updateEntry(body: UpsertMovieEntryRequestDto) {
         viewModelScope.launch {
             try {

@@ -1,6 +1,8 @@
 package xyz.cqn.cqntrack.movies.data
 
+import kotlinx.serialization.json.JsonObject
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.PUT
@@ -22,4 +24,11 @@ interface MoviesApi {
         @Path("tmdbId") tmdbId: Int,
         @Body body: UpsertMovieEntryRequestDto,
     ): MovieEntryDto
+
+    /** Ver comentário equivalente em BooksApi.kt — corpo cru pra permitir limpar nota/review com null explícito. */
+    @PUT("api/movies/{tmdbId}/entry")
+    suspend fun upsertEntryRaw(@Path("tmdbId") tmdbId: Int, @Body body: JsonObject): MovieEntryDto
+
+    @DELETE("api/movies/{tmdbId}/entry")
+    suspend fun deleteEntry(@Path("tmdbId") tmdbId: Int)
 }

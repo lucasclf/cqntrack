@@ -1,5 +1,7 @@
 package xyz.cqn.cqntrack.movies.data
 
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import retrofit2.HttpException
 import xyz.cqn.cqntrack.core.network.ApiException
 import javax.inject.Inject
@@ -20,6 +22,14 @@ class MoviesRepository @Inject constructor(
 
     suspend fun upsertEntry(tmdbId: Int, body: UpsertMovieEntryRequestDto): MovieEntryDto =
         runApiCall { moviesApi.upsertEntry(tmdbId, body) }
+
+    suspend fun setRating(tmdbId: Int, rating: Double?): MovieEntryDto =
+        runApiCall { moviesApi.upsertEntryRaw(tmdbId, buildJsonObject { put("rating", rating) }) }
+
+    suspend fun setReview(tmdbId: Int, review: String?): MovieEntryDto =
+        runApiCall { moviesApi.upsertEntryRaw(tmdbId, buildJsonObject { put("review", review) }) }
+
+    suspend fun deleteEntry(tmdbId: Int) = runApiCall { moviesApi.deleteEntry(tmdbId) }
 
     private suspend fun <T> runApiCall(block: suspend () -> T): T =
         try {

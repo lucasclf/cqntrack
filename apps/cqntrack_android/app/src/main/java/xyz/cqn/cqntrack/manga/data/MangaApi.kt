@@ -1,6 +1,8 @@
 package xyz.cqn.cqntrack.manga.data
 
+import kotlinx.serialization.json.JsonObject
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.PUT
@@ -22,6 +24,13 @@ interface MangaApi {
         @Path("mangadexId") mangadexId: String,
         @Body body: UpsertMangaEntryRequestDto,
     ): MangaEntryDto
+
+    /** Ver comentário equivalente em BooksApi.kt — corpo cru pra permitir limpar nota/review com null explícito. */
+    @PUT("api/manga/{mangadexId}/entry")
+    suspend fun upsertEntryRaw(@Path("mangadexId") mangadexId: String, @Body body: JsonObject): MangaEntryDto
+
+    @DELETE("api/manga/{mangadexId}/entry")
+    suspend fun deleteEntry(@Path("mangadexId") mangadexId: String)
 
     @GET("api/manga/{mangadexId}/volumes")
     suspend fun getVolumes(@Path("mangadexId") mangadexId: String): MangaVolumesResponseDto

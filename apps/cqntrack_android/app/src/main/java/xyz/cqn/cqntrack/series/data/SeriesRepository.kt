@@ -1,5 +1,7 @@
 package xyz.cqn.cqntrack.series.data
 
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import retrofit2.HttpException
 import xyz.cqn.cqntrack.core.network.ApiException
 import javax.inject.Inject
@@ -20,6 +22,14 @@ class SeriesRepository @Inject constructor(
 
     suspend fun upsertEntry(tmdbId: Int, body: UpsertSeriesEntryRequestDto): SeriesEntryDto =
         runApiCall { seriesApi.upsertEntry(tmdbId, body) }
+
+    suspend fun setRating(tmdbId: Int, rating: Double?): SeriesEntryDto =
+        runApiCall { seriesApi.upsertEntryRaw(tmdbId, buildJsonObject { put("rating", rating) }) }
+
+    suspend fun setReview(tmdbId: Int, review: String?): SeriesEntryDto =
+        runApiCall { seriesApi.upsertEntryRaw(tmdbId, buildJsonObject { put("review", review) }) }
+
+    suspend fun deleteEntry(tmdbId: Int) = runApiCall { seriesApi.deleteEntry(tmdbId) }
 
     suspend fun getSeasonEpisodes(tmdbId: Int, seasonNumber: Int): SeriesSeasonEpisodesResponseDto =
         runApiCall { seriesApi.getSeasonEpisodes(tmdbId, seasonNumber) }
