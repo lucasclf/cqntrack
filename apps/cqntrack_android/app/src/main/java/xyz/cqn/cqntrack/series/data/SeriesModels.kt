@@ -63,6 +63,14 @@ data class SearchSeriesResponseDto(
     val results: List<SeriesSummaryDto>,
 )
 
+/** Espelha DiscoverSeriesResponseSchema — populares reais via GET /api/series/discover. */
+@Serializable
+data class DiscoverSeriesResponseDto(
+    val results: List<SeriesSummaryDto>,
+    val page: Int,
+    val hasMore: Boolean,
+)
+
 @Serializable
 data class SeriesDetailResponseDto(
     val series: SeriesDetailDto,

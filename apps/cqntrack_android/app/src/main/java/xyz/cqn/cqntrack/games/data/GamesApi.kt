@@ -11,6 +11,9 @@ interface GamesApi {
     @GET("api/games/search")
     suspend fun search(@Query("q") query: String, @Query("limit") limit: Int = 20): SearchGamesResponseDto
 
+    @GET("api/games/discover")
+    suspend fun discover(@Query("page") page: Int = 1): DiscoverGamesResponseDto
+
     @GET("api/games/{igdbId}")
     suspend fun getDetail(@Path("igdbId") igdbId: Int): GameDetailResponseDto
 

@@ -52,6 +52,14 @@ data class SearchMoviesResponseDto(
     val results: List<MovieSummaryDto>,
 )
 
+/** Espelha DiscoverMoviesResponseSchema — populares reais via GET /api/movies/discover. */
+@Serializable
+data class DiscoverMoviesResponseDto(
+    val results: List<MovieSummaryDto>,
+    val page: Int,
+    val hasMore: Boolean,
+)
+
 @Serializable
 data class MovieDetailResponseDto(
     val movie: MovieDetailDto,

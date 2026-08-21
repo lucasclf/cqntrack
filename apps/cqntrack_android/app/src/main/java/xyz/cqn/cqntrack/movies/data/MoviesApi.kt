@@ -11,6 +11,9 @@ interface MoviesApi {
     @GET("api/movies/search")
     suspend fun search(@Query("q") query: String, @Query("limit") limit: Int = 20): SearchMoviesResponseDto
 
+    @GET("api/movies/discover")
+    suspend fun discover(@Query("page") page: Int = 1): DiscoverMoviesResponseDto
+
     @GET("api/movies/{tmdbId}")
     suspend fun getDetail(@Path("tmdbId") tmdbId: Int): MovieDetailResponseDto
 

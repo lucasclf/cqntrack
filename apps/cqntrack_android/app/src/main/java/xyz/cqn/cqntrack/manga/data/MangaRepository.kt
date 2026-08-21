@@ -15,6 +15,9 @@ class MangaRepository @Inject constructor(
     suspend fun getDetail(mangadexId: String): MangaDetailResponseDto =
         runApiCall { mangaApi.getDetail(mangadexId) }
 
+    suspend fun discover(page: Int): DiscoverMangaResponseDto =
+        runApiCall { mangaApi.discover(page) }
+
     suspend fun upsertEntry(mangadexId: String, body: UpsertMangaEntryRequestDto): MangaEntryDto =
         runApiCall { mangaApi.upsertEntry(mangadexId, body) }
 

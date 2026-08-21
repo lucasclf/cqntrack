@@ -15,6 +15,9 @@ class MoviesRepository @Inject constructor(
     suspend fun getDetail(tmdbId: Int): MovieDetailResponseDto =
         runApiCall { moviesApi.getDetail(tmdbId) }
 
+    suspend fun discover(page: Int): DiscoverMoviesResponseDto =
+        runApiCall { moviesApi.discover(page) }
+
     suspend fun upsertEntry(tmdbId: Int, body: UpsertMovieEntryRequestDto): MovieEntryDto =
         runApiCall { moviesApi.upsertEntry(tmdbId, body) }
 

@@ -11,6 +11,9 @@ interface MangaApi {
     @GET("api/manga/search")
     suspend fun search(@Query("q") query: String, @Query("limit") limit: Int = 20): SearchMangaResponseDto
 
+    @GET("api/manga/discover")
+    suspend fun discover(@Query("page") page: Int = 1): DiscoverMangaResponseDto
+
     @GET("api/manga/{mangadexId}")
     suspend fun getDetail(@Path("mangadexId") mangadexId: String): MangaDetailResponseDto
 

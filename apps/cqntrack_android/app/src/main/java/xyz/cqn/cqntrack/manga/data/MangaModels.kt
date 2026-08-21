@@ -65,6 +65,14 @@ data class SearchMangaResponseDto(
     val results: List<MangaSummaryDto>,
 )
 
+/** Espelha DiscoverMangaResponseSchema — populares reais via GET /api/manga/discover (GET .../order[followedCount]). */
+@Serializable
+data class DiscoverMangaResponseDto(
+    val results: List<MangaSummaryDto>,
+    val page: Int,
+    val hasMore: Boolean,
+)
+
 @Serializable
 data class MangaDetailResponseDto(
     val manga: MangaDetailDto,

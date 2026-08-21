@@ -55,6 +55,14 @@ data class SearchGamesResponseDto(
     val results: List<GameSummaryDto>,
 )
 
+/** Espelha DiscoverGamesResponseSchema — aclamados reais via GET /api/games/discover. */
+@Serializable
+data class DiscoverGamesResponseDto(
+    val results: List<GameSummaryDto>,
+    val page: Int,
+    val hasMore: Boolean,
+)
+
 @Serializable
 data class GameDetailResponseDto(
     val game: GameDetailDto,

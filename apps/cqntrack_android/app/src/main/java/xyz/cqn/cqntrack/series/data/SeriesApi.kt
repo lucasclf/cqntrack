@@ -11,6 +11,9 @@ interface SeriesApi {
     @GET("api/series/search")
     suspend fun search(@Query("q") query: String, @Query("limit") limit: Int = 20): SearchSeriesResponseDto
 
+    @GET("api/series/discover")
+    suspend fun discover(@Query("page") page: Int = 1): DiscoverSeriesResponseDto
+
     @GET("api/series/{tmdbId}")
     suspend fun getDetail(@Path("tmdbId") tmdbId: Int): SeriesDetailResponseDto
 

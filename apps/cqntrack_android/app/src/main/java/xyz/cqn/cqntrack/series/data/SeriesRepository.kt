@@ -15,6 +15,9 @@ class SeriesRepository @Inject constructor(
     suspend fun getDetail(tmdbId: Int): SeriesDetailResponseDto =
         runApiCall { seriesApi.getDetail(tmdbId) }
 
+    suspend fun discover(page: Int): DiscoverSeriesResponseDto =
+        runApiCall { seriesApi.discover(page) }
+
     suspend fun upsertEntry(tmdbId: Int, body: UpsertSeriesEntryRequestDto): SeriesEntryDto =
         runApiCall { seriesApi.upsertEntry(tmdbId, body) }
 
