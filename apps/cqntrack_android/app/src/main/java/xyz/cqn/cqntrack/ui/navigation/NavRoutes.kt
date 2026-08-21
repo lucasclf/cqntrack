@@ -23,4 +23,8 @@ object NavRoutes {
     const val MANGA_SEARCH = "manga_search"
     const val MANGA_DETAIL = "manga_detail/{mangadexId}"
     fun mangaDetail(mangadexId: String) = "manga_detail/$mangadexId"
+
+    const val ACCOUNT = "account"
+    const val PUBLIC_PROFILE = "public_profile/{username}"
+    fun publicProfile(username: String) = "public_profile/$username"
 }

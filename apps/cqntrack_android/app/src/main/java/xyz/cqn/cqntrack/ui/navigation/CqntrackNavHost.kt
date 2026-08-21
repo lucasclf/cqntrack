@@ -18,6 +18,8 @@ import xyz.cqn.cqntrack.manga.ui.MangaDetailScreen
 import xyz.cqn.cqntrack.manga.ui.MangaSearchScreen
 import xyz.cqn.cqntrack.movies.ui.MovieDetailScreen
 import xyz.cqn.cqntrack.movies.ui.MovieSearchScreen
+import xyz.cqn.cqntrack.profile.ui.AccountScreen
+import xyz.cqn.cqntrack.profile.ui.PublicProfileScreen
 import xyz.cqn.cqntrack.series.ui.SeriesDetailScreen
 import xyz.cqn.cqntrack.series.ui.SeriesSearchScreen
 import xyz.cqn.cqntrack.ui.auth.LoginScreen
@@ -60,7 +62,17 @@ fun CqntrackNavHost() {
                 onOpenGames = { navController.navigate(NavRoutes.GAME_SEARCH) },
                 onOpenSeries = { navController.navigate(NavRoutes.SERIES_SEARCH) },
                 onOpenManga = { navController.navigate(NavRoutes.MANGA_SEARCH) },
+                onOpenAccount = { navController.navigate(NavRoutes.ACCOUNT) },
             )
+        }
+
+        composable(NavRoutes.ACCOUNT) {
+            AccountScreen(onViewPublicProfile = { username ->
+                navController.navigate(NavRoutes.publicProfile(username))
+            })
+        }
+        composable(NavRoutes.PUBLIC_PROFILE) {
+            PublicProfileScreen()
         }
 
         composable(NavRoutes.BOOK_SEARCH) {
