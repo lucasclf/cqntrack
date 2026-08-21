@@ -11,21 +11,31 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import xyz.cqn.cqntrack.books.ui.BookDetailScreen
+import xyz.cqn.cqntrack.books.ui.BookListDetailScreen
+import xyz.cqn.cqntrack.books.ui.BookListsScreen
 import xyz.cqn.cqntrack.books.ui.BookSearchScreen
 import xyz.cqn.cqntrack.games.ui.GameDetailScreen
 import xyz.cqn.cqntrack.games.ui.GameDiscoverScreen
+import xyz.cqn.cqntrack.games.ui.GameListDetailScreen
+import xyz.cqn.cqntrack.games.ui.GameListsScreen
 import xyz.cqn.cqntrack.games.ui.GameSearchScreen
 import xyz.cqn.cqntrack.manga.ui.MangaDetailScreen
 import xyz.cqn.cqntrack.manga.ui.MangaDiscoverScreen
+import xyz.cqn.cqntrack.manga.ui.MangaListDetailScreen
+import xyz.cqn.cqntrack.manga.ui.MangaListsScreen
 import xyz.cqn.cqntrack.manga.ui.MangaSearchScreen
 import xyz.cqn.cqntrack.movies.ui.MovieDetailScreen
 import xyz.cqn.cqntrack.movies.ui.MovieDiscoverScreen
+import xyz.cqn.cqntrack.movies.ui.MovieListDetailScreen
+import xyz.cqn.cqntrack.movies.ui.MovieListsScreen
 import xyz.cqn.cqntrack.movies.ui.MovieSearchScreen
 import xyz.cqn.cqntrack.profile.data.FavoriteMediaType
 import xyz.cqn.cqntrack.profile.ui.AccountScreen
 import xyz.cqn.cqntrack.profile.ui.PublicProfileScreen
 import xyz.cqn.cqntrack.series.ui.SeriesDetailScreen
 import xyz.cqn.cqntrack.series.ui.SeriesDiscoverScreen
+import xyz.cqn.cqntrack.series.ui.SeriesListDetailScreen
+import xyz.cqn.cqntrack.series.ui.SeriesListsScreen
 import xyz.cqn.cqntrack.series.ui.SeriesSearchScreen
 import xyz.cqn.cqntrack.ui.auth.LoginScreen
 import xyz.cqn.cqntrack.ui.home.HomeScreen
@@ -90,18 +100,31 @@ fun CqntrackNavHost() {
         }
 
         composable(NavRoutes.BOOK_SEARCH) {
-            BookSearchScreen(onBookClick = { book ->
-                navController.navigate(NavRoutes.bookDetail(book.googleBooksId))
-            })
+            BookSearchScreen(
+                onBookClick = { book -> navController.navigate(NavRoutes.bookDetail(book.googleBooksId)) },
+                onListsClick = { navController.navigate(NavRoutes.BOOK_LISTS) },
+            )
         }
         composable(NavRoutes.BOOK_DETAIL) {
             BookDetailScreen(onBack = { navController.popBackStack() })
+        }
+        composable(NavRoutes.BOOK_LISTS) {
+            BookListsScreen(
+                onListClick = { list -> navController.navigate(NavRoutes.bookListDetail(list.id)) },
+            )
+        }
+        composable(NavRoutes.BOOK_LIST_DETAIL) {
+            BookListDetailScreen(
+                onBack = { navController.popBackStack() },
+                onBookClick = { book -> navController.navigate(NavRoutes.bookDetail(book.googleBooksId)) },
+            )
         }
 
         composable(NavRoutes.MOVIE_DISCOVER) {
             MovieDiscoverScreen(
                 onMovieClick = { movie -> navController.navigate(NavRoutes.movieDetail(movie.tmdbId)) },
                 onSearchClick = { navController.navigate(NavRoutes.MOVIE_SEARCH) },
+                onListsClick = { navController.navigate(NavRoutes.MOVIE_LISTS) },
             )
         }
         composable(NavRoutes.MOVIE_SEARCH) {
@@ -112,11 +135,23 @@ fun CqntrackNavHost() {
         composable(NavRoutes.MOVIE_DETAIL) {
             MovieDetailScreen(onBack = { navController.popBackStack() })
         }
+        composable(NavRoutes.MOVIE_LISTS) {
+            MovieListsScreen(
+                onListClick = { list -> navController.navigate(NavRoutes.movieListDetail(list.id)) },
+            )
+        }
+        composable(NavRoutes.MOVIE_LIST_DETAIL) {
+            MovieListDetailScreen(
+                onBack = { navController.popBackStack() },
+                onMovieClick = { movie -> navController.navigate(NavRoutes.movieDetail(movie.tmdbId)) },
+            )
+        }
 
         composable(NavRoutes.GAME_DISCOVER) {
             GameDiscoverScreen(
                 onGameClick = { game -> navController.navigate(NavRoutes.gameDetail(game.igdbId)) },
                 onSearchClick = { navController.navigate(NavRoutes.GAME_SEARCH) },
+                onListsClick = { navController.navigate(NavRoutes.GAME_LISTS) },
             )
         }
         composable(NavRoutes.GAME_SEARCH) {
@@ -127,11 +162,23 @@ fun CqntrackNavHost() {
         composable(NavRoutes.GAME_DETAIL) {
             GameDetailScreen(onBack = { navController.popBackStack() })
         }
+        composable(NavRoutes.GAME_LISTS) {
+            GameListsScreen(
+                onListClick = { list -> navController.navigate(NavRoutes.gameListDetail(list.id)) },
+            )
+        }
+        composable(NavRoutes.GAME_LIST_DETAIL) {
+            GameListDetailScreen(
+                onBack = { navController.popBackStack() },
+                onGameClick = { game -> navController.navigate(NavRoutes.gameDetail(game.igdbId)) },
+            )
+        }
 
         composable(NavRoutes.SERIES_DISCOVER) {
             SeriesDiscoverScreen(
                 onSeriesClick = { series -> navController.navigate(NavRoutes.seriesDetail(series.tmdbId)) },
                 onSearchClick = { navController.navigate(NavRoutes.SERIES_SEARCH) },
+                onListsClick = { navController.navigate(NavRoutes.SERIES_LISTS) },
             )
         }
         composable(NavRoutes.SERIES_SEARCH) {
@@ -142,11 +189,23 @@ fun CqntrackNavHost() {
         composable(NavRoutes.SERIES_DETAIL) {
             SeriesDetailScreen(onBack = { navController.popBackStack() })
         }
+        composable(NavRoutes.SERIES_LISTS) {
+            SeriesListsScreen(
+                onListClick = { list -> navController.navigate(NavRoutes.seriesListDetail(list.id)) },
+            )
+        }
+        composable(NavRoutes.SERIES_LIST_DETAIL) {
+            SeriesListDetailScreen(
+                onBack = { navController.popBackStack() },
+                onSeriesClick = { series -> navController.navigate(NavRoutes.seriesDetail(series.tmdbId)) },
+            )
+        }
 
         composable(NavRoutes.MANGA_DISCOVER) {
             MangaDiscoverScreen(
                 onMangaClick = { manga -> navController.navigate(NavRoutes.mangaDetail(manga.mangadexId)) },
                 onSearchClick = { navController.navigate(NavRoutes.MANGA_SEARCH) },
+                onListsClick = { navController.navigate(NavRoutes.MANGA_LISTS) },
             )
         }
         composable(NavRoutes.MANGA_SEARCH) {
@@ -156,6 +215,17 @@ fun CqntrackNavHost() {
         }
         composable(NavRoutes.MANGA_DETAIL) {
             MangaDetailScreen(onBack = { navController.popBackStack() })
+        }
+        composable(NavRoutes.MANGA_LISTS) {
+            MangaListsScreen(
+                onListClick = { list -> navController.navigate(NavRoutes.mangaListDetail(list.id)) },
+            )
+        }
+        composable(NavRoutes.MANGA_LIST_DETAIL) {
+            MangaListDetailScreen(
+                onBack = { navController.popBackStack() },
+                onMangaClick = { manga -> navController.navigate(NavRoutes.mangaDetail(manga.mangadexId)) },
+            )
         }
     }
 }

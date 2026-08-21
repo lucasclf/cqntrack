@@ -9,8 +9,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -30,12 +34,22 @@ import xyz.cqn.cqntrack.books.data.BookSummaryDto
 @Composable
 fun BookSearchScreen(
     onBookClick: (BookSummaryDto) -> Unit,
+    onListsClick: () -> Unit,
     viewModel: BookSearchViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Livros") }) },
+        topBar = {
+            TopAppBar(
+                title = { Text("Livros") },
+                actions = {
+                    IconButton(onClick = onListsClick) {
+                        Icon(Icons.Filled.List, contentDescription = "Minhas listas")
+                    }
+                },
+            )
+        },
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {
             OutlinedTextField(

@@ -9,8 +9,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import xyz.cqn.cqntrack.manga.data.CreateMangaListRequestDto
 import xyz.cqn.cqntrack.manga.data.MangaDetailDto
 import xyz.cqn.cqntrack.manga.data.MangaEntryDto
+import xyz.cqn.cqntrack.manga.data.MangaListDto
+import xyz.cqn.cqntrack.manga.data.MangaListsRepository
 import xyz.cqn.cqntrack.manga.data.MangaRepository
 import xyz.cqn.cqntrack.manga.data.MangaStatus
 import xyz.cqn.cqntrack.manga.data.MangaVolumeDto
@@ -26,11 +29,15 @@ data class MangaDetailUiState(
     val volumesLoading: Boolean = true,
     val selectedVolume: Int? = null,
     val volumeActionPending: Boolean = false,
+    val showAddToListDialog: Boolean = false,
+    val availableLists: List<MangaListDto> = emptyList(),
+    val addToListMessage: String? = null,
 )
 
 @HiltViewModel
 class MangaDetailViewModel @Inject constructor(
     private val mangaRepository: MangaRepository,
+    private val mangaListsRepository: MangaListsRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -175,6 +182,43 @@ class MangaDetailViewModel @Inject constructor(
                 _uiState.update { it.copy(entry = updated) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(errorMessage = "Falha ao salvar. Tente de novo.") }
+            }
+        }
+    }
+
+    fun openAddToListDialog() {
+        _uiState.update { it.copy(showAddToListDialog = true, addToListMessage = null) }
+        viewModelScope.launch {
+            try {
+                val lists = mangaListsRepository.getLists()
+                _uiState.update { it.copy(availableLists = lists) }
+            } catch (e: Exception) {
+                // Diálogo ainda funciona pra criar lista nova mesmo se isso falhar.
+            }
+        }
+    }
+
+    fun closeAddToListDialog() = _uiState.update { it.copy(showAddToListDialog = false) }
+
+    fun addToList(listId: String) {
+        viewModelScope.launch {
+            try {
+                mangaListsRepository.addItem(listId, mangadexId)
+                _uiState.update { it.copy(showAddToListDialog = false, addToListMessage = null) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(addToListMessage = "Falha ao adicionar à lista.") }
+            }
+        }
+    }
+
+    fun createListAndAdd(name: String) {
+        viewModelScope.launch {
+            try {
+                val list = mangaListsRepository.createList(CreateMangaListRequestDto(name))
+                mangaListsRepository.addItem(list.id, mangadexId)
+                _uiState.update { it.copy(showAddToListDialog = false, addToListMessage = null) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(addToListMessage = "Falha ao criar lista.") }
             }
         }
     }

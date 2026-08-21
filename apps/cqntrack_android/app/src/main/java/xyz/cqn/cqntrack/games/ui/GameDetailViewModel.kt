@@ -9,8 +9,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import xyz.cqn.cqntrack.games.data.CreateGameListRequestDto
 import xyz.cqn.cqntrack.games.data.GameDetailDto
 import xyz.cqn.cqntrack.games.data.GameEntryDto
+import xyz.cqn.cqntrack.games.data.GameListDto
+import xyz.cqn.cqntrack.games.data.GameListsRepository
 import xyz.cqn.cqntrack.games.data.GameStatus
 import xyz.cqn.cqntrack.games.data.GamesRepository
 import xyz.cqn.cqntrack.games.data.UpsertGameEntryRequestDto
@@ -21,11 +24,15 @@ data class GameDetailUiState(
     val game: GameDetailDto? = null,
     val entry: GameEntryDto? = null,
     val errorMessage: String? = null,
+    val showAddToListDialog: Boolean = false,
+    val availableLists: List<GameListDto> = emptyList(),
+    val addToListMessage: String? = null,
 )
 
 @HiltViewModel
 class GameDetailViewModel @Inject constructor(
     private val gamesRepository: GamesRepository,
+    private val gameListsRepository: GameListsRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -66,6 +73,43 @@ class GameDetailViewModel @Inject constructor(
                 _uiState.update { it.copy(entry = updated) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(errorMessage = "Falha ao salvar. Tente de novo.") }
+            }
+        }
+    }
+
+    fun openAddToListDialog() {
+        _uiState.update { it.copy(showAddToListDialog = true, addToListMessage = null) }
+        viewModelScope.launch {
+            try {
+                val lists = gameListsRepository.getLists()
+                _uiState.update { it.copy(availableLists = lists) }
+            } catch (e: Exception) {
+                // Diálogo ainda funciona pra criar lista nova mesmo se isso falhar.
+            }
+        }
+    }
+
+    fun closeAddToListDialog() = _uiState.update { it.copy(showAddToListDialog = false) }
+
+    fun addToList(listId: String) {
+        viewModelScope.launch {
+            try {
+                gameListsRepository.addItem(listId, igdbId)
+                _uiState.update { it.copy(showAddToListDialog = false, addToListMessage = null) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(addToListMessage = "Falha ao adicionar à lista.") }
+            }
+        }
+    }
+
+    fun createListAndAdd(name: String) {
+        viewModelScope.launch {
+            try {
+                val list = gameListsRepository.createList(CreateGameListRequestDto(name))
+                gameListsRepository.addItem(list.id, igdbId)
+                _uiState.update { it.copy(showAddToListDialog = false, addToListMessage = null) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(addToListMessage = "Falha ao criar lista.") }
             }
         }
     }

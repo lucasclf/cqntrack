@@ -9,9 +9,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import xyz.cqn.cqntrack.series.data.CreateSeriesListRequestDto
 import xyz.cqn.cqntrack.series.data.SeriesDetailDto
 import xyz.cqn.cqntrack.series.data.SeriesEntryDto
 import xyz.cqn.cqntrack.series.data.SeriesEpisodeDto
+import xyz.cqn.cqntrack.series.data.SeriesListDto
+import xyz.cqn.cqntrack.series.data.SeriesListsRepository
 import xyz.cqn.cqntrack.series.data.SeriesRepository
 import xyz.cqn.cqntrack.series.data.UpsertSeriesEntryRequestDto
 import javax.inject.Inject
@@ -25,11 +28,15 @@ data class SeriesDetailUiState(
     val episodes: List<SeriesEpisodeDto> = emptyList(),
     val episodesLoading: Boolean = false,
     val seasonActionPending: Boolean = false,
+    val showAddToListDialog: Boolean = false,
+    val availableLists: List<SeriesListDto> = emptyList(),
+    val addToListMessage: String? = null,
 )
 
 @HiltViewModel
 class SeriesDetailViewModel @Inject constructor(
     private val seriesRepository: SeriesRepository,
+    private val seriesListsRepository: SeriesListsRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -167,6 +174,43 @@ class SeriesDetailViewModel @Inject constructor(
                 _uiState.update { it.copy(entry = updated) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(errorMessage = "Falha ao salvar. Tente de novo.") }
+            }
+        }
+    }
+
+    fun openAddToListDialog() {
+        _uiState.update { it.copy(showAddToListDialog = true, addToListMessage = null) }
+        viewModelScope.launch {
+            try {
+                val lists = seriesListsRepository.getLists()
+                _uiState.update { it.copy(availableLists = lists) }
+            } catch (e: Exception) {
+                // Diálogo ainda funciona pra criar lista nova mesmo se isso falhar.
+            }
+        }
+    }
+
+    fun closeAddToListDialog() = _uiState.update { it.copy(showAddToListDialog = false) }
+
+    fun addToList(listId: String) {
+        viewModelScope.launch {
+            try {
+                seriesListsRepository.addItem(listId, tmdbId)
+                _uiState.update { it.copy(showAddToListDialog = false, addToListMessage = null) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(addToListMessage = "Falha ao adicionar à lista.") }
+            }
+        }
+    }
+
+    fun createListAndAdd(name: String) {
+        viewModelScope.launch {
+            try {
+                val list = seriesListsRepository.createList(CreateSeriesListRequestDto(name))
+                seriesListsRepository.addItem(list.id, tmdbId)
+                _uiState.update { it.copy(showAddToListDialog = false, addToListMessage = null) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(addToListMessage = "Falha ao criar lista.") }
             }
         }
     }

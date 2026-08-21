@@ -13,4 +13,8 @@ object MangaModule {
     @Provides
     @Singleton
     fun provideMangaApi(retrofit: Retrofit): MangaApi = retrofit.create(MangaApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideMangaListsApi(retrofit: Retrofit): MangaListsApi = retrofit.create(MangaListsApi::class.java)
 }

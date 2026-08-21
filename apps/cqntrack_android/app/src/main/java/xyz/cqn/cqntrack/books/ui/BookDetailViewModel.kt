@@ -11,8 +11,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import xyz.cqn.cqntrack.books.data.BookDetailDto
 import xyz.cqn.cqntrack.books.data.BookEntryDto
+import xyz.cqn.cqntrack.books.data.BookListDto
+import xyz.cqn.cqntrack.books.data.BookListsRepository
 import xyz.cqn.cqntrack.books.data.BookStatus
 import xyz.cqn.cqntrack.books.data.BooksRepository
+import xyz.cqn.cqntrack.books.data.CreateBookListRequestDto
 import xyz.cqn.cqntrack.books.data.UpsertBookEntryRequestDto
 import javax.inject.Inject
 
@@ -21,11 +24,15 @@ data class BookDetailUiState(
     val book: BookDetailDto? = null,
     val entry: BookEntryDto? = null,
     val errorMessage: String? = null,
+    val showAddToListDialog: Boolean = false,
+    val availableLists: List<BookListDto> = emptyList(),
+    val addToListMessage: String? = null,
 )
 
 @HiltViewModel
 class BookDetailViewModel @Inject constructor(
     private val booksRepository: BooksRepository,
+    private val bookListsRepository: BookListsRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -70,6 +77,43 @@ class BookDetailViewModel @Inject constructor(
                 _uiState.update { it.copy(entry = updated) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(errorMessage = "Falha ao salvar. Tente de novo.") }
+            }
+        }
+    }
+
+    fun openAddToListDialog() {
+        _uiState.update { it.copy(showAddToListDialog = true, addToListMessage = null) }
+        viewModelScope.launch {
+            try {
+                val lists = bookListsRepository.getLists()
+                _uiState.update { it.copy(availableLists = lists) }
+            } catch (e: Exception) {
+                // Diálogo ainda funciona pra criar lista nova mesmo se isso falhar.
+            }
+        }
+    }
+
+    fun closeAddToListDialog() = _uiState.update { it.copy(showAddToListDialog = false) }
+
+    fun addToList(listId: String) {
+        viewModelScope.launch {
+            try {
+                bookListsRepository.addItem(listId, googleBooksId)
+                _uiState.update { it.copy(showAddToListDialog = false, addToListMessage = null) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(addToListMessage = "Falha ao adicionar à lista.") }
+            }
+        }
+    }
+
+    fun createListAndAdd(name: String) {
+        viewModelScope.launch {
+            try {
+                val list = bookListsRepository.createList(CreateBookListRequestDto(name))
+                bookListsRepository.addItem(list.id, googleBooksId)
+                _uiState.update { it.copy(showAddToListDialog = false, addToListMessage = null) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(addToListMessage = "Falha ao criar lista.") }
             }
         }
     }

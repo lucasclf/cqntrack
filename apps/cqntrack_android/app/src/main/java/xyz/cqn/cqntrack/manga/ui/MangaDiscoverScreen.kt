@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -38,6 +39,7 @@ import xyz.cqn.cqntrack.manga.data.MangaSummaryDto
 fun MangaDiscoverScreen(
     onMangaClick: (MangaSummaryDto) -> Unit,
     onSearchClick: () -> Unit,
+    onListsClick: () -> Unit,
     viewModel: MangaDiscoverViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -47,6 +49,9 @@ fun MangaDiscoverScreen(
             TopAppBar(
                 title = { Text("Mangás") },
                 actions = {
+                    IconButton(onClick = onListsClick) {
+                        Icon(Icons.Filled.List, contentDescription = "Minhas listas")
+                    }
                     IconButton(onClick = onSearchClick) {
                         Icon(Icons.Filled.Search, contentDescription = "Buscar")
                     }

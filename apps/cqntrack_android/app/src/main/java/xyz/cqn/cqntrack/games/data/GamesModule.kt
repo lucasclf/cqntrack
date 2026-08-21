@@ -13,4 +13,8 @@ object GamesModule {
     @Provides
     @Singleton
     fun provideGamesApi(retrofit: Retrofit): GamesApi = retrofit.create(GamesApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideGameListsApi(retrofit: Retrofit): GameListsApi = retrofit.create(GameListsApi::class.java)
 }

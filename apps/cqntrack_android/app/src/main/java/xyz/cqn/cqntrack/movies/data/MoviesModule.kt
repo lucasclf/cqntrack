@@ -13,4 +13,8 @@ object MoviesModule {
     @Provides
     @Singleton
     fun provideMoviesApi(retrofit: Retrofit): MoviesApi = retrofit.create(MoviesApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideMovieListsApi(retrofit: Retrofit): MovieListsApi = retrofit.create(MovieListsApi::class.java)
 }

@@ -13,4 +13,8 @@ object BooksModule {
     @Provides
     @Singleton
     fun provideBooksApi(retrofit: Retrofit): BooksApi = retrofit.create(BooksApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideBookListsApi(retrofit: Retrofit): BookListsApi = retrofit.create(BookListsApi::class.java)
 }

@@ -9,8 +9,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import xyz.cqn.cqntrack.movies.data.CreateMovieListRequestDto
 import xyz.cqn.cqntrack.movies.data.MovieDetailDto
 import xyz.cqn.cqntrack.movies.data.MovieEntryDto
+import xyz.cqn.cqntrack.movies.data.MovieListDto
+import xyz.cqn.cqntrack.movies.data.MovieListsRepository
 import xyz.cqn.cqntrack.movies.data.MovieStatus
 import xyz.cqn.cqntrack.movies.data.MoviesRepository
 import xyz.cqn.cqntrack.movies.data.UpsertMovieEntryRequestDto
@@ -21,11 +24,15 @@ data class MovieDetailUiState(
     val movie: MovieDetailDto? = null,
     val entry: MovieEntryDto? = null,
     val errorMessage: String? = null,
+    val showAddToListDialog: Boolean = false,
+    val availableLists: List<MovieListDto> = emptyList(),
+    val addToListMessage: String? = null,
 )
 
 @HiltViewModel
 class MovieDetailViewModel @Inject constructor(
     private val moviesRepository: MoviesRepository,
+    private val movieListsRepository: MovieListsRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -66,6 +73,43 @@ class MovieDetailViewModel @Inject constructor(
                 _uiState.update { it.copy(entry = updated) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(errorMessage = "Falha ao salvar. Tente de novo.") }
+            }
+        }
+    }
+
+    fun openAddToListDialog() {
+        _uiState.update { it.copy(showAddToListDialog = true, addToListMessage = null) }
+        viewModelScope.launch {
+            try {
+                val lists = movieListsRepository.getLists()
+                _uiState.update { it.copy(availableLists = lists) }
+            } catch (e: Exception) {
+                // Diálogo ainda funciona pra criar lista nova mesmo se isso falhar.
+            }
+        }
+    }
+
+    fun closeAddToListDialog() = _uiState.update { it.copy(showAddToListDialog = false) }
+
+    fun addToList(listId: String) {
+        viewModelScope.launch {
+            try {
+                movieListsRepository.addItem(listId, tmdbId)
+                _uiState.update { it.copy(showAddToListDialog = false, addToListMessage = null) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(addToListMessage = "Falha ao adicionar à lista.") }
+            }
+        }
+    }
+
+    fun createListAndAdd(name: String) {
+        viewModelScope.launch {
+            try {
+                val list = movieListsRepository.createList(CreateMovieListRequestDto(name))
+                movieListsRepository.addItem(list.id, tmdbId)
+                _uiState.update { it.copy(showAddToListDialog = false, addToListMessage = null) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(addToListMessage = "Falha ao criar lista.") }
             }
         }
     }

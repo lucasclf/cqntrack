@@ -13,4 +13,8 @@ object SeriesModule {
     @Provides
     @Singleton
     fun provideSeriesApi(retrofit: Retrofit): SeriesApi = retrofit.create(SeriesApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideSeriesListsApi(retrofit: Retrofit): SeriesListsApi = retrofit.create(SeriesListsApi::class.java)
 }
