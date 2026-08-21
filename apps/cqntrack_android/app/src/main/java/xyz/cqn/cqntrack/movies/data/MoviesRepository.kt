@@ -31,10 +31,25 @@ class MoviesRepository @Inject constructor(
 
     suspend fun deleteEntry(tmdbId: Int) = runApiCall { moviesApi.deleteEntry(tmdbId) }
 
+    suspend fun getEntries(
+        status: MovieStatus?,
+        favorite: Boolean?,
+        sortBy: String,
+        order: String,
+        page: Int,
+    ): PaginatedMovieEntriesResponseDto = runApiCall {
+        moviesApi.getEntries(status?.toApiValue(), favorite, sortBy, order, page)
+    }
+
     private suspend fun <T> runApiCall(block: suspend () -> T): T =
         try {
             block()
         } catch (e: HttpException) {
             throw ApiException(e.code(), "Falha na requisição (status ${e.code()})")
         }
+}
+
+private fun MovieStatus.toApiValue(): String = when (this) {
+    MovieStatus.WantToWatch -> "want_to_watch"
+    MovieStatus.Watched -> "watched"
 }

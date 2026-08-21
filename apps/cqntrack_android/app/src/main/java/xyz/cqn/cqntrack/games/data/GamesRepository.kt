@@ -47,10 +47,28 @@ class GamesRepository @Inject constructor(
 
     suspend fun deleteEntry(igdbId: Int) = runApiCall { gamesApi.deleteEntry(igdbId) }
 
+    suspend fun getEntries(
+        status: GameStatus?,
+        favorite: Boolean?,
+        sortBy: String,
+        order: String,
+        page: Int,
+    ): PaginatedGameEntriesResponseDto = runApiCall {
+        gamesApi.getEntries(status?.toApiValue(), favorite, sortBy, order, page)
+    }
+
     private suspend fun <T> runApiCall(block: suspend () -> T): T =
         try {
             block()
         } catch (e: HttpException) {
             throw ApiException(e.code(), "Falha na requisição (status ${e.code()})")
         }
+}
+
+private fun GameStatus.toApiValue(): String = when (this) {
+    GameStatus.NotStarted -> "not_started"
+    GameStatus.Playing -> "playing"
+    GameStatus.Dropped -> "dropped"
+    GameStatus.Completed -> "completed"
+    GameStatus.Platinum -> "platinum"
 }

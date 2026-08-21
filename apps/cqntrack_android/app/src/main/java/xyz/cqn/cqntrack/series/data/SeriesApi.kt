@@ -52,4 +52,13 @@ interface SeriesApi {
         @Path("seasonNumber") seasonNumber: Int,
         @Body body: SetWatchedRequestDto,
     )
+
+    /** Espelha ListSeriesEntriesQuerySchema — "Minhas marcações". Sem `status` (série não tem). */
+    @GET("api/series/entries")
+    suspend fun getEntries(
+        @Query("favorite") favorite: Boolean? = null,
+        @Query("sortBy") sortBy: String = "updatedAt",
+        @Query("order") order: String = "desc",
+        @Query("page") page: Int = 1,
+    ): PaginatedSeriesEntriesResponseDto
 }

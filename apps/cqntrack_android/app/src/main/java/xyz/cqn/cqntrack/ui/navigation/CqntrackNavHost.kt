@@ -11,21 +11,25 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import xyz.cqn.cqntrack.books.ui.BookDetailScreen
+import xyz.cqn.cqntrack.books.ui.BookEntriesScreen
 import xyz.cqn.cqntrack.books.ui.BookListDetailScreen
 import xyz.cqn.cqntrack.books.ui.BookListsScreen
 import xyz.cqn.cqntrack.books.ui.BookSearchScreen
 import xyz.cqn.cqntrack.games.ui.GameDetailScreen
 import xyz.cqn.cqntrack.games.ui.GameDiscoverScreen
+import xyz.cqn.cqntrack.games.ui.GameEntriesScreen
 import xyz.cqn.cqntrack.games.ui.GameListDetailScreen
 import xyz.cqn.cqntrack.games.ui.GameListsScreen
 import xyz.cqn.cqntrack.games.ui.GameSearchScreen
 import xyz.cqn.cqntrack.manga.ui.MangaDetailScreen
 import xyz.cqn.cqntrack.manga.ui.MangaDiscoverScreen
+import xyz.cqn.cqntrack.manga.ui.MangaEntriesScreen
 import xyz.cqn.cqntrack.manga.ui.MangaListDetailScreen
 import xyz.cqn.cqntrack.manga.ui.MangaListsScreen
 import xyz.cqn.cqntrack.manga.ui.MangaSearchScreen
 import xyz.cqn.cqntrack.movies.ui.MovieDetailScreen
 import xyz.cqn.cqntrack.movies.ui.MovieDiscoverScreen
+import xyz.cqn.cqntrack.movies.ui.MovieEntriesScreen
 import xyz.cqn.cqntrack.movies.ui.MovieListDetailScreen
 import xyz.cqn.cqntrack.movies.ui.MovieListsScreen
 import xyz.cqn.cqntrack.movies.ui.MovieSearchScreen
@@ -34,6 +38,7 @@ import xyz.cqn.cqntrack.profile.ui.AccountScreen
 import xyz.cqn.cqntrack.profile.ui.PublicProfileScreen
 import xyz.cqn.cqntrack.series.ui.SeriesDetailScreen
 import xyz.cqn.cqntrack.series.ui.SeriesDiscoverScreen
+import xyz.cqn.cqntrack.series.ui.SeriesEntriesScreen
 import xyz.cqn.cqntrack.series.ui.SeriesListDetailScreen
 import xyz.cqn.cqntrack.series.ui.SeriesListsScreen
 import xyz.cqn.cqntrack.series.ui.SeriesSearchScreen
@@ -103,6 +108,12 @@ fun CqntrackNavHost() {
             BookSearchScreen(
                 onBookClick = { book -> navController.navigate(NavRoutes.bookDetail(book.googleBooksId)) },
                 onListsClick = { navController.navigate(NavRoutes.BOOK_LISTS) },
+                onEntriesClick = { navController.navigate(NavRoutes.BOOK_ENTRIES) },
+            )
+        }
+        composable(NavRoutes.BOOK_ENTRIES) {
+            BookEntriesScreen(
+                onBookClick = { googleBooksId -> navController.navigate(NavRoutes.bookDetail(googleBooksId)) },
             )
         }
         composable(NavRoutes.BOOK_DETAIL) {
@@ -125,6 +136,12 @@ fun CqntrackNavHost() {
                 onMovieClick = { movie -> navController.navigate(NavRoutes.movieDetail(movie.tmdbId)) },
                 onSearchClick = { navController.navigate(NavRoutes.MOVIE_SEARCH) },
                 onListsClick = { navController.navigate(NavRoutes.MOVIE_LISTS) },
+                onEntriesClick = { navController.navigate(NavRoutes.MOVIE_ENTRIES) },
+            )
+        }
+        composable(NavRoutes.MOVIE_ENTRIES) {
+            MovieEntriesScreen(
+                onMovieClick = { tmdbId -> navController.navigate(NavRoutes.movieDetail(tmdbId)) },
             )
         }
         composable(NavRoutes.MOVIE_SEARCH) {
@@ -152,6 +169,12 @@ fun CqntrackNavHost() {
                 onGameClick = { game -> navController.navigate(NavRoutes.gameDetail(game.igdbId)) },
                 onSearchClick = { navController.navigate(NavRoutes.GAME_SEARCH) },
                 onListsClick = { navController.navigate(NavRoutes.GAME_LISTS) },
+                onEntriesClick = { navController.navigate(NavRoutes.GAME_ENTRIES) },
+            )
+        }
+        composable(NavRoutes.GAME_ENTRIES) {
+            GameEntriesScreen(
+                onGameClick = { igdbId -> navController.navigate(NavRoutes.gameDetail(igdbId)) },
             )
         }
         composable(NavRoutes.GAME_SEARCH) {
@@ -179,6 +202,12 @@ fun CqntrackNavHost() {
                 onSeriesClick = { series -> navController.navigate(NavRoutes.seriesDetail(series.tmdbId)) },
                 onSearchClick = { navController.navigate(NavRoutes.SERIES_SEARCH) },
                 onListsClick = { navController.navigate(NavRoutes.SERIES_LISTS) },
+                onEntriesClick = { navController.navigate(NavRoutes.SERIES_ENTRIES) },
+            )
+        }
+        composable(NavRoutes.SERIES_ENTRIES) {
+            SeriesEntriesScreen(
+                onSeriesClick = { tmdbId -> navController.navigate(NavRoutes.seriesDetail(tmdbId)) },
             )
         }
         composable(NavRoutes.SERIES_SEARCH) {
@@ -206,6 +235,12 @@ fun CqntrackNavHost() {
                 onMangaClick = { manga -> navController.navigate(NavRoutes.mangaDetail(manga.mangadexId)) },
                 onSearchClick = { navController.navigate(NavRoutes.MANGA_SEARCH) },
                 onListsClick = { navController.navigate(NavRoutes.MANGA_LISTS) },
+                onEntriesClick = { navController.navigate(NavRoutes.MANGA_ENTRIES) },
+            )
+        }
+        composable(NavRoutes.MANGA_ENTRIES) {
+            MangaEntriesScreen(
+                onMangaClick = { mangadexId -> navController.navigate(NavRoutes.mangaDetail(mangadexId)) },
             )
         }
         composable(NavRoutes.MANGA_SEARCH) {

@@ -40,10 +40,27 @@ class MangaRepository @Inject constructor(
     suspend fun setVolumeRead(mangadexId: String, volumeNumber: Int, read: Boolean) =
         runApiCall { mangaApi.setVolumeRead(mangadexId, volumeNumber, SetChapterReadRequestDto(read)) }
 
+    suspend fun getEntries(
+        status: MangaStatus?,
+        favorite: Boolean?,
+        sortBy: String,
+        order: String,
+        page: Int,
+    ): PaginatedMangaEntriesResponseDto = runApiCall {
+        mangaApi.getEntries(status?.toApiValue(), favorite, sortBy, order, page)
+    }
+
     private suspend fun <T> runApiCall(block: suspend () -> T): T =
         try {
             block()
         } catch (e: HttpException) {
             throw ApiException(e.code(), "Falha na requisição (status ${e.code()})")
         }
+}
+
+private fun MangaStatus.toApiValue(): String = when (this) {
+    MangaStatus.WantToRead -> "want_to_read"
+    MangaStatus.Reading -> "reading"
+    MangaStatus.Read -> "read"
+    MangaStatus.Dropped -> "dropped"
 }

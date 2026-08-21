@@ -28,6 +28,16 @@ class BooksRepository @Inject constructor(
 
     suspend fun deleteEntry(googleBooksId: String) = runApiCall { booksApi.deleteEntry(googleBooksId) }
 
+    suspend fun getEntries(
+        status: BookStatus?,
+        favorite: Boolean?,
+        sortBy: String,
+        order: String,
+        page: Int,
+    ): PaginatedBookEntriesResponseDto = runApiCall {
+        booksApi.getEntries(status?.toApiValue(), favorite, sortBy, order, page)
+    }
+
     /** Traduz HttpException (Retrofit) pra ApiException (:core:network) — mesmo formato de erro em todo o app, não só em books. */
     private suspend fun <T> runApiCall(block: suspend () -> T): T =
         try {
@@ -35,4 +45,12 @@ class BooksRepository @Inject constructor(
         } catch (e: HttpException) {
             throw ApiException(e.code(), "Falha na requisição (status ${e.code()})")
         }
+}
+
+/** Valor de query string — mesmo texto do @SerialName usado no corpo JSON. */
+private fun BookStatus.toApiValue(): String = when (this) {
+    BookStatus.WantToRead -> "want_to_read"
+    BookStatus.Reading -> "reading"
+    BookStatus.Read -> "read"
+    BookStatus.Dropped -> "dropped"
 }

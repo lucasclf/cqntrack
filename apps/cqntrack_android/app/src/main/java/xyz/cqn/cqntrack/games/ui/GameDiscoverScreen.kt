@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
@@ -40,6 +41,7 @@ fun GameDiscoverScreen(
     onGameClick: (GameSummaryDto) -> Unit,
     onSearchClick: () -> Unit,
     onListsClick: () -> Unit,
+    onEntriesClick: () -> Unit,
     viewModel: GameDiscoverViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -49,6 +51,9 @@ fun GameDiscoverScreen(
             TopAppBar(
                 title = { Text("Jogos") },
                 actions = {
+                    IconButton(onClick = onEntriesClick) {
+                        Icon(Icons.Filled.Checklist, contentDescription = "Minhas marcações")
+                    }
                     IconButton(onClick = onListsClick) {
                         Icon(Icons.Filled.List, contentDescription = "Minhas listas")
                     }

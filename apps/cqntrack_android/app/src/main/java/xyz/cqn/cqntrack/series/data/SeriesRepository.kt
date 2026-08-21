@@ -40,6 +40,13 @@ class SeriesRepository @Inject constructor(
     suspend fun setSeasonWatched(tmdbId: Int, seasonNumber: Int, watched: Boolean) =
         runApiCall { seriesApi.setSeasonWatched(tmdbId, seasonNumber, SetWatchedRequestDto(watched)) }
 
+    suspend fun getEntries(
+        favorite: Boolean?,
+        sortBy: String,
+        order: String,
+        page: Int,
+    ): PaginatedSeriesEntriesResponseDto = runApiCall { seriesApi.getEntries(favorite, sortBy, order, page) }
+
     private suspend fun <T> runApiCall(block: suspend () -> T): T =
         try {
             block()

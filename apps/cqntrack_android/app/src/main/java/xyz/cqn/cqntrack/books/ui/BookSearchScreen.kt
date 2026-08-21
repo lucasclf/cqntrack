@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -35,6 +36,7 @@ import xyz.cqn.cqntrack.books.data.BookSummaryDto
 fun BookSearchScreen(
     onBookClick: (BookSummaryDto) -> Unit,
     onListsClick: () -> Unit,
+    onEntriesClick: () -> Unit,
     viewModel: BookSearchViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -44,6 +46,9 @@ fun BookSearchScreen(
             TopAppBar(
                 title = { Text("Livros") },
                 actions = {
+                    IconButton(onClick = onEntriesClick) {
+                        Icon(Icons.Filled.Checklist, contentDescription = "Minhas marcações")
+                    }
                     IconButton(onClick = onListsClick) {
                         Icon(Icons.Filled.List, contentDescription = "Minhas listas")
                     }

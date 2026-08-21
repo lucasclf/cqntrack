@@ -31,4 +31,14 @@ interface MoviesApi {
 
     @DELETE("api/movies/{tmdbId}/entry")
     suspend fun deleteEntry(@Path("tmdbId") tmdbId: Int)
+
+    /** Espelha ListMovieEntriesQuerySchema — "Minhas marcações". */
+    @GET("api/movies/entries")
+    suspend fun getEntries(
+        @Query("status") status: String? = null,
+        @Query("favorite") favorite: Boolean? = null,
+        @Query("sortBy") sortBy: String = "updatedAt",
+        @Query("order") order: String = "desc",
+        @Query("page") page: Int = 1,
+    ): PaginatedMovieEntriesResponseDto
 }

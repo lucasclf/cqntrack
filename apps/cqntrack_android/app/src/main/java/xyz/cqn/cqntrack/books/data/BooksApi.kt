@@ -38,4 +38,14 @@ interface BooksApi {
 
     @DELETE("api/books/{googleBooksId}/entry")
     suspend fun deleteEntry(@Path("googleBooksId") googleBooksId: String)
+
+    /** Espelha ListBookEntriesQuerySchema — "Minhas marcações". Retrofit omite parâmetros null da URL. */
+    @GET("api/books/entries")
+    suspend fun getEntries(
+        @Query("status") status: String? = null,
+        @Query("favorite") favorite: Boolean? = null,
+        @Query("sortBy") sortBy: String = "updatedAt",
+        @Query("order") order: String = "desc",
+        @Query("page") page: Int = 1,
+    ): PaginatedBookEntriesResponseDto
 }

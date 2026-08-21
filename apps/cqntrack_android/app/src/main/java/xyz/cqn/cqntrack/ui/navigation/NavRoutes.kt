@@ -10,6 +10,7 @@ object NavRoutes {
     const val BOOK_LISTS = "book_lists"
     const val BOOK_LIST_DETAIL = "book_list_detail/{listId}"
     fun bookListDetail(listId: String) = "book_list_detail/$listId"
+    const val BOOK_ENTRIES = "book_entries"
 
     // Livro não tem Discover — Google Books não suporta popularidade real
     // (ver skill new-media-section) — Home leva direto pra busca.
@@ -20,6 +21,7 @@ object NavRoutes {
     const val MOVIE_LISTS = "movie_lists"
     const val MOVIE_LIST_DETAIL = "movie_list_detail/{listId}"
     fun movieListDetail(listId: String) = "movie_list_detail/$listId"
+    const val MOVIE_ENTRIES = "movie_entries"
 
     const val GAME_DISCOVER = "game_discover"
     const val GAME_SEARCH = "game_search"
@@ -28,6 +30,7 @@ object NavRoutes {
     const val GAME_LISTS = "game_lists"
     const val GAME_LIST_DETAIL = "game_list_detail/{listId}"
     fun gameListDetail(listId: String) = "game_list_detail/$listId"
+    const val GAME_ENTRIES = "game_entries"
 
     const val SERIES_DISCOVER = "series_discover"
     const val SERIES_SEARCH = "series_search"
@@ -36,6 +39,7 @@ object NavRoutes {
     const val SERIES_LISTS = "series_lists"
     const val SERIES_LIST_DETAIL = "series_list_detail/{listId}"
     fun seriesListDetail(listId: String) = "series_list_detail/$listId"
+    const val SERIES_ENTRIES = "series_entries"
 
     const val MANGA_DISCOVER = "manga_discover"
     const val MANGA_SEARCH = "manga_search"
@@ -44,6 +48,7 @@ object NavRoutes {
     const val MANGA_LISTS = "manga_lists"
     const val MANGA_LIST_DETAIL = "manga_list_detail/{listId}"
     fun mangaListDetail(listId: String) = "manga_list_detail/$listId"
+    const val MANGA_ENTRIES = "manga_entries"
 
     const val ACCOUNT = "account"
     const val PUBLIC_PROFILE = "public_profile/{username}"

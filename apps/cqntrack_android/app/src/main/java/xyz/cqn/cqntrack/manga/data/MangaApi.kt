@@ -49,4 +49,14 @@ interface MangaApi {
         @Path("volumeNumber") volumeNumber: Int,
         @Body body: SetChapterReadRequestDto,
     )
+
+    /** Espelha ListMangaEntriesQuerySchema — "Minhas marcações". */
+    @GET("api/manga/entries")
+    suspend fun getEntries(
+        @Query("status") status: String? = null,
+        @Query("favorite") favorite: Boolean? = null,
+        @Query("sortBy") sortBy: String = "updatedAt",
+        @Query("order") order: String = "desc",
+        @Query("page") page: Int = 1,
+    ): PaginatedMangaEntriesResponseDto
 }
