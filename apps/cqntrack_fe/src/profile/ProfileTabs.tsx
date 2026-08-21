@@ -1,13 +1,14 @@
 import { NavLink } from "react-router";
 import styles from "./ProfileTabs.module.css";
 
-export type ProfileTab = "movies" | "series" | "games" | "books";
+export type ProfileTab = "movies" | "series" | "games" | "books" | "manga";
 
 const TABS: { key: ProfileTab; label: string; path: string }[] = [
   { key: "movies", label: "Filmes", path: "filmes" },
   { key: "series", label: "Séries", path: "series" },
   { key: "games", label: "Jogos", path: "jogos" },
   { key: "books", label: "Livros", path: "livros" },
+  { key: "manga", label: "Mangás", path: "mangas" },
 ];
 
 interface ProfileTabsProps {

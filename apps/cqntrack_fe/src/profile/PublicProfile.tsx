@@ -5,6 +5,7 @@ import { PublicLayout } from "../layouts/PublicLayout";
 import { ApiError, apiClient } from "../lib/api-client";
 import { BookStats } from "./BookStats";
 import { GameStats } from "./GameStats";
+import { MangaStats } from "./MangaStats";
 import { MovieStats } from "./MovieStats";
 import { type ProfileTab, ProfileTabs } from "./ProfileTabs";
 import styles from "./PublicProfile.module.css";
@@ -16,6 +17,7 @@ function tabFromPathname(pathname: string): ProfileTab {
   if (pathname.endsWith("/series")) return "series";
   if (pathname.endsWith("/jogos")) return "games";
   if (pathname.endsWith("/livros")) return "books";
+  if (pathname.endsWith("/mangas")) return "manga";
   return "movies";
 }
 
@@ -146,6 +148,9 @@ export function PublicProfile() {
             )}
             {activeTab === "books" && (
               <BookStats basePath={`/api/users/${username}`} linkBase={`/@${username}/livros`} />
+            )}
+            {activeTab === "manga" && (
+              <MangaStats basePath={`/api/users/${username}`} linkBase={`/@${username}/mangas`} />
             )}
           </aside>
         </div>

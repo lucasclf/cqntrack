@@ -4,9 +4,11 @@ import { BookCategoryPanel } from "./books/BookCategoryPanel";
 import { GameCategoryPanel } from "./games/GameCategoryPanel";
 import styles from "./Home.module.css";
 import { HomeTabs, type HomeTab } from "./HomeTabs";
+import { MangaCategoryPanel } from "./manga/MangaCategoryPanel";
 import { MovieCategoryPanel } from "./movies/MovieCategoryPanel";
 import { BookStats } from "./profile/BookStats";
 import { GameStats } from "./profile/GameStats";
+import { MangaStats } from "./profile/MangaStats";
 import { MovieStats } from "./profile/MovieStats";
 import { SeriesStats } from "./profile/SeriesStats";
 import { ContinueWatching } from "./series/ContinueWatching";
@@ -87,6 +89,17 @@ export function Home() {
           </div>
           <aside className={styles.sidebar}>
             <BookStats basePath={BASE_PATH} linkBase="/livros/marcacoes" />
+          </aside>
+        </div>
+      </div>
+
+      <div hidden={activeTab !== "manga"}>
+        <div className={styles.layout}>
+          <div className={styles.main}>
+            <MangaCategoryPanel basePath={BASE_PATH} />
+          </div>
+          <aside className={styles.sidebar}>
+            <MangaStats basePath={BASE_PATH} linkBase="/mangas/marcacoes" />
           </aside>
         </div>
       </div>

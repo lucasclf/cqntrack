@@ -80,6 +80,16 @@ describe("/api/users", () => {
 
     const bookListsRes = await app.request("/api/users/nao-existe/books/lists", undefined, env);
     expect(bookListsRes.status).toBe(404);
+
+    const mangaEntriesRes = await app.request(
+      "/api/users/nao-existe/manga/entries",
+      undefined,
+      env,
+    );
+    expect(mangaEntriesRes.status).toBe(404);
+
+    const mangaListsRes = await app.request("/api/users/nao-existe/manga/lists", undefined, env);
+    expect(mangaListsRes.status).toBe(404);
   });
 
   it("devolve o perfil sem exigir sessão", async () => {
@@ -520,6 +530,105 @@ describe("/api/users", () => {
 
     const listDetailRes = await app.request(
       `/api/users/${username}/books/lists/${listId}`,
+      undefined,
+      env,
+    );
+    expect(listDetailRes.status).toBe(200);
+  });
+
+  it("lista as marcações, favoritos e listas públicas de mangás do usuário", async () => {
+    const { cookie, username } = await createAuthenticatedUser(app, env);
+
+    const mangadexManga = (id: string, title: string) => ({
+      id,
+      attributes: {
+        title: { en: title },
+        altTitles: [],
+        description: { en: `Sinopse de ${title}` },
+        status: "ongoing",
+        contentRating: "safe",
+        year: 2020,
+        tags: [],
+      },
+      relationships: [{ id: "autor-1", type: "author", attributes: { name: "Autor de Teste" } }],
+    });
+
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(jsonResponse({ data: mangadexManga("manga-901", "Death Note") })),
+    );
+    await app.request(
+      "/api/manga/manga-901/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "read" }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(jsonResponse({ data: mangadexManga("manga-901", "Death Note") })),
+    );
+    await app.request(
+      "/api/manga/manga-901/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ favorited: true }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const createListRes = await app.request(
+      "/api/manga-lists",
+      {
+        method: "POST",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Lidos em 2026" }),
+      },
+      env,
+    );
+    const { id: listId } = (await createListRes.json()) as { id: string };
+
+    const entriesRes = await app.request(`/api/users/${username}/manga/entries`, undefined, env);
+    expect(entriesRes.status).toBe(200);
+    const entriesBody = (await entriesRes.json()) as {
+      items: Array<{ manga: { mangadexId: string } }>;
+    };
+    expect(entriesBody.items).toEqual([
+      expect.objectContaining({ manga: expect.objectContaining({ mangadexId: "manga-901" }) }),
+    ]);
+
+    const favoritesRes = await app.request(
+      `/api/users/${username}/manga/favorites`,
+      undefined,
+      env,
+    );
+    expect(favoritesRes.status).toBe(200);
+    const favoritesBody = (await favoritesRes.json()) as {
+      items: Array<{ manga: { mangadexId: string } }>;
+    };
+    expect(favoritesBody.items).toEqual([
+      expect.objectContaining({ manga: expect.objectContaining({ mangadexId: "manga-901" }) }),
+    ]);
+
+    const listsRes = await app.request(`/api/users/${username}/manga/lists`, undefined, env);
+    expect(listsRes.status).toBe(200);
+    const listsBody = (await listsRes.json()) as { lists: Array<{ id: string; name: string }> };
+    expect(listsBody.lists).toEqual([
+      expect.objectContaining({ id: listId, name: "Lidos em 2026" }),
+    ]);
+
+    const listDetailRes = await app.request(
+      `/api/users/${username}/manga/lists/${listId}`,
       undefined,
       env,
     );

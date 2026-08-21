@@ -1,6 +1,7 @@
 import styles from "./HomeTabs.module.css";
 
-export type HomeTab = "continueWatching" | "series" | "movies" | "games" | "books" | "activity";
+export type HomeTab =
+  "continueWatching" | "series" | "movies" | "games" | "books" | "manga" | "activity";
 
 const TABS: { key: HomeTab; label: string }[] = [
   { key: "continueWatching", label: "Continuar assistindo" },
@@ -8,6 +9,7 @@ const TABS: { key: HomeTab; label: string }[] = [
   { key: "movies", label: "Filmes" },
   { key: "games", label: "Jogos" },
   { key: "books", label: "Livros" },
+  { key: "manga", label: "Mangás" },
   { key: "activity", label: "Atividades recentes" },
 ];
 

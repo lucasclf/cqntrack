@@ -27,6 +27,13 @@ const routeModules = {
   listDetail: () => import("./games/ListDetail"),
   myEntries: () => import("./games/MyEntries"),
   myLists: () => import("./games/MyLists"),
+  mangaAuthorDetail: () => import("./manga/AuthorDetail"),
+  mangaDetail: () => import("./manga/MangaDetail"),
+  mangaDiscover: () => import("./manga/MangaDiscover"),
+  mangaListDetail: () => import("./manga/MangaListDetail"),
+  mangaSearch: () => import("./manga/MangaSearch"),
+  myMangaEntries: () => import("./manga/MyMangaEntries"),
+  myMangaLists: () => import("./manga/MyMangaLists"),
   movieDetail: () => import("./movies/MovieDetail"),
   movieDiscover: () => import("./movies/MovieDiscover"),
   movieListDetail: () => import("./movies/MovieListDetail"),
@@ -36,6 +43,7 @@ const routeModules = {
   personDetail: () => import("./people/PersonDetail"),
   bookTabPanel: () => import("./profile/BookTabPanel"),
   gameTabPanel: () => import("./profile/GameTabPanel"),
+  mangaTabPanel: () => import("./profile/MangaTabPanel"),
   movieTabPanel: () => import("./profile/MovieTabPanel"),
   publicListDetail: () => import("./profile/PublicListDetail"),
   publicProfile: () => import("./profile/PublicProfile"),
@@ -80,6 +88,10 @@ export const routes: RouteObject[] = [
       {
         path: "livros",
         lazy: async () => ({ Component: (await routeModules.bookTabPanel()).BookTabPanel }),
+      },
+      {
+        path: "mangas",
+        lazy: async () => ({ Component: (await routeModules.mangaTabPanel()).MangaTabPanel }),
       },
     ],
   },
@@ -236,6 +248,47 @@ export const routes: RouteObject[] = [
                 path: "listas/:listId",
                 lazy: async () => ({
                   Component: (await routeModules.bookListDetail()).BookListDetail,
+                }),
+              },
+            ],
+          },
+          {
+            path: "mangas",
+            children: [
+              {
+                index: true,
+                lazy: async () => ({
+                  Component: (await routeModules.mangaDiscover()).MangaDiscover,
+                }),
+              },
+              {
+                path: "buscar",
+                lazy: async () => ({ Component: (await routeModules.mangaSearch()).MangaSearch }),
+              },
+              {
+                path: "autores/:authorId",
+                lazy: async () => ({
+                  Component: (await routeModules.mangaAuthorDetail()).AuthorDetail,
+                }),
+              },
+              {
+                path: ":mangadexId",
+                lazy: async () => ({ Component: (await routeModules.mangaDetail()).MangaDetail }),
+              },
+              {
+                path: "marcacoes",
+                lazy: async () => ({
+                  Component: (await routeModules.myMangaEntries()).MyMangaEntries,
+                }),
+              },
+              {
+                path: "listas",
+                lazy: async () => ({ Component: (await routeModules.myMangaLists()).MyMangaLists }),
+              },
+              {
+                path: "listas/:listId",
+                lazy: async () => ({
+                  Component: (await routeModules.mangaListDetail()).MangaListDetail,
                 }),
               },
             ],

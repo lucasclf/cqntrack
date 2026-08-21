@@ -4,6 +4,7 @@ export * from "./books";
 export * from "./credits";
 export * from "./games";
 export * from "./health";
+export * from "./manga";
 export * from "./media-type";
 export * from "./movies";
 export * from "./people";

@@ -1,0 +1,65 @@
+.wrapper {
+  margin-bottom: 24px;
+}
+
+.input {
+  display: block;
+  width: 100%;
+  max-width: 420px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 15px;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.hint {
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin: 8px 0 0;
+}
+
+.results {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 420px;
+}
+
+.resultItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--card-border);
+  background: var(--panel-bg);
+  font-size: 14px;
+}
+
+.resultItem button {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.resultItem button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
