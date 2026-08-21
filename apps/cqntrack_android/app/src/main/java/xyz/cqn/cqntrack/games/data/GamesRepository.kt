@@ -1,7 +1,10 @@
 package xyz.cqn.cqntrack.games.data
 
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
 import retrofit2.HttpException
 import xyz.cqn.cqntrack.core.network.ApiException
 import javax.inject.Inject
@@ -28,6 +31,19 @@ class GamesRepository @Inject constructor(
 
     suspend fun setReview(igdbId: Int, review: String?): GameEntryDto =
         runApiCall { gamesApi.upsertEntryRaw(igdbId, buildJsonObject { put("review", review) }) }
+
+    /** `null` limpa a lista de plataformas jogadas (mesma lógica de setRating/setReview — precisa de null explícito). */
+    suspend fun setPlatforms(igdbId: Int, platforms: List<String>?): GameEntryDto =
+        runApiCall {
+            val body = buildJsonObject {
+                if (platforms == null) {
+                    put("platforms", JsonNull)
+                } else {
+                    putJsonArray("platforms") { platforms.forEach { add(it) } }
+                }
+            }
+            gamesApi.upsertEntryRaw(igdbId, body)
+        }
 
     suspend fun deleteEntry(igdbId: Int) = runApiCall { gamesApi.deleteEntry(igdbId) }
 

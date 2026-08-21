@@ -88,6 +88,20 @@ class GameDetailViewModel @Inject constructor(
         }
     }
 
+    /** Espelha togglePlatform em GameDetail.tsx (web) — lista vazia vira null (limpa o campo). */
+    fun togglePlatform(platform: String) {
+        val current = _uiState.value.entry?.platforms ?: emptyList()
+        val next = if (platform in current) current - platform else current + platform
+        viewModelScope.launch {
+            try {
+                val updated = gamesRepository.setPlatforms(igdbId, next.ifEmpty { null })
+                _uiState.update { it.copy(entry = updated) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "Falha ao salvar. Tente de novo.") }
+            }
+        }
+    }
+
     fun removeEntry() {
         viewModelScope.launch {
             try {
