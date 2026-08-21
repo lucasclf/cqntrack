@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tema de boot da Activity só (splash antes do Compose assumir) — o
+         tema de verdade é o Material3 aplicado via CqntrackTheme no
+         primeiro setContent, ver MainActivity.kt. -->
+    <style name="Theme.Cqntrack" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

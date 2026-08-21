@@ -1,0 +1,24 @@
+package xyz.cqn.cqntrack.core.auth
+
+import okhttp3.ResponseBody
+import retrofit2.Response
+import retrofit2.http.Body
+import retrofit2.http.POST
+
+/**
+ * `Response<ResponseBody>` (não um DTO tipado) de propósito: o corpo de
+ * sign-in/sign-up traz `user`/`session`, que este app não usa — o que
+ * importa é o header `set-auth-token` da resposta (ver AuthRepository), e
+ * `ResponseBody` deixa ler os headers sem forçar o converter JSON a
+ * decodificar um corpo que não nos interessa.
+ */
+interface AuthApi {
+    @POST("api/auth/sign-in/email")
+    suspend fun signIn(@Body body: SignInRequest): Response<ResponseBody>
+
+    @POST("api/auth/sign-up/email")
+    suspend fun signUp(@Body body: SignUpRequest): Response<ResponseBody>
+
+    @POST("api/auth/sign-out")
+    suspend fun signOut(): Response<ResponseBody>
+}
