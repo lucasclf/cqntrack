@@ -13,4 +13,9 @@ object ProfileModule {
     @Provides
     @Singleton
     fun provideProfileApi(retrofit: Retrofit): ProfileApi = retrofit.create(ProfileApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideProfileFavoritesApi(retrofit: Retrofit): ProfileFavoritesApi =
+        retrofit.create(ProfileFavoritesApi::class.java)
 }

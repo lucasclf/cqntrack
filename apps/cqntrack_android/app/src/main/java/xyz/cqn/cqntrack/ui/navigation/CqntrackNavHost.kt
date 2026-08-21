@@ -18,6 +18,7 @@ import xyz.cqn.cqntrack.manga.ui.MangaDetailScreen
 import xyz.cqn.cqntrack.manga.ui.MangaSearchScreen
 import xyz.cqn.cqntrack.movies.ui.MovieDetailScreen
 import xyz.cqn.cqntrack.movies.ui.MovieSearchScreen
+import xyz.cqn.cqntrack.profile.data.FavoriteMediaType
 import xyz.cqn.cqntrack.profile.ui.AccountScreen
 import xyz.cqn.cqntrack.profile.ui.PublicProfileScreen
 import xyz.cqn.cqntrack.series.ui.SeriesDetailScreen
@@ -72,7 +73,16 @@ fun CqntrackNavHost() {
             })
         }
         composable(NavRoutes.PUBLIC_PROFILE) {
-            PublicProfileScreen()
+            PublicProfileScreen(onFavoriteClick = { favorite ->
+                val route = when (favorite.mediaType) {
+                    FavoriteMediaType.BOOK -> NavRoutes.bookDetail(favorite.id)
+                    FavoriteMediaType.MOVIE -> NavRoutes.movieDetail(favorite.id.toInt())
+                    FavoriteMediaType.GAME -> NavRoutes.gameDetail(favorite.id.toInt())
+                    FavoriteMediaType.SERIES -> NavRoutes.seriesDetail(favorite.id.toInt())
+                    FavoriteMediaType.MANGA -> NavRoutes.mangaDetail(favorite.id)
+                }
+                navController.navigate(route)
+            })
         }
 
         composable(NavRoutes.BOOK_SEARCH) {
