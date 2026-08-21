@@ -96,7 +96,11 @@ class MangaDetailViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 mangaRepository.setChapterRead(mangadexId, volumeNumber, chapterNumber, read)
-                bumpReadCount(if (read) 1 else -1)
+                // Mesma armadilha de bumpWatchedCount em SeriesDetailViewModel: na primeira
+                // marcação, `entry` ainda é null no cliente (só passa a existir depois que o
+                // backend cria via ensureMangaEntry) — sem isso o contador de capítulos lidos
+                // ficava travado em 0 até reabrir a tela (achado testando contra dado real).
+                if (_uiState.value.entry == null) refreshEntry() else bumpReadCount(if (read) 1 else -1)
             } catch (e: Exception) {
                 setChapterLocally(volumeNumber, chapterNumber, !read)
                 _uiState.update { it.copy(errorMessage = "Falha ao salvar. Tente de novo.") }
@@ -151,6 +155,16 @@ class MangaDetailViewModel @Inject constructor(
         _uiState.update { state ->
             val entry = state.entry ?: return@update state
             state.copy(entry = entry.copy(readChapterCount = entry.readChapterCount + delta))
+        }
+    }
+
+    private suspend fun refreshEntry() {
+        try {
+            val response = mangaRepository.getDetail(mangadexId)
+            _uiState.update { it.copy(entry = response.entry) }
+        } catch (e: Exception) {
+            // Progresso já foi salvo no servidor (a chamada que disparou isto teve sucesso) —
+            // só o contador na tela que fica desatualizado até a próxima abertura da tela.
         }
     }
 

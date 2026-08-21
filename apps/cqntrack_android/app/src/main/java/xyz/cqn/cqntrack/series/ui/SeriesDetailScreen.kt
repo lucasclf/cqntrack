@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -58,111 +57,122 @@ fun SeriesDetailScreen(
                 modifier = Modifier.padding(padding).padding(16.dp),
             )
 
-            else -> Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            // Uma LazyColumn só pra tela inteira (cabeçalho + episódios) — uma
+            // sinopse longa da TMDB pode estourar a altura de uma Column comum
+            // sem scroll próprio, empurrando "Marcar temporada inteira"/episódios/
+            // Voltar pra fora da tela sem jeito de rolar até lá (mesmo bug real
+            // encontrado testando MangaDetailScreen contra a API de verdade —
+            // corrigido aqui do mesmo jeito antes de acontecer de novo).
+            else -> {
                 val series = uiState.series!!
-                Column(
-                    modifier = Modifier
-                        .verticalScroll(rememberScrollState())
-                        .padding(16.dp),
-                ) {
-                    Row {
-                        AsyncImage(
-                            model = series.posterUrl,
-                            contentDescription = null,
-                            modifier = Modifier.size(96.dp, 128.dp),
-                        )
-                        Column(modifier = Modifier.padding(start = 16.dp)) {
-                            Text(series.name, style = MaterialTheme.typography.titleLarge)
-                            Text(series.genres.joinToString(", "), style = MaterialTheme.typography.bodyMedium)
-                            val total = series.numberOfEpisodes
-                            val watched = uiState.entry?.watchedEpisodeCount ?: 0
-                            if (total != null) {
-                                Text(
-                                    "$watched/$total episódios assistidos",
-                                    style = MaterialTheme.typography.bodySmall,
+                LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
+                    item {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row {
+                                AsyncImage(
+                                    model = series.posterUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(96.dp, 128.dp),
                                 )
+                                Column(modifier = Modifier.padding(start = 16.dp)) {
+                                    Text(series.name, style = MaterialTheme.typography.titleLarge)
+                                    Text(
+                                        series.genres.joinToString(", "),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                    )
+                                    val total = series.numberOfEpisodes
+                                    val watched = uiState.entry?.watchedEpisodeCount ?: 0
+                                    if (total != null) {
+                                        Text(
+                                            "$watched/$total episódios assistidos",
+                                            style = MaterialTheme.typography.bodySmall,
+                                        )
+                                    }
+                                    IconButton(onClick = viewModel::toggleFavorite) {
+                                        Icon(
+                                            imageVector = if (uiState.entry?.favoritedAt != null) {
+                                                Icons.Filled.Favorite
+                                            } else {
+                                                Icons.Filled.FavoriteBorder
+                                            },
+                                            contentDescription = "Favoritar",
+                                        )
+                                    }
+                                }
                             }
-                            IconButton(onClick = viewModel::toggleFavorite) {
-                                Icon(
-                                    imageVector = if (uiState.entry?.favoritedAt != null) {
-                                        Icons.Filled.Favorite
-                                    } else {
-                                        Icons.Filled.FavoriteBorder
-                                    },
-                                    contentDescription = "Favoritar",
-                                )
-                            }
-                        }
-                    }
 
-                    // Série não tem status como filme/jogo/livro/mangá — só um toggle
-                    // de "abandonada" (ver SeriesEntrySchema, sem campo `status`).
-                    FilterChip(
-                        selected = uiState.entry?.abandonedAt != null,
-                        onClick = viewModel::toggleAbandoned,
-                        label = { Text("Abandonada") },
-                        modifier = Modifier.padding(top = 16.dp),
-                    )
-
-                    if (series.overview != null) {
-                        Text(
-                            text = series.overview,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(top = 16.dp),
-                        )
-                    }
-
-                    if (uiState.errorMessage != null) {
-                        Text(
-                            text = uiState.errorMessage.orEmpty(),
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(top = 16.dp),
-                        )
-                    }
-                }
-
-                if (!series.seasons.isNullOrEmpty()) {
-                    Text(
-                        "Episódios",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                    )
-                    Row(
-                        modifier = Modifier
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                            .horizontalScroll(rememberScrollState()),
-                    ) {
-                        series.seasons.forEach { season ->
+                            // Série não tem status como filme/jogo/livro/mangá — só um toggle
+                            // de "abandonada" (ver SeriesEntrySchema, sem campo `status`).
                             FilterChip(
-                                selected = uiState.selectedSeason == season.seasonNumber,
-                                onClick = { viewModel.selectSeason(season.seasonNumber) },
-                                label = { Text(season.name) },
-                                modifier = Modifier.padding(end = 8.dp),
+                                selected = uiState.entry?.abandonedAt != null,
+                                onClick = viewModel::toggleAbandoned,
+                                label = { Text("Abandonada") },
+                                modifier = Modifier.padding(top = 16.dp),
                             )
+
+                            if (series.overview != null) {
+                                Text(
+                                    text = series.overview,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(top = 16.dp),
+                                )
+                            }
+
+                            if (uiState.errorMessage != null) {
+                                Text(
+                                    text = uiState.errorMessage.orEmpty(),
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.padding(top = 16.dp),
+                                )
+                            }
                         }
                     }
 
-                    Button(
-                        onClick = viewModel::toggleSeason,
-                        enabled = !uiState.seasonActionPending && uiState.episodes.isNotEmpty(),
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                    ) {
-                        Text(
-                            if (uiState.episodes.isNotEmpty() && uiState.episodes.all { it.watched }) {
-                                "Desmarcar temporada inteira"
-                            } else {
-                                "Marcar temporada inteira"
-                            },
-                        )
-                    }
+                    if (!series.seasons.isNullOrEmpty()) {
+                        item {
+                            Text(
+                                "Episódios",
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                            )
+                            Row(
+                                modifier = Modifier
+                                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                                    .horizontalScroll(rememberScrollState()),
+                            ) {
+                                series.seasons.forEach { season ->
+                                    FilterChip(
+                                        selected = uiState.selectedSeason == season.seasonNumber,
+                                        onClick = { viewModel.selectSeason(season.seasonNumber) },
+                                        label = { Text(season.name) },
+                                        modifier = Modifier.padding(end = 8.dp),
+                                    )
+                                }
+                            }
 
-                    if (uiState.episodesLoading) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
-                            horizontalArrangement = Arrangement.Center,
-                        ) { CircularProgressIndicator(modifier = Modifier.size(24.dp)) }
-                    } else {
-                        LazyColumn(modifier = Modifier.weight(1f)) {
+                            Button(
+                                onClick = viewModel::toggleSeason,
+                                enabled = !uiState.seasonActionPending && uiState.episodes.isNotEmpty(),
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                            ) {
+                                Text(
+                                    if (uiState.episodes.isNotEmpty() && uiState.episodes.all { it.watched }) {
+                                        "Desmarcar temporada inteira"
+                                    } else {
+                                        "Marcar temporada inteira"
+                                    },
+                                )
+                            }
+                        }
+
+                        if (uiState.episodesLoading) {
+                            item {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                    horizontalArrangement = Arrangement.Center,
+                                ) { CircularProgressIndicator(modifier = Modifier.size(24.dp)) }
+                            }
+                        } else {
                             items(uiState.episodes, key = { it.episodeNumber }) { episode ->
                                 EpisodeRow(
                                     episode = episode,
@@ -171,10 +181,12 @@ fun SeriesDetailScreen(
                             }
                         }
                     }
-                }
 
-                Button(onClick = onBack, modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                    Text("Voltar")
+                    item {
+                        Button(onClick = onBack, modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                            Text("Voltar")
+                        }
+                    }
                 }
             }
         }

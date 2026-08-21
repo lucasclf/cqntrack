@@ -95,7 +95,12 @@ class SeriesDetailViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 seriesRepository.setEpisodeWatched(tmdbId, season, episodeNumber, watched)
-                bumpWatchedCount(if (watched) 1 else -1)
+                // Primeira marcação da série: `entry` ainda é null no cliente (nunca existiu
+                // até o backend criar via ensureSeriesEntry dentro de setEpisodeWatched) —
+                // bumpWatchedCount não tem o que incrementar, busca a entry criada em vez de
+                // tentar um delta local. Achado testando contra dado real: sem isso, o contador
+                // "X/Y episódios assistidos" ficava travado em 0 até a tela ser reaberta.
+                if (_uiState.value.entry == null) refreshEntry() else bumpWatchedCount(if (watched) 1 else -1)
             } catch (e: Exception) {
                 setEpisodeLocally(episodeNumber, !watched)
                 _uiState.update { it.copy(errorMessage = "Falha ao salvar. Tente de novo.") }
@@ -142,6 +147,16 @@ class SeriesDetailViewModel @Inject constructor(
         _uiState.update { state ->
             val entry = state.entry ?: return@update state
             state.copy(entry = entry.copy(watchedEpisodeCount = entry.watchedEpisodeCount + delta))
+        }
+    }
+
+    private suspend fun refreshEntry() {
+        try {
+            val response = seriesRepository.getDetail(tmdbId)
+            _uiState.update { it.copy(entry = response.entry) }
+        } catch (e: Exception) {
+            // Progresso já foi salvo no servidor (a chamada que disparou isto teve sucesso) —
+            // só o contador na tela que fica desatualizado até a próxima abertura da tela.
         }
     }
 

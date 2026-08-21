@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -85,122 +84,133 @@ fun MangaDetailScreen(
                 modifier = Modifier.padding(padding).padding(16.dp),
             )
 
-            else -> Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            // Uma LazyColumn só pra tela inteira — descrição da MangaDex pode ser
+            // longa o bastante (e não vem traduzida pra pt-BR, ao contrário da
+            // TMDB) pra estourar a altura de uma Column comum sem scroll próprio,
+            // empurrando "Marcar volume inteiro"/capítulos/Voltar pra fora da tela
+            // sem jeito de rolar até lá (bug real encontrado testando contra a API
+            // de verdade com "Death Note"). Cabeçalho e capítulos precisam
+            // compartilhar o mesmo scroll.
+            else -> {
                 val manga = uiState.manga!!
-                Column(
-                    modifier = Modifier
-                        .verticalScroll(rememberScrollState())
-                        .padding(16.dp),
-                ) {
-                    Row {
-                        AsyncImage(
-                            model = manga.coverUrl,
-                            contentDescription = null,
-                            modifier = Modifier.size(96.dp, 128.dp),
-                        )
-                        Column(modifier = Modifier.padding(start = 16.dp)) {
-                            Text(manga.title, style = MaterialTheme.typography.titleLarge)
-                            Text(
-                                manga.authors.joinToString(", ") { it.name },
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
-                            val read = uiState.entry?.readChapterCount ?: 0
-                            Text("$read capítulos lidos", style = MaterialTheme.typography.bodySmall)
-                            IconButton(onClick = viewModel::toggleFavorite) {
-                                Icon(
-                                    imageVector = if (uiState.entry?.favoritedAt != null) {
-                                        Icons.Filled.Favorite
-                                    } else {
-                                        Icons.Filled.FavoriteBorder
-                                    },
-                                    contentDescription = "Favoritar",
+                LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
+                    item {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row {
+                                AsyncImage(
+                                    model = manga.coverUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(96.dp, 128.dp),
+                                )
+                                Column(modifier = Modifier.padding(start = 16.dp)) {
+                                    Text(manga.title, style = MaterialTheme.typography.titleLarge)
+                                    Text(
+                                        manga.authors.joinToString(", ") { it.name },
+                                        style = MaterialTheme.typography.bodyMedium,
+                                    )
+                                    val read = uiState.entry?.readChapterCount ?: 0
+                                    Text("$read capítulos lidos", style = MaterialTheme.typography.bodySmall)
+                                    IconButton(onClick = viewModel::toggleFavorite) {
+                                        Icon(
+                                            imageVector = if (uiState.entry?.favoritedAt != null) {
+                                                Icons.Filled.Favorite
+                                            } else {
+                                                Icons.Filled.FavoriteBorder
+                                            },
+                                            contentDescription = "Favoritar",
+                                        )
+                                    }
+                                }
+                            }
+
+                            Row(modifier = Modifier.padding(top = 16.dp)) {
+                                STATUS_LABELS.forEach { (status, label) ->
+                                    FilterChip(
+                                        selected = uiState.entry?.status == status,
+                                        onClick = { viewModel.setStatus(status) },
+                                        label = { Text(label) },
+                                        modifier = Modifier.padding(end = 8.dp),
+                                    )
+                                }
+                            }
+
+                            if (manga.description != null) {
+                                Text(
+                                    text = manga.description,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(top = 16.dp),
+                                )
+                            }
+
+                            if (uiState.errorMessage != null) {
+                                Text(
+                                    text = uiState.errorMessage.orEmpty(),
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.padding(top = 16.dp),
                                 )
                             }
                         }
                     }
 
-                    Row(modifier = Modifier.padding(top = 16.dp)) {
-                        STATUS_LABELS.forEach { (status, label) ->
-                            FilterChip(
-                                selected = uiState.entry?.status == status,
-                                onClick = { viewModel.setStatus(status) },
-                                label = { Text(label) },
-                                modifier = Modifier.padding(end = 8.dp),
-                            )
+                    if (uiState.volumesLoading) {
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                horizontalArrangement = Arrangement.Center,
+                            ) { CircularProgressIndicator(modifier = Modifier.size(24.dp)) }
                         }
-                    }
-
-                    if (manga.description != null) {
-                        Text(
-                            text = manga.description,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(top = 16.dp),
-                        )
-                    }
-
-                    if (uiState.errorMessage != null) {
-                        Text(
-                            text = uiState.errorMessage.orEmpty(),
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(top = 16.dp),
-                        )
-                    }
-                }
-
-                when {
-                    uiState.volumesLoading -> Row(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        horizontalArrangement = Arrangement.Center,
-                    ) { CircularProgressIndicator(modifier = Modifier.size(24.dp)) }
-
-                    uiState.volumes.isNotEmpty() -> {
-                        Text(
-                            "Capítulos",
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                        )
-                        Row(
-                            modifier = Modifier
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                                .horizontalScroll(rememberScrollState()),
-                        ) {
-                            uiState.volumes.forEach { volume ->
-                                FilterChip(
-                                    selected = uiState.selectedVolume == volume.volumeNumber,
-                                    onClick = { viewModel.selectVolume(volume.volumeNumber) },
-                                    label = { Text(volumeLabel(volume.volumeNumber)) },
-                                    modifier = Modifier.padding(end = 8.dp),
-                                )
+                    } else if (uiState.volumes.isNotEmpty()) {
+                        item {
+                            Text(
+                                "Capítulos",
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                            )
+                            Row(
+                                modifier = Modifier
+                                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                                    .horizontalScroll(rememberScrollState()),
+                            ) {
+                                uiState.volumes.forEach { volume ->
+                                    FilterChip(
+                                        selected = uiState.selectedVolume == volume.volumeNumber,
+                                        onClick = { viewModel.selectVolume(volume.volumeNumber) },
+                                        label = { Text(volumeLabel(volume.volumeNumber)) },
+                                        modifier = Modifier.padding(end = 8.dp),
+                                    )
+                                }
                             }
                         }
 
                         val selected = uiState.volumes.find { it.volumeNumber == uiState.selectedVolume }
                         if (selected != null) {
-                            val allRead = selected.chapters.isNotEmpty() && selected.chapters.all { it.read }
-                            Button(
-                                onClick = viewModel::toggleVolume,
-                                enabled = !uiState.volumeActionPending,
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                            ) {
-                                Text(if (allRead) "Desmarcar volume inteiro" else "Marcar volume inteiro")
+                            item {
+                                val allRead = selected.chapters.isNotEmpty() && selected.chapters.all { it.read }
+                                Button(
+                                    onClick = viewModel::toggleVolume,
+                                    enabled = !uiState.volumeActionPending,
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                                ) {
+                                    Text(if (allRead) "Desmarcar volume inteiro" else "Marcar volume inteiro")
+                                }
                             }
 
-                            LazyColumn(modifier = Modifier.weight(1f)) {
-                                items(selected.chapters, key = { it.chapterNumber }) { chapter ->
-                                    ChapterRow(
-                                        chapter = chapter,
-                                        onToggle = { read ->
-                                            viewModel.toggleChapter(selected.volumeNumber, chapter.chapterNumber, read)
-                                        },
-                                    )
-                                }
+                            items(selected.chapters, key = { it.chapterNumber }) { chapter ->
+                                ChapterRow(
+                                    chapter = chapter,
+                                    onToggle = { read ->
+                                        viewModel.toggleChapter(selected.volumeNumber, chapter.chapterNumber, read)
+                                    },
+                                )
                             }
                         }
                     }
-                }
 
-                Button(onClick = onBack, modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                    Text("Voltar")
+                    item {
+                        Button(onClick = onBack, modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                            Text("Voltar")
+                        }
+                    }
                 }
             }
         }
