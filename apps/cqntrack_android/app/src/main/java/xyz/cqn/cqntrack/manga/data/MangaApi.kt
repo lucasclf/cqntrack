@@ -19,4 +19,22 @@ interface MangaApi {
         @Path("mangadexId") mangadexId: String,
         @Body body: UpsertMangaEntryRequestDto,
     ): MangaEntryDto
+
+    @GET("api/manga/{mangadexId}/volumes")
+    suspend fun getVolumes(@Path("mangadexId") mangadexId: String): MangaVolumesResponseDto
+
+    @PUT("api/manga/{mangadexId}/chapters/{volumeNumber}/{chapterNumber}")
+    suspend fun setChapterRead(
+        @Path("mangadexId") mangadexId: String,
+        @Path("volumeNumber") volumeNumber: Int,
+        @Path("chapterNumber") chapterNumber: Double,
+        @Body body: SetChapterReadRequestDto,
+    )
+
+    @PUT("api/manga/{mangadexId}/volumes/{volumeNumber}")
+    suspend fun setVolumeRead(
+        @Path("mangadexId") mangadexId: String,
+        @Path("volumeNumber") volumeNumber: Int,
+        @Body body: SetChapterReadRequestDto,
+    )
 }

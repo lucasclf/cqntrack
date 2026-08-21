@@ -78,3 +78,43 @@ data class UpsertMangaEntryRequestDto(
     val review: String? = null,
     val favorited: Boolean? = null,
 )
+
+/**
+ * Espelha MangaChapterSchema — `chapterNumber` é Double (não Int): a
+ * MangaDex aceita capítulo decimal (ex. "10.5", extra/bônus). `-1` é o
+ * sentinela de "sem número de capítulo" (oneshot/doujinshi), ver
+ * chapters.service.ts no backend.
+ */
+@Serializable
+data class MangaChapterDto(
+    val chapterNumber: Double,
+    val mangadexChapterId: String,
+    val read: Boolean,
+)
+
+/**
+ * Espelha MangaVolumeSchema — `volumeNumber: 0` é o sentinela de "sem
+ * volume" (a MangaDex agrupa capítulo avulso sob a chave "none").
+ */
+@Serializable
+data class MangaVolumeDto(
+    val volumeNumber: Int,
+    val chapters: List<MangaChapterDto>,
+)
+
+/**
+ * Espelha MangaVolumesResponseSchema — diferente de série (uma chamada por
+ * temporada), a MangaDex devolve TODOS os volumes/capítulos numa chamada só
+ * (GET .../volumes, que usa /aggregate por baixo), ver
+ * apps/cqntrack_be/src/manga/chapters.service.ts.
+ */
+@Serializable
+data class MangaVolumesResponseDto(
+    val volumes: List<MangaVolumeDto>,
+)
+
+/** Corpo de PUT .../chapters/:volume/:chapter e PUT .../volumes/:volume — mesmo formato pros dois casos. */
+@Serializable
+data class SetChapterReadRequestDto(
+    val read: Boolean,
+)

@@ -19,4 +19,25 @@ interface SeriesApi {
         @Path("tmdbId") tmdbId: Int,
         @Body body: UpsertSeriesEntryRequestDto,
     ): SeriesEntryDto
+
+    @GET("api/series/{tmdbId}/seasons/{seasonNumber}")
+    suspend fun getSeasonEpisodes(
+        @Path("tmdbId") tmdbId: Int,
+        @Path("seasonNumber") seasonNumber: Int,
+    ): SeriesSeasonEpisodesResponseDto
+
+    @PUT("api/series/{tmdbId}/episodes/{seasonNumber}/{episodeNumber}")
+    suspend fun setEpisodeWatched(
+        @Path("tmdbId") tmdbId: Int,
+        @Path("seasonNumber") seasonNumber: Int,
+        @Path("episodeNumber") episodeNumber: Int,
+        @Body body: SetWatchedRequestDto,
+    )
+
+    @PUT("api/series/{tmdbId}/seasons/{seasonNumber}")
+    suspend fun setSeasonWatched(
+        @Path("tmdbId") tmdbId: Int,
+        @Path("seasonNumber") seasonNumber: Int,
+        @Body body: SetWatchedRequestDto,
+    )
 }

@@ -18,6 +18,15 @@ class SeriesRepository @Inject constructor(
     suspend fun upsertEntry(tmdbId: Int, body: UpsertSeriesEntryRequestDto): SeriesEntryDto =
         runApiCall { seriesApi.upsertEntry(tmdbId, body) }
 
+    suspend fun getSeasonEpisodes(tmdbId: Int, seasonNumber: Int): SeriesSeasonEpisodesResponseDto =
+        runApiCall { seriesApi.getSeasonEpisodes(tmdbId, seasonNumber) }
+
+    suspend fun setEpisodeWatched(tmdbId: Int, seasonNumber: Int, episodeNumber: Int, watched: Boolean) =
+        runApiCall { seriesApi.setEpisodeWatched(tmdbId, seasonNumber, episodeNumber, SetWatchedRequestDto(watched)) }
+
+    suspend fun setSeasonWatched(tmdbId: Int, seasonNumber: Int, watched: Boolean) =
+        runApiCall { seriesApi.setSeasonWatched(tmdbId, seasonNumber, SetWatchedRequestDto(watched)) }
+
     private suspend fun <T> runApiCall(block: suspend () -> T): T =
         try {
             block()

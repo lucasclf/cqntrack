@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import xyz.cqn.cqntrack.series.data.SeriesDetailDto
 import xyz.cqn.cqntrack.series.data.SeriesEntryDto
+import xyz.cqn.cqntrack.series.data.SeriesEpisodeDto
 import xyz.cqn.cqntrack.series.data.SeriesRepository
 import xyz.cqn.cqntrack.series.data.UpsertSeriesEntryRequestDto
 import javax.inject.Inject
@@ -20,6 +21,10 @@ data class SeriesDetailUiState(
     val series: SeriesDetailDto? = null,
     val entry: SeriesEntryDto? = null,
     val errorMessage: String? = null,
+    val selectedSeason: Int? = null,
+    val episodes: List<SeriesEpisodeDto> = emptyList(),
+    val episodesLoading: Boolean = false,
+    val seasonActionPending: Boolean = false,
 )
 
 @HiltViewModel
@@ -45,8 +50,30 @@ class SeriesDetailViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(isLoading = false, series = response.series, entry = response.entry)
                 }
+                // Abre direto na temporada sugerida pelo backend (próxima com episódio
+                // pendente), caindo pra 1ª temporada da lista se não houver sugestão —
+                // mesmo espírito de nextSeasonToWatch em SeriesDetail.tsx (web).
+                val defaultSeason = response.nextSeasonToWatch
+                    ?: response.series.seasons?.firstOrNull()?.seasonNumber
+                if (defaultSeason != null) {
+                    selectSeason(defaultSeason)
+                }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, errorMessage = "Falha ao carregar.") }
+            }
+        }
+    }
+
+    fun selectSeason(seasonNumber: Int) {
+        _uiState.update { it.copy(selectedSeason = seasonNumber, episodesLoading = true) }
+        viewModelScope.launch {
+            try {
+                val response = seriesRepository.getSeasonEpisodes(tmdbId, seasonNumber)
+                _uiState.update { it.copy(episodes = response.episodes, episodesLoading = false) }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(episodesLoading = false, errorMessage = "Falha ao carregar episódios.")
+                }
             }
         }
     }
@@ -59,6 +86,63 @@ class SeriesDetailViewModel @Inject constructor(
     fun toggleAbandoned() {
         val isAbandoned = _uiState.value.entry?.abandonedAt != null
         updateEntry(UpsertSeriesEntryRequestDto(abandoned = !isAbandoned))
+    }
+
+    /** Otimista: atualiza a UI antes da resposta, reverte se a chamada falhar. */
+    fun toggleEpisode(episodeNumber: Int, watched: Boolean) {
+        val season = _uiState.value.selectedSeason ?: return
+        setEpisodeLocally(episodeNumber, watched)
+        viewModelScope.launch {
+            try {
+                seriesRepository.setEpisodeWatched(tmdbId, season, episodeNumber, watched)
+                bumpWatchedCount(if (watched) 1 else -1)
+            } catch (e: Exception) {
+                setEpisodeLocally(episodeNumber, !watched)
+                _uiState.update { it.copy(errorMessage = "Falha ao salvar. Tente de novo.") }
+            }
+        }
+    }
+
+    /** Marca/desmarca a temporada inteira de uma vez — mesmo espírito de setVolumeRead (mangá). */
+    fun toggleSeason() {
+        val season = _uiState.value.selectedSeason ?: return
+        val allWatched = _uiState.value.episodes.isNotEmpty() && _uiState.value.episodes.all { it.watched }
+        val nextWatched = !allWatched
+
+        _uiState.update { it.copy(seasonActionPending = true) }
+        viewModelScope.launch {
+            try {
+                seriesRepository.setSeasonWatched(tmdbId, season, nextWatched)
+                _uiState.update { state ->
+                    state.copy(
+                        seasonActionPending = false,
+                        episodes = state.episodes.map { it.copy(watched = nextWatched) },
+                    )
+                }
+                load()
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(seasonActionPending = false, errorMessage = "Falha ao salvar. Tente de novo.")
+                }
+            }
+        }
+    }
+
+    private fun setEpisodeLocally(episodeNumber: Int, watched: Boolean) {
+        _uiState.update { state ->
+            state.copy(
+                episodes = state.episodes.map {
+                    if (it.episodeNumber == episodeNumber) it.copy(watched = watched) else it
+                },
+            )
+        }
+    }
+
+    private fun bumpWatchedCount(delta: Int) {
+        _uiState.update { state ->
+            val entry = state.entry ?: return@update state
+            state.copy(entry = entry.copy(watchedEpisodeCount = entry.watchedEpisodeCount + delta))
+        }
     }
 
     private fun updateEntry(body: UpsertSeriesEntryRequestDto) {
