@@ -50,11 +50,12 @@ class GamesRepository @Inject constructor(
     suspend fun getEntries(
         status: GameStatus?,
         favorite: Boolean?,
+        platform: String?,
         sortBy: String,
         order: String,
         page: Int,
     ): PaginatedGameEntriesResponseDto = runApiCall {
-        gamesApi.getEntries(status?.toApiValue(), favorite, sortBy, order, page)
+        gamesApi.getEntries(status?.toApiValue(), favorite, platform, sortBy, order, page)
     }
 
     private suspend fun <T> runApiCall(block: suspend () -> T): T =

@@ -22,6 +22,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -78,6 +79,16 @@ fun GameEntriesScreen(
                         )
                     }
                 }
+            }
+
+            item {
+                OutlinedTextField(
+                    value = uiState.platformFilter,
+                    onValueChange = viewModel::setPlatformFilter,
+                    label = { Text("Filtrar por plataforma") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                )
             }
 
             item {

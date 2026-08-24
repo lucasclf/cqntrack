@@ -32,11 +32,12 @@ interface GamesApi {
     @DELETE("api/games/{igdbId}/entry")
     suspend fun deleteEntry(@Path("igdbId") igdbId: Int)
 
-    /** Espelha ListGameEntriesQuerySchema — "Minhas marcações". Sem platform/excludeNotStarted nesta versão. */
+    /** Espelha ListGameEntriesQuerySchema — "Minhas marcações". Sem excludeNotStarted nesta versão. */
     @GET("api/games/entries")
     suspend fun getEntries(
         @Query("status") status: String? = null,
         @Query("favorite") favorite: Boolean? = null,
+        @Query("platform") platform: String? = null,
         @Query("sortBy") sortBy: String = "updatedAt",
         @Query("order") order: String = "desc",
         @Query("page") page: Int = 1,
