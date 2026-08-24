@@ -140,6 +140,51 @@ describe("/api/lists", () => {
     expect(afterRemove.itemCount).toBe(0);
   });
 
+  it("items vêm com a entry do usuário embutida (null quando nunca marcado)", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    const createRes = await app.request(
+      "/api/lists",
+      {
+        method: "POST",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Ação rápida" }),
+      },
+      env,
+    );
+    const { id: listId } = (await createRes.json()) as GameList;
+
+    stubIgdbFetchOnce([igdbGame(803, "Hollow Knight")], [igdbGame(804, "Celeste")]);
+    await app.request(
+      `/api/lists/${listId}/items/803`,
+      { method: "PUT", headers: { cookie } },
+      env,
+    );
+    await app.request(
+      `/api/lists/${listId}/items/804`,
+      { method: "PUT", headers: { cookie } },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    await app.request(
+      "/api/games/803/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ favorited: true }),
+      },
+      env,
+    );
+
+    const detailRes = await app.request(`/api/lists/${listId}`, { headers: { cookie } }, env);
+    const detail = (await detailRes.json()) as GameListDetail;
+
+    const hollowKnight = detail.items.find((item) => item.igdbId === 803);
+    const celeste = detail.items.find((item) => item.igdbId === 804);
+    expect(hollowKnight?.entry?.favoritedAt).not.toBeNull();
+    expect(celeste?.entry).toBeNull();
+  });
+
   it("adicionar o mesmo jogo duas vezes não gera atividade duplicada", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
     const createRes = await app.request(

@@ -1,10 +1,12 @@
 import type {
   GameEntry,
   GameEntryWithGame,
+  GameSummary,
+  GameSummaryWithEntry,
   ListGameEntriesQuery,
   UpsertGameEntryRequest,
 } from "@cqntrack/shared";
-import { and, asc, desc, eq, isNotNull, isNull, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import type { createDb } from "../db/client";
 import { activity, gameEntry } from "../db/schema";
 import { withoutUndefined } from "../lib/without-undefined";
@@ -85,6 +87,32 @@ export async function getGameEntryForUser(
     where: and(eq(gameEntry.userId, userId), eq(gameEntry.gameId, igdbId)),
   });
   return row ? toGameEntry(row) : null;
+}
+
+// Lookup em lote — dado um conjunto de jogos já resolvidos (busca IGDB,
+// descobrir, item de lista), busca de uma vez as entries do usuário pra
+// anexar a cada um (ações rápidas do Card, sem precisar entrar no detalhe).
+// Mesmo espírito de getWatchedSummaries (série)/getReadChapterCounts
+// (mangá): 1 query com `inArray` em vez de N+1.
+export async function attachEntriesToGames(
+  db: Db,
+  userId: string,
+  games: GameSummary[],
+): Promise<GameSummaryWithEntry[]> {
+  if (games.length === 0) return [];
+
+  const rows = await db.query.gameEntry.findMany({
+    where: and(
+      eq(gameEntry.userId, userId),
+      inArray(
+        gameEntry.gameId,
+        games.map((game) => game.igdbId),
+      ),
+    ),
+  });
+  const entriesByGameId = new Map(rows.map((row) => [row.gameId, toGameEntry(row)]));
+
+  return games.map((game) => ({ ...game, entry: entriesByGameId.get(game.igdbId) ?? null }));
 }
 
 export async function upsertGameEntry(

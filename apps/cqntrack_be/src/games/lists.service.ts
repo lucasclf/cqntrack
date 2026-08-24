@@ -9,6 +9,7 @@ import type { createDb } from "../db/client";
 import { activity, gameList, gameListItem } from "../db/schema";
 import { isUniqueConstraintError } from "../lib/is-unique-constraint-error";
 import { withoutUndefined } from "../lib/without-undefined";
+import { attachEntriesToGames } from "./entries.service";
 import { getOrCacheGame, mapCachedGameToSummary, toActivitySnapshot } from "./games.service";
 
 type Db = ReturnType<typeof createDb>;
@@ -147,9 +148,10 @@ export async function getGameListDetail(
   });
 
   const [list] = await withItemCount(db, [row]);
+  const summaries = items.map((item) => mapCachedGameToSummary(item.game));
   return {
     ...list!,
-    items: items.map((item) => mapCachedGameToSummary(item.game)),
+    items: await attachEntriesToGames(db, userId, summaries),
   };
 }
 

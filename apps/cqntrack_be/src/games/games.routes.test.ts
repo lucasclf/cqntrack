@@ -71,11 +71,45 @@ describe("GET /api/games/search", () => {
           platforms: ["PC (Microsoft Windows)"],
           genres: ["Role-playing (RPG)"],
           rating: 92.76,
+          entry: null,
         },
       ],
     });
 
     vi.unstubAllGlobals();
+  });
+
+  it("quando o jogo já foi marcado antes, a busca devolve a entry embutida (não null)", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(jsonResponse(TOKEN_RESPONSE))
+        .mockResolvedValueOnce(jsonResponse([IGDB_GAME])),
+    );
+    await app.request(
+      "/api/games/1942/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ favorited: true }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    // Token IGDB já foi obtido e persistido (D1) pela ação anterior — a
+    // busca em si só precisa de 1 fetch (mesmo padrão comprovado no teste
+    // "não consulta a IGDB de novo quando o jogo já está cacheado").
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(jsonResponse([IGDB_GAME])));
+    const res = await app.request("/api/games/search?q=witcher", { headers: { cookie } }, env);
+    vi.unstubAllGlobals();
+
+    const body = (await res.json()) as {
+      results: Array<{ entry: { favoritedAt: string } | null }>;
+    };
+    expect(body.results[0]?.entry?.favoritedAt).not.toBeNull();
   });
 });
 
@@ -115,6 +149,7 @@ describe("GET /api/games/discover", () => {
           platforms: ["PC (Microsoft Windows)"],
           genres: ["Role-playing (RPG)"],
           rating: 92.76,
+          entry: null,
         },
       ],
       page: 1,

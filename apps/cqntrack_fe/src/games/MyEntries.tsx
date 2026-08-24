@@ -73,7 +73,7 @@ export function MyEntries() {
         <>
           <div className={styles.grid}>
             {data.items.map((item) => (
-              <GameCard key={item.game.igdbId} game={item.game} entry={item} />
+              <GameCard key={item.game.igdbId} game={item.game} entry={item} interactive />
             ))}
           </div>
           <div className={styles.pagination}>

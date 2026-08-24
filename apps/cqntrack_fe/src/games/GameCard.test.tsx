@@ -1,8 +1,14 @@
 import type { GameEntry, GameSummary } from "@cqntrack/shared";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GameCard } from "./GameCard";
+
+const { putMock } = vi.hoisted(() => ({ putMock: vi.fn() }));
+
+vi.mock("../lib/api-client", () => ({
+  apiClient: { put: putMock },
+}));
 
 const BASE_GAME: GameSummary = {
   igdbId: 1942,
@@ -14,10 +20,10 @@ const BASE_GAME: GameSummary = {
   rating: 92.76,
 };
 
-function renderCard(game: GameSummary, entry?: GameEntry) {
+function renderCard(game: GameSummary, entry?: GameEntry | null, interactive = false) {
   return render(
     <MemoryRouter>
-      <GameCard game={game} entry={entry} />
+      <GameCard game={game} entry={entry} interactive={interactive} />
     </MemoryRouter>,
   );
 }
@@ -77,5 +83,110 @@ describe("GameCard", () => {
     });
 
     expect(container.querySelector("p:last-child")).toBeEmptyDOMElement();
+  });
+
+  it("sem interactive, não renderiza os botões de ação rápida", () => {
+    renderCard(BASE_GAME);
+
+    expect(screen.queryByLabelText("Favoritar")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Marcar como finalizado")).not.toBeInTheDocument();
+  });
+
+  describe("interactive", () => {
+    beforeEach(() => {
+      putMock.mockReset();
+    });
+
+    it("favoritar chama o PUT, atualiza otimista e não navega", () => {
+      putMock.mockResolvedValue({});
+      renderCard(BASE_GAME, null, true);
+
+      fireEvent.click(screen.getByLabelText("Favoritar"));
+
+      expect(putMock).toHaveBeenCalledWith("/api/games/1942/entry", { favorited: true });
+      expect(screen.getByLabelText("Desfavoritar")).toBeInTheDocument();
+    });
+
+    it("clicar em favoritar de novo desfavorita", async () => {
+      putMock.mockResolvedValue({
+        id: "1",
+        status: null,
+        rating: null,
+        favoritedAt: "2026-01-01T00:00:00.000Z",
+        platforms: null,
+        review: null,
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      });
+      renderCard(
+        BASE_GAME,
+        {
+          id: "1",
+          status: null,
+          rating: null,
+          favoritedAt: "2026-01-01T00:00:00.000Z",
+          platforms: null,
+          review: null,
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        },
+        true,
+      );
+
+      fireEvent.click(screen.getByLabelText("Desfavoritar"));
+
+      expect(putMock).toHaveBeenCalledWith("/api/games/1942/entry", { favorited: false });
+      await waitFor(() => expect(screen.getByLabelText("Favoritar")).toBeInTheDocument());
+    });
+
+    it("marcar como finalizado chama o PUT com status completed", () => {
+      putMock.mockResolvedValue({});
+      renderCard(BASE_GAME, null, true);
+
+      fireEvent.click(screen.getByLabelText("Marcar como finalizado"));
+
+      expect(putMock).toHaveBeenCalledWith("/api/games/1942/entry", { status: "completed" });
+      expect(screen.getByLabelText("Desmarcar como finalizado")).toBeInTheDocument();
+    });
+
+    it("clicar de novo em finalizado desmarca (status: null)", () => {
+      putMock.mockResolvedValue({});
+      renderCard(
+        BASE_GAME,
+        {
+          id: "1",
+          status: "completed",
+          rating: null,
+          favoritedAt: null,
+          platforms: null,
+          review: null,
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        },
+        true,
+      );
+
+      fireEvent.click(screen.getByLabelText("Desmarcar como finalizado"));
+
+      expect(putMock).toHaveBeenCalledWith("/api/games/1942/entry", { status: null });
+    });
+
+    it("reverte a marcação otimista quando o PUT falha", async () => {
+      putMock.mockRejectedValue(new Error("falha de rede"));
+      renderCard(BASE_GAME, null, true);
+
+      fireEvent.click(screen.getByLabelText("Favoritar"));
+      expect(screen.getByLabelText("Desfavoritar")).toBeInTheDocument();
+
+      await waitFor(() => expect(screen.getByLabelText("Favoritar")).toBeInTheDocument());
+    });
+
+    it("o clique no botão não navega pro detalhe (preventDefault/stopPropagation)", () => {
+      putMock.mockResolvedValue({});
+      renderCard(BASE_GAME, null, true);
+
+      const clickEvent = new MouseEvent("click", { bubbles: true, cancelable: true });
+      const preventDefaultSpy = vi.spyOn(clickEvent, "preventDefault");
+      screen.getByLabelText("Favoritar").dispatchEvent(clickEvent);
+
+      expect(preventDefaultSpy).toHaveBeenCalled();
+    });
   });
 });

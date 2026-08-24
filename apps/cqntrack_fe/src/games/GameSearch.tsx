@@ -1,4 +1,4 @@
-import type { GameSummary, SearchGamesResponse } from "@cqntrack/shared";
+import type { GameSummaryWithEntry, SearchGamesResponse } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
 import { apiClient } from "../lib/api-client";
@@ -14,7 +14,7 @@ export function GameSearch() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
   const debouncedQuery = useDebouncedValue(query, SEARCH_DEBOUNCE_MS).trim();
-  const [results, setResults] = useState<GameSummary[]>([]);
+  const [results, setResults] = useState<GameSummaryWithEntry[]>([]);
   const [status, setStatus] = useState<SearchStatus>("idle");
 
   // Ajusta o status assim que a query debounced muda — feito durante o
@@ -80,7 +80,7 @@ export function GameSearch() {
       )}
       <div className={styles.grid}>
         {results.map((game) => (
-          <GameCard key={game.igdbId} game={game} />
+          <GameCard key={game.igdbId} game={game} entry={game.entry} interactive />
         ))}
       </div>
     </div>

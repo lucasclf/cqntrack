@@ -14,6 +14,7 @@ import { Hono } from "hono";
 import { type AuthedEnv, requireSession } from "../auth/require-session";
 import { createDb } from "../db/client";
 import {
+  attachEntriesToGames,
   deleteGameEntry,
   getFavorites,
   getGameEntryForUser,
@@ -49,7 +50,8 @@ gamesRouter.get("/search", async (c) => {
   }
 
   const db = createDb(c.env);
-  const results = await searchGamesForUser(c.env, db, parsed.data.q, parsed.data.limit);
+  const summaries = await searchGamesForUser(c.env, db, parsed.data.q, parsed.data.limit);
+  const results = await attachEntriesToGames(db, c.get("userId"), summaries);
 
   const body = SearchGamesResponseSchema.parse({ results });
   return c.json(body);
@@ -89,12 +91,13 @@ gamesRouter.get("/discover", async (c) => {
   }
 
   const db = createDb(c.env);
-  const { results, hasMore } = await getPopularGamesForUser(
+  const { results: summaries, hasMore } = await getPopularGamesForUser(
     c.env,
     db,
     parsed.data.page,
     parsed.data.platform,
   );
+  const results = await attachEntriesToGames(db, c.get("userId"), summaries);
   return c.json(DiscoverGamesResponseSchema.parse({ results, page: parsed.data.page, hasMore }));
 });
 

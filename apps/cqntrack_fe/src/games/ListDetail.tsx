@@ -63,7 +63,11 @@ export function ListDetail() {
       await apiClient.put(`/api/lists/${listId}/items/${game.igdbId}`);
       setDetail((current) =>
         current && !current.items.some((item) => item.igdbId === game.igdbId)
-          ? { ...current, items: [game, ...current.items], itemCount: current.itemCount + 1 }
+          ? {
+              ...current,
+              items: [{ ...game, entry: null }, ...current.items],
+              itemCount: current.itemCount + 1,
+            }
           : current,
       );
     } catch {
@@ -124,7 +128,7 @@ export function ListDetail() {
         <div className={styles.grid}>
           {detail.items.map((game) => (
             <div key={game.igdbId} className={styles.gridItem}>
-              <GameCard game={game} />
+              <GameCard game={game} entry={game.entry} interactive />
               <button
                 type="button"
                 className={styles.removeItemBtn}

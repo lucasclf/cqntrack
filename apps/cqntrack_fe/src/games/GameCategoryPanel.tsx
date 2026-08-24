@@ -42,7 +42,7 @@ export function GameCategoryPanel({ basePath }: GameCategoryPanelProps) {
         emptyMessage="Nenhum jogo favoritado ainda."
         errorMessage="Falha ao carregar seus jogos favoritos."
         getKey={(item) => item.game.igdbId}
-        renderItem={(item) => <GameCard game={item.game} entry={item} />}
+        renderItem={(item) => <GameCard game={item.game} entry={item} interactive />}
       />
       <InfiniteMediaGrid
         hidden={subTab !== "recent"}
@@ -50,7 +50,7 @@ export function GameCategoryPanel({ basePath }: GameCategoryPanelProps) {
         emptyMessage="Nenhum jogo jogado recentemente."
         errorMessage="Falha ao carregar seus jogos jogados recentemente."
         getKey={(item) => item.game.igdbId}
-        renderItem={(item) => <GameCard game={item.game} entry={item} />}
+        renderItem={(item) => <GameCard game={item.game} entry={item} interactive />}
       />
     </div>
   );

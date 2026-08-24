@@ -3,7 +3,7 @@ import {
   GAME_DISCOVER_PLATFORM_LABELS,
   type DiscoverGamesResponse,
   type GameDiscoverPlatform,
-  type GameSummary,
+  type GameSummaryWithEntry,
 } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { MediaSearchInput } from "../components/MediaSearchInput";
@@ -16,7 +16,7 @@ type LoadStatus = "loading" | "idle" | "error";
 // Índice da seção de jogos no menu superior — aclamados da própria IGDB
 // (mesmo espírito de MovieDiscover/SeriesDiscover, "carregar mais").
 export function GameDiscover() {
-  const [results, setResults] = useState<GameSummary[]>([]);
+  const [results, setResults] = useState<GameSummaryWithEntry[]>([]);
   const [page, setPage] = useState(1);
   const [platform, setPlatform] = useState<GameDiscoverPlatform | null>(null);
   const [hasMore, setHasMore] = useState(false);
@@ -97,7 +97,7 @@ export function GameDiscover() {
 
       <div className={styles.grid}>
         {results.map((game) => (
-          <GameCard key={game.igdbId} game={game} />
+          <GameCard key={game.igdbId} game={game} entry={game.entry} interactive />
         ))}
       </div>
 

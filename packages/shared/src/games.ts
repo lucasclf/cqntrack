@@ -37,6 +37,42 @@ export const GameSummarySchema = z.object({
 
 export type GameSummary = z.infer<typeof GameSummarySchema>;
 
+// Marcação do usuário para um jogo específico — sem o `game` embutido (quem
+// consome isso normalmente já sabe de qual jogo se trata pelo contexto da
+// chamada). Ver GameEntryWithGameSchema para o caso de listas/feeds.
+export const GameEntrySchema = z.object({
+  id: z.string(),
+  status: GameStatusSchema.nullable(),
+  rating: z.number().nullable(),
+  // Favoritar não tem mais limite de quantidade (ver FavoritesResponseSchema)
+  // — null = esse jogo não está favoritado.
+  favoritedAt: z.iso.datetime().nullable(),
+  // Um jogo pode ter sido jogado em mais de uma plataforma — lista, não texto
+  // único. null = nenhuma selecionada.
+  platforms: z.array(z.string()).nullable(),
+  review: z.string().nullable(),
+  updatedAt: z.iso.datetime(),
+});
+
+export type GameEntry = z.infer<typeof GameEntrySchema>;
+
+export const GameEntryWithGameSchema = GameEntrySchema.extend({
+  game: GameSummarySchema,
+});
+
+export type GameEntryWithGame = z.infer<typeof GameEntryWithGameSchema>;
+
+// Mesmo GameSummary, com a marcação do usuário logado embutida quando existir
+// (null quando o jogo nunca foi marcado) — usado em telas que listam vários
+// jogos de fontes externas (busca, descobrir, detalhe de lista) e agora
+// também precisam saber o que o usuário já marcou, pras ações rápidas do
+// Card (favoritar/marcar concluído sem entrar no detalhe).
+export const GameSummaryWithEntrySchema = GameSummarySchema.extend({
+  entry: GameEntrySchema.nullable(),
+});
+
+export type GameSummaryWithEntry = z.infer<typeof GameSummaryWithEntrySchema>;
+
 export const SearchGamesQuerySchema = z.object({
   q: z.string().min(1).max(100),
   limit: z.coerce.number().int().min(1).max(50).default(20),
@@ -45,7 +81,7 @@ export const SearchGamesQuerySchema = z.object({
 export type SearchGamesQuery = z.infer<typeof SearchGamesQuerySchema>;
 
 export const SearchGamesResponseSchema = z.object({
-  results: z.array(GameSummarySchema),
+  results: z.array(GameSummaryWithEntrySchema),
 });
 
 export type SearchGamesResponse = z.infer<typeof SearchGamesResponseSchema>;
@@ -93,7 +129,7 @@ export const DiscoverGamesQuerySchema = z.object({
 export type DiscoverGamesQuery = z.infer<typeof DiscoverGamesQuerySchema>;
 
 export const DiscoverGamesResponseSchema = z.object({
-  results: z.array(GameSummarySchema),
+  results: z.array(GameSummaryWithEntrySchema),
   page: z.number().int(),
   hasMore: z.boolean(),
 });
@@ -105,31 +141,6 @@ export const GameDetailSchema = GameSummarySchema.extend({
 });
 
 export type GameDetail = z.infer<typeof GameDetailSchema>;
-
-// Marcação do usuário para um jogo específico — sem o `game` embutido (quem
-// consome isso normalmente já sabe de qual jogo se trata pelo contexto da
-// chamada). Ver GameEntryWithGameSchema para o caso de listas/feeds.
-export const GameEntrySchema = z.object({
-  id: z.string(),
-  status: GameStatusSchema.nullable(),
-  rating: z.number().nullable(),
-  // Favoritar não tem mais limite de quantidade (ver FavoritesResponseSchema)
-  // — null = esse jogo não está favoritado.
-  favoritedAt: z.iso.datetime().nullable(),
-  // Um jogo pode ter sido jogado em mais de uma plataforma — lista, não texto
-  // único. null = nenhuma selecionada.
-  platforms: z.array(z.string()).nullable(),
-  review: z.string().nullable(),
-  updatedAt: z.iso.datetime(),
-});
-
-export type GameEntry = z.infer<typeof GameEntrySchema>;
-
-export const GameEntryWithGameSchema = GameEntrySchema.extend({
-  game: GameSummarySchema,
-});
-
-export type GameEntryWithGame = z.infer<typeof GameEntryWithGameSchema>;
 
 export const GameDetailResponseSchema = z.object({
   game: GameDetailSchema,
@@ -212,8 +223,14 @@ export const GameListsResponseSchema = z.object({
 
 export type GameListsResponse = z.infer<typeof GameListsResponseSchema>;
 
+// items com entry embutida — GameListDetailSchema é reaproveitado tanto pela
+// rota autenticada (minhas listas, entry = do próprio usuário) quanto pela
+// rota de perfil público (entry = do dono da lista, ver users.routes.ts) —
+// as duas já resolvem `userId` corretamente antes de chamar
+// getGameListDetail, então o mesmo service serve os dois casos sem
+// precisar saber qual é qual.
 export const GameListDetailSchema = GameListSchema.extend({
-  items: z.array(GameSummarySchema),
+  items: z.array(GameSummaryWithEntrySchema),
 });
 
 export type GameListDetail = z.infer<typeof GameListDetailSchema>;
