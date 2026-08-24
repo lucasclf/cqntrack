@@ -37,6 +37,7 @@ export function MangaVolumeList({ mangadexId }: MangaVolumeListProps) {
   const [loadError, setLoadError] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [volumeActionPending, setVolumeActionPending] = useState(false);
+  const [allChaptersActionPending, setAllChaptersActionPending] = useState(false);
 
   // Troca de mangá (mesmo componente, :mangadexId da rota mudou sem
   // remontar) — ajustado durante o render (mesmo padrão de SeriesEpisodeList
@@ -164,6 +165,39 @@ export function MangaVolumeList({ mangadexId }: MangaVolumeListProps) {
     }
   }
 
+  // Mangá inteiro de uma vez (item 5 do pedido do usuário) — diferente de
+  // toggleVolume, não olha o estado atual pra decidir marcar/desmarcar (só
+  // marca, não existe "desmarcar tudo" pedido). Como a MangaDex já devolve
+  // a estrutura inteira numa chamada só (ver comentário no topo do
+  // arquivo), dá pra atualizar todos os volumes em memória direto, sem
+  // precisar invalidar e rebuscar (diferente de markAllSeasonsWatched, que
+  // usa cache por temporada).
+  async function markAllChaptersRead() {
+    if (!(await confirm("Marcar todos os capítulos deste mangá como lidos?"))) {
+      return;
+    }
+
+    setActionError(null);
+    setAllChaptersActionPending(true);
+    try {
+      await apiClient.put(`/api/manga/${mangadexId}/read-all`);
+      setData((current) =>
+        current
+          ? {
+              volumes: current.volumes.map((volume) => ({
+                ...volume,
+                chapters: volume.chapters.map((chapter) => ({ ...chapter, read: true })),
+              })),
+            }
+          : current,
+      );
+    } catch {
+      setActionError("Falha ao salvar. Tente novamente.");
+    } finally {
+      setAllChaptersActionPending(false);
+    }
+  }
+
   if (loadError) {
     return <p role="alert">Falha ao carregar os capítulos.</p>;
   }
@@ -182,6 +216,15 @@ export function MangaVolumeList({ mangadexId }: MangaVolumeListProps) {
     <section className={styles.section}>
       <h2>Capítulos</h2>
       {actionError && <p role="alert">{actionError}</p>}
+
+      <button
+        type="button"
+        className={styles.volumeToggle}
+        disabled={allChaptersActionPending}
+        onClick={markAllChaptersRead}
+      >
+        Marcar mangá inteiro como lido
+      </button>
 
       <div className={styles.volumeTabs} role="tablist">
         {data.volumes.map((volume) => (

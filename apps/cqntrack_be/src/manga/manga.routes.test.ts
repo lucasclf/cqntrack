@@ -483,6 +483,63 @@ describe("PUT /api/manga/:mangadexId/volumes/:volumeNumber", () => {
   });
 });
 
+describe("PUT /api/manga/:mangadexId/read-all", () => {
+  it("sem sessão retorna 401", async () => {
+    const res = await app.request("/api/manga/manga-8/read-all", { method: "PUT" }, env);
+    expect(res.status).toBe(401);
+  });
+
+  it("marca todos os volumes/capítulos de uma vez e gera 1 activity 'manga_completed'", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubMangadexFetchOnce({ data: mangadexManga("manga-8", "One Piece") });
+    await app.request(
+      "/api/manga/manga-8/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    stubMangadexFetchOnce({
+      volumes: {
+        "1": {
+          volume: "1",
+          chapters: {
+            "1": { chapter: "1", id: "cap-1" },
+            "2": { chapter: "2", id: "cap-2" },
+          },
+        },
+        "2": {
+          volume: "2",
+          chapters: {
+            "3": { chapter: "3", id: "cap-3" },
+          },
+        },
+      },
+    });
+    const res = await app.request(
+      "/api/manga/manga-8/read-all",
+      { method: "PUT", headers: { cookie } },
+      env,
+    );
+    vi.unstubAllGlobals();
+    expect(res.status).toBe(204);
+
+    const entryRes = await app.request("/api/manga/manga-8", { headers: { cookie } }, env);
+    const entryBody = (await entryRes.json()) as { entry: { readChapterCount: number } | null };
+    expect(entryBody.entry?.readChapterCount).toBe(3);
+
+    const db = createDb(env);
+    const activities = await db.query.activity.findMany();
+    const completed = activities.filter((a) => a.type === "manga_completed");
+    expect(completed).toHaveLength(1);
+    expect(completed[0]).toMatchObject({ metadata: { chapterCount: 3 } });
+  });
+});
+
 describe("GET /api/manga/authors/:authorId", () => {
   it("sem sessão retorna 401", async () => {
     const res = await app.request("/api/manga/authors/autor-1", undefined, env);

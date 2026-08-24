@@ -58,6 +58,14 @@ function describeActivity(item: ActivityItem): string {
     }
     case "watched":
       return "Assistiu";
+    case "series_completed": {
+      const seasonCount = metadata.seasonCount as number | undefined;
+      return seasonCount !== undefined
+        ? `Assistiu a série inteira (${seasonCount} temporada${seasonCount === 1 ? "" : "s"})`
+        : "Assistiu a série inteira";
+    }
+    case "manga_completed":
+      return "Leu o mangá inteiro";
     case "imported": {
       const source = metadata.source as string | undefined;
       const label = source === "filmow" ? "Filmow" : source === "tvtime" ? "tvtime" : "importação";

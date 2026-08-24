@@ -364,6 +364,37 @@ describe("SeriesEpisodeList", () => {
     expect(onResume).not.toHaveBeenCalled();
   });
 
+  it("marcar todas as temporadas pede confirmação, chama o PUT bulk e força recarregar a temporada atual", async () => {
+    getMock.mockResolvedValue(season1Response());
+    putMock.mockResolvedValue(undefined);
+    renderList({ tmdbId: 1396, seasons: SEASONS });
+    await screen.findByText("1. Pilot");
+    getMock.mockClear();
+    getMock.mockResolvedValue(season1Response(true));
+
+    fireEvent.click(screen.getByRole("button", { name: "Marcar todas as temporadas assistidas" }));
+    expect(
+      await screen.findByText("Marcar todas as temporadas desta série como assistidas?"),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar" }));
+
+    await waitFor(() => expect(putMock).toHaveBeenCalledWith("/api/series/1396/watch-all"));
+    // Cache invalidado — a temporada selecionada é rebuscada do zero.
+    await waitFor(() => expect(getMock).toHaveBeenCalledWith("/api/series/1396/seasons/1"));
+  });
+
+  it("cancelando a confirmação de marcar todas as temporadas, não chama o PUT", async () => {
+    getMock.mockResolvedValue(season1Response());
+    putMock.mockResolvedValue(undefined);
+    renderList({ tmdbId: 1396, seasons: SEASONS });
+    await screen.findByText("1. Pilot");
+
+    fireEvent.click(screen.getByRole("button", { name: "Marcar todas as temporadas assistidas" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Cancelar" }));
+
+    expect(putMock).not.toHaveBeenCalledWith("/api/series/1396/watch-all");
+  });
+
   it("não renderiza nada quando a série não tem temporadas", () => {
     const { container } = renderList({ tmdbId: 1396, seasons: [] });
 

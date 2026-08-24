@@ -17,7 +17,12 @@ import { Hono } from "hono";
 import { type AuthedEnv, requireSession } from "../auth/require-session";
 import { createDb } from "../db/client";
 import { getAuthorManga } from "./authors.service";
-import { getMangaVolumes, setChapterRead, setVolumeRead } from "./chapters.service";
+import {
+  getMangaVolumes,
+  setAllChaptersRead,
+  setChapterRead,
+  setVolumeRead,
+} from "./chapters.service";
 import {
   deleteMangaEntry,
   getMangaEntryForUser,
@@ -238,5 +243,16 @@ mangaRouter.put("/:mangadexId/volumes/:volumeNumber", async (c) => {
   if (!found) {
     return c.json({ error: "volume_not_found" }, 404);
   }
+  return c.body(null, 204);
+});
+
+mangaRouter.put("/:mangadexId/read-all", async (c) => {
+  const mangadexId = parseMangadexId(c);
+  if (mangadexId === null) {
+    return c.json({ error: "invalid_id" }, 400);
+  }
+
+  const db = createDb(c.env);
+  await setAllChaptersRead(db, c.get("userId"), mangadexId);
   return c.body(null, 204);
 });

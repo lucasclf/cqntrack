@@ -39,6 +39,7 @@ import {
 import {
   getEpisodeDetail,
   getSeasonEpisodes,
+  setAllSeasonsWatched,
   setEpisodeWatched,
   setSeasonWatched,
 } from "./episodes.service";
@@ -417,6 +418,27 @@ seriesRouter.put("/:tmdbId/seasons/:seasonNumber", async (c) => {
       seasonNumber,
       parsed.data.watched,
     );
+    if (!found) {
+      return c.json({ error: "season_not_found" }, 404);
+    }
+    return c.body(null, 204);
+  } catch (error) {
+    if (error instanceof SeriesNotFoundError) {
+      return c.json({ error: "series_not_found" }, 404);
+    }
+    throw error;
+  }
+});
+
+seriesRouter.put("/:tmdbId/watch-all", async (c) => {
+  const tmdbId = parseTmdbId(c);
+  if (tmdbId === null) {
+    return c.json({ error: "invalid_id" }, 400);
+  }
+
+  const db = createDb(c.env);
+  try {
+    const found = await setAllSeasonsWatched(c.env, db, c.get("userId"), tmdbId);
     if (!found) {
       return c.json({ error: "season_not_found" }, 404);
     }

@@ -88,6 +88,7 @@ export function SeriesEpisodeList({
   const [loadError, setLoadError] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [seasonActionPending, setSeasonActionPending] = useState(false);
+  const [allSeasonsActionPending, setAllSeasonsActionPending] = useState(false);
 
   // Troca de série (mesmo componente, :tmdbId da rota mudou sem remontar) —
   // o cache é só de episódios em memória, não pode sobreviver a isso.
@@ -226,6 +227,28 @@ export function SeriesEpisodeList({
     }
   }
 
+  // Série inteira de uma vez (item 4 do pedido do usuário) — diferente de
+  // toggleSeason, não olha o estado atual pra decidir marcar/desmarcar (só
+  // marca, não existe "desmarcar tudo" pedido). Invalida o cache inteiro em
+  // vez de tentar reconciliar temporada por temporada — mais simples e
+  // correto, já que o endpoint bulk mexe em todas de uma vez no backend.
+  async function markAllSeasonsWatched() {
+    if (!(await confirm("Marcar todas as temporadas desta série como assistidas?"))) {
+      return;
+    }
+
+    setActionError(null);
+    setAllSeasonsActionPending(true);
+    try {
+      await apiClient.put(`/api/series/${tmdbId}/watch-all`);
+      setCache(new Map());
+    } catch {
+      setActionError("Falha ao salvar. Tente novamente.");
+    } finally {
+      setAllSeasonsActionPending(false);
+    }
+  }
+
   if (seasons.length === 0) {
     return null;
   }
@@ -238,6 +261,15 @@ export function SeriesEpisodeList({
     <section className={styles.section}>
       <h2>Episódios</h2>
       {actionError && <p role="alert">{actionError}</p>}
+
+      <button
+        type="button"
+        className={styles.seasonToggle}
+        disabled={allSeasonsActionPending}
+        onClick={markAllSeasonsWatched}
+      >
+        Marcar todas as temporadas assistidas
+      </button>
 
       <div className={styles.seasonTabs} role="tablist">
         {seasons.map((season) => (

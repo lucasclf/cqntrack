@@ -141,6 +141,56 @@ export async function setSeasonWatched(
   return true;
 }
 
+// Série inteira de uma vez (item 4 do pedido do usuário) — busca todas as
+// temporadas já listadas no cache (`cachedSeries.seasons`, populado por
+// getOrCacheSeries) em paralelo na TMDB e marca cada episódio, numa única
+// atividade agregada em vez de N (uma por temporada, que poluiria o feed).
+// Só marca — sem versão "desmarcar tudo", não pedida.
+export async function setAllSeasonsWatched(
+  env: Env,
+  db: Db,
+  userId: string,
+  tmdbId: number,
+): Promise<boolean> {
+  const { cachedSeries } = await ensureSeriesEntry(env, db, userId, tmdbId);
+
+  const seasonNumbers = (cachedSeries.seasons ?? []).map((season) => season.seasonNumber);
+  if (seasonNumbers.length === 0) {
+    return false;
+  }
+
+  const seasonsWithNumbers = await Promise.all(
+    seasonNumbers.map(async (seasonNumber) => ({
+      seasonNumber,
+      season: await getSeriesSeason(env, tmdbId, seasonNumber),
+    })),
+  );
+
+  const rows = seasonsWithNumbers.flatMap(({ seasonNumber, season }) =>
+    season
+      ? season.episodes.map((episode) => ({
+          userId,
+          seriesId: tmdbId,
+          seasonNumber,
+          episodeNumber: episode.episode_number,
+        }))
+      : [],
+  );
+
+  if (rows.length > 0) {
+    await db.insert(seriesEpisodeWatch).values(rows).onConflictDoNothing();
+  }
+
+  await db.insert(activity).values({
+    userId,
+    ...toActivitySnapshot(cachedSeries),
+    type: "series_completed",
+    metadata: { seasonCount: seasonNumbers.length, episodeCount: rows.length },
+  });
+
+  return true;
+}
+
 // A TMDB às vezes credita a mesma pessoa duas vezes como diretora do mesmo
 // episódio (créditos duplicados) — dedupe por id, mesmo padrão já usado em
 // movies.service.ts.

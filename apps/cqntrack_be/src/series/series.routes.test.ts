@@ -45,6 +45,34 @@ function tmdbSeriesDetail(id: number, name: string) {
   };
 }
 
+// Variante de tmdbSeriesDetail com temporadas customizáveis — usada pelos
+// testes de watch-all, que precisam de mais de uma temporada pra exercitar
+// a agregação (tmdbSeriesDetail sempre devolve só a Temporada 1).
+function tmdbSeriesDetailWithSeasons(
+  id: number,
+  name: string,
+  seasons: { seasonNumber: number; episodeCount: number }[],
+) {
+  return {
+    id,
+    name,
+    poster_path: `/poster-${id}.jpg`,
+    first_air_date: "2008-01-20",
+    overview: `Resumo da série ${id}`,
+    genres: [{ id: 18, name: "Drama" }],
+    number_of_seasons: seasons.length,
+    number_of_episodes: seasons.reduce((sum, season) => sum + season.episodeCount, 0),
+    vote_average: 8.9,
+    seasons: seasons.map((season) => ({
+      season_number: season.seasonNumber,
+      name: `Temporada ${season.seasonNumber}`,
+      episode_count: season.episodeCount,
+      air_date: "2008-01-20",
+      poster_path: `/poster-${id}-s${season.seasonNumber}.jpg`,
+    })),
+  };
+}
+
 function tmdbSeasonDetail(seasonNumber: number, episodeCount: number) {
   return {
     season_number: seasonNumber,
@@ -1711,6 +1739,57 @@ describe("PUT /api/series/:tmdbId/seasons/:seasonNumber", () => {
       },
       env,
     );
+
+    expect(res.status).toBe(401);
+  });
+});
+
+describe("PUT /api/series/:tmdbId/watch-all", () => {
+  it("marca todas as temporadas e gera uma única atividade series_completed", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubFetchByUrl([
+      ["/season/1", tmdbSeasonDetail(1, 3)],
+      ["/season/2", tmdbSeasonDetail(2, 2)],
+      ["aggregate_credits", tmdbSeriesCredits()],
+      [
+        "/tv/905",
+        tmdbSeriesDetailWithSeasons(905, "The Wire", [
+          { seasonNumber: 1, episodeCount: 3 },
+          { seasonNumber: 2, episodeCount: 2 },
+        ]),
+      ],
+    ]);
+
+    const res = await app.request(
+      "/api/series/905/watch-all",
+      { method: "PUT", headers: { cookie } },
+      env,
+    );
+    expect(res.status).toBe(204);
+    vi.unstubAllGlobals();
+
+    const activities = await createDb(env).query.activity.findMany();
+    const completed = activities.filter(
+      (item) => item.itemId === "905" && item.type === "series_completed",
+    );
+    expect(completed).toHaveLength(1);
+    expect(completed[0]?.metadata).toEqual({ seasonCount: 2, episodeCount: 5 });
+
+    stubTmdbFetchOnce(tmdbSeasonDetail(1, 3));
+    const season1Res = await app.request("/api/series/905/seasons/1", { headers: { cookie } }, env);
+    const season1Body = (await season1Res.json()) as { episodes: Array<{ watched: boolean }> };
+    expect(season1Body.episodes.every((episode) => episode.watched)).toBe(true);
+    vi.unstubAllGlobals();
+
+    stubTmdbFetchOnce(tmdbSeasonDetail(2, 2));
+    const season2Res = await app.request("/api/series/905/seasons/2", { headers: { cookie } }, env);
+    const season2Body = (await season2Res.json()) as { episodes: Array<{ watched: boolean }> };
+    expect(season2Body.episodes.every((episode) => episode.watched)).toBe(true);
+    vi.unstubAllGlobals();
+  });
+
+  it("sem sessão retorna 401", async () => {
+    const res = await app.request("/api/series/905/watch-all", { method: "PUT" }, env);
 
     expect(res.status).toBe(401);
   });

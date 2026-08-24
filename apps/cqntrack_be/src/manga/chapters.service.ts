@@ -162,3 +162,38 @@ export async function setVolumeRead(
 
   return true;
 }
+
+// Mangá inteiro de uma vez (item 5 do pedido do usuário) — diferente da
+// versão de série (setAllSeasonsWatched), a MangaDex já devolve a estrutura
+// completa de volumes/capítulos numa única chamada (getMangaAggregate), sem
+// precisar de N requests. Uma atividade agregada em vez de uma por volume.
+// Só marca — sem versão "desmarcar tudo", não pedida.
+export async function setAllChaptersRead(
+  db: Db,
+  userId: string,
+  mangadexId: string,
+): Promise<void> {
+  const { cachedManga } = await ensureMangaEntry(db, userId, mangadexId);
+
+  const raw = await getMangaAggregate(mangadexId);
+  const rows = Object.values(raw.volumes).flatMap((volume) => {
+    const volumeNumber = toVolumeNumber(volume.volume);
+    return Object.values(volume.chapters).map((chapter) => ({
+      userId,
+      mangaId: mangadexId,
+      volumeNumber,
+      chapterNumber: toChapterNumber(chapter.chapter),
+    }));
+  });
+
+  if (rows.length > 0) {
+    await db.insert(mangaChapterRead).values(rows).onConflictDoNothing();
+  }
+
+  await db.insert(activity).values({
+    userId,
+    ...toActivitySnapshot(cachedManga),
+    type: "manga_completed",
+    metadata: { chapterCount: rows.length },
+  });
+}
