@@ -107,7 +107,7 @@ fun CqntrackNavHost() {
             })
         }
         composable(NavRoutes.PUBLIC_PROFILE) {
-            PublicProfileScreen(onFavoriteClick = { favorite ->
+            PublicProfileScreen(onItemClick = { favorite ->
                 val route = when (favorite.mediaType) {
                     FavoriteMediaType.BOOK -> NavRoutes.bookDetail(favorite.id)
                     FavoriteMediaType.MOVIE -> NavRoutes.movieDetail(favorite.id.toInt())

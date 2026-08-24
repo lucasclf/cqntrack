@@ -3,7 +3,16 @@ package xyz.cqn.cqntrack.profile.data
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import retrofit2.HttpException
+import xyz.cqn.cqntrack.books.data.BookStatus
+import xyz.cqn.cqntrack.books.data.PaginatedBookEntriesResponseDto
 import xyz.cqn.cqntrack.core.network.ApiException
+import xyz.cqn.cqntrack.games.data.GameStatus
+import xyz.cqn.cqntrack.games.data.PaginatedGameEntriesResponseDto
+import xyz.cqn.cqntrack.manga.data.MangaStatus
+import xyz.cqn.cqntrack.manga.data.PaginatedMangaEntriesResponseDto
+import xyz.cqn.cqntrack.movies.data.MovieStatus
+import xyz.cqn.cqntrack.movies.data.PaginatedMovieEntriesResponseDto
+import xyz.cqn.cqntrack.series.data.PaginatedSeriesEntriesResponseDto
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -11,6 +20,7 @@ import javax.inject.Singleton
 class ProfileRepository @Inject constructor(
     private val profileApi: ProfileApi,
     private val favoritesApi: ProfileFavoritesApi,
+    private val entriesApi: ProfileEntriesApi,
 ) {
     suspend fun getMe(): AuthUserDto = runApiCall { profileApi.getMe() }
 
@@ -43,10 +53,54 @@ class ProfileRepository @Inject constructor(
         }
     }
 
+    /** "Marcações" públicas por seção — mesma listagem de "Minhas marcações", só que de outro usuário e sem edição. */
+    suspend fun getBookEntries(username: String, status: BookStatus?, page: Int): PaginatedBookEntriesResponseDto =
+        runApiCall { entriesApi.getBookEntries(username, status?.toApiValue(), page) }
+
+    suspend fun getMovieEntries(username: String, status: MovieStatus?, page: Int): PaginatedMovieEntriesResponseDto =
+        runApiCall { entriesApi.getMovieEntries(username, status?.toApiValue(), page) }
+
+    suspend fun getGameEntries(username: String, status: GameStatus?, page: Int): PaginatedGameEntriesResponseDto =
+        runApiCall { entriesApi.getGameEntries(username, status?.toApiValue(), page) }
+
+    suspend fun getSeriesEntries(username: String, page: Int): PaginatedSeriesEntriesResponseDto =
+        runApiCall { entriesApi.getSeriesEntries(username, page) }
+
+    suspend fun getMangaEntries(username: String, status: MangaStatus?, page: Int): PaginatedMangaEntriesResponseDto =
+        runApiCall { entriesApi.getMangaEntries(username, status?.toApiValue(), page) }
+
     private suspend fun <T> runApiCall(block: suspend () -> T): T =
         try {
             block()
         } catch (e: HttpException) {
             throw ApiException(e.code(), "Falha na requisição (status ${e.code()})")
         }
+}
+
+/** Mesmos valores de query dos repositórios de cada seção — ver comentário equivalente em BooksRepository.kt/etc. */
+private fun BookStatus.toApiValue(): String = when (this) {
+    BookStatus.WantToRead -> "want_to_read"
+    BookStatus.Reading -> "reading"
+    BookStatus.Read -> "read"
+    BookStatus.Dropped -> "dropped"
+}
+
+private fun MovieStatus.toApiValue(): String = when (this) {
+    MovieStatus.WantToWatch -> "want_to_watch"
+    MovieStatus.Watched -> "watched"
+}
+
+private fun GameStatus.toApiValue(): String = when (this) {
+    GameStatus.NotStarted -> "not_started"
+    GameStatus.Playing -> "playing"
+    GameStatus.Dropped -> "dropped"
+    GameStatus.Completed -> "completed"
+    GameStatus.Platinum -> "platinum"
+}
+
+private fun MangaStatus.toApiValue(): String = when (this) {
+    MangaStatus.WantToRead -> "want_to_read"
+    MangaStatus.Reading -> "reading"
+    MangaStatus.Read -> "read"
+    MangaStatus.Dropped -> "dropped"
 }
