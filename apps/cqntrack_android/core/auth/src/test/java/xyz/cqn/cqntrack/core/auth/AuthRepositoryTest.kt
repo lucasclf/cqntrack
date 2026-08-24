@@ -79,4 +79,67 @@ class AuthRepositoryTest {
         assertTrue(result is AuthResult.Error)
         coVerify(exactly = 0) { tokenStorage.saveToken(any()) }
     }
+
+    @Test
+    fun `updateName bem-sucedido nao exige header de token`() = runTest {
+        // update-user nunca rotaciona a sessao — sucesso e so um 2xx, sem set-auth-token.
+        val response = Response.success(emptyBody(), rawResponse(200))
+        coEvery { authApi.updateUser(any()) } returns response
+
+        val result = repository.updateName("Novo Nome")
+
+        assertEquals(AuthResult.Success, result)
+        coVerify(exactly = 0) { tokenStorage.saveToken(any()) }
+    }
+
+    @Test
+    fun `updateName com erro devolve Error`() = runTest {
+        val response = Response.error<okhttp3.ResponseBody>(401, emptyBody())
+        coEvery { authApi.updateUser(any()) } returns response
+
+        val result = repository.updateName("Novo Nome")
+
+        assertTrue(result is AuthResult.Error)
+    }
+
+    @Test
+    fun `changePassword bem-sucedido com header rotaciona o token salvo`() = runTest {
+        // revokeOtherSessions=true faz o servidor emitir um token novo tambem pra sessao
+        // atual (ver comentario em AuthRepository.changePassword) — sem isso, a proxima
+        // chamada autenticada falharia com o token antigo.
+        val response = Response.success(
+            emptyBody(),
+            rawResponse(200, mapOf("set-auth-token" to "tok_rotated456")),
+        )
+        coEvery { authApi.changePassword(any()) } returns response
+
+        val result = repository.changePassword("senhaAtual123", "senhaNova456")
+
+        assertEquals(AuthResult.Success, result)
+        coVerify { tokenStorage.saveToken("tok_rotated456") }
+    }
+
+    @Test
+    fun `changePassword bem-sucedido sem header ainda e Success`() = runTest {
+        // Diferente de signIn: aqui a ausencia do header nao e um erro, so significa
+        // que o servidor nao rotacionou o token dessa vez.
+        val response = Response.success(emptyBody(), rawResponse(200))
+        coEvery { authApi.changePassword(any()) } returns response
+
+        val result = repository.changePassword("senhaAtual123", "senhaNova456")
+
+        assertEquals(AuthResult.Success, result)
+        coVerify(exactly = 0) { tokenStorage.saveToken(any()) }
+    }
+
+    @Test
+    fun `changePassword com senha atual incorreta devolve Error`() = runTest {
+        val response = Response.error<okhttp3.ResponseBody>(401, emptyBody())
+        coEvery { authApi.changePassword(any()) } returns response
+
+        val result = repository.changePassword("senhaErrada", "senhaNova456")
+
+        assertTrue(result is AuthResult.Error)
+        coVerify(exactly = 0) { tokenStorage.saveToken(any()) }
+    }
 }

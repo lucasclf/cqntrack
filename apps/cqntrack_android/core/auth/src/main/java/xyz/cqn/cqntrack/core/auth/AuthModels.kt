@@ -19,6 +19,18 @@ data class SignUpRequest(
 )
 
 /**
+ * Espelha o body de POST /api/auth/change-password (better-auth). `revokeOtherSessions`
+ * sempre `true` (mesmo comportamento do web, ver Account.tsx) — o servidor então rotaciona
+ * o token da sessão atual também, devolvido de novo no header `set-auth-token`.
+ */
+@Serializable
+data class ChangePasswordRequestDto(
+    val newPassword: String,
+    val currentPassword: String,
+    val revokeOtherSessions: Boolean = true,
+)
+
+/**
  * O corpo da resposta de sign-in/sign-up carrega `user`/`session`, mas o
  * único dado que este app precisa dali é o token — que não vem no corpo
  * JSON e sim no header de resposta `set-auth-token` (plugin bearer(), ver

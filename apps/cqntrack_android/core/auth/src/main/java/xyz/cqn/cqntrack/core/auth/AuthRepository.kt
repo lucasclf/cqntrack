@@ -1,6 +1,8 @@
 package xyz.cqn.cqntrack.core.auth
 
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -41,6 +43,32 @@ class AuthRepository @Inject constructor(
     suspend fun signOut() {
         runCatching { authApi.signOut() }
         tokenStorage.clearToken()
+    }
+
+    suspend fun updateName(name: String): AuthResult {
+        val response = runCatching { authApi.updateUser(buildJsonObject { put("name", name) }) }
+            .getOrElse { return AuthResult.Error("Falha de conexão. Tente novamente.") }
+        return if (response.isSuccessful) {
+            AuthResult.Success
+        } else {
+            AuthResult.Error(errorMessageFor(response.code()))
+        }
+    }
+
+    /**
+     * `revokeOtherSessions = true` (mesmo comportamento do web) faz o servidor rotacionar o
+     * token da sessão atual também — sem atualizar o token salvo aqui, as próximas chamadas
+     * autenticadas falhariam com 401 até o usuário logar de novo.
+     */
+    suspend fun changePassword(currentPassword: String, newPassword: String): AuthResult {
+        val response = runCatching {
+            authApi.changePassword(ChangePasswordRequestDto(newPassword, currentPassword))
+        }.getOrElse { return AuthResult.Error("Falha de conexão. Tente novamente.") }
+        if (!response.isSuccessful) {
+            return AuthResult.Error(errorMessageFor(response.code()))
+        }
+        response.headers()[HEADER_TOKEN]?.let { tokenStorage.saveToken(it) }
+        return AuthResult.Success
     }
 
     private suspend fun handleAuthResponse(response: retrofit2.Response<okhttp3.ResponseBody>): AuthResult {

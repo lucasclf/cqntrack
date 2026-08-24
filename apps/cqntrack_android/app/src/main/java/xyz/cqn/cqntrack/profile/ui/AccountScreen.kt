@@ -9,15 +9,22 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 
@@ -46,13 +53,97 @@ fun AccountScreen(
             else -> {
                 val user = uiState.user!!
                 Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
-                    Text(user.name, style = MaterialTheme.typography.titleLarge)
                     Text("@${user.displayUsername}", style = MaterialTheme.typography.bodyMedium)
                     Text(user.email, style = MaterialTheme.typography.bodyMedium)
 
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+                    Text("Nome de exibição", style = MaterialTheme.typography.titleMedium)
+                    var nameDraft by remember(user.name) { mutableStateOf(user.name) }
+                    OutlinedTextField(
+                        value = nameDraft,
+                        onValueChange = { nameDraft = it },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    )
+                    if (uiState.nameError != null) {
+                        Text(
+                            uiState.nameError.orEmpty(),
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    }
+                    if (uiState.nameSaved) {
+                        Text(
+                            "Nome atualizado.",
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    }
+                    Button(
+                        onClick = { viewModel.updateName(nameDraft) },
+                        enabled = !uiState.nameSaving && nameDraft.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    ) {
+                        Text(if (uiState.nameSaving) "Salvando..." else "Salvar nome")
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+                    Text("Alterar senha", style = MaterialTheme.typography.titleMedium)
+                    var currentPassword by remember { mutableStateOf("") }
+                    var newPassword by remember { mutableStateOf("") }
+                    OutlinedTextField(
+                        value = currentPassword,
+                        onValueChange = { currentPassword = it },
+                        label = { Text("Senha atual") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    )
+                    OutlinedTextField(
+                        value = newPassword,
+                        onValueChange = { newPassword = it },
+                        label = { Text("Nova senha") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    )
+                    if (uiState.passwordError != null) {
+                        Text(
+                            uiState.passwordError.orEmpty(),
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    }
+                    if (uiState.passwordSaved) {
+                        Text(
+                            "Senha alterada.",
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    }
+                    Button(
+                        onClick = { viewModel.changePassword(currentPassword, newPassword) },
+                        enabled = !uiState.passwordSaving &&
+                            currentPassword.isNotBlank() &&
+                            newPassword.length >= 8,
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    ) {
+                        Text(if (uiState.passwordSaving) "Salvando..." else "Alterar senha")
+                    }
+                    LaunchedEffect(uiState.passwordSaved) {
+                        if (uiState.passwordSaved) {
+                            currentPassword = ""
+                            newPassword = ""
+                        }
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
                     OutlinedButton(
                         onClick = { onViewPublicProfile(user.username) },
-                        modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text("Ver perfil público")
                     }
