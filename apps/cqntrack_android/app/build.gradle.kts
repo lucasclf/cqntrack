@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -6,20 +8,44 @@ plugins {
     alias(libs.plugins.hilt.android)
 }
 
+// keystore.properties nunca é commitado (ver .gitignore) — se não existir (ex.: clone novo, CI sem
+// a keystore), o build de release simplesmente não fica assinado; assembleDebug continua
+// funcionando normalmente. Mesma keystore de produção do app Capacitor (cqntrack-release.keystore,
+// copiada de apps/cqntrack_mobile/android/app/) — reaproveitada de propósito no corte final pra
+// permitir que quem já tinha o Capacitor instalado (mesmo applicationId) instale o app novo por
+// cima sem precisar desinstalar primeiro.
+val keystorePropertiesFile = rootProject.file("app/keystore.properties")
+val keystoreProperties = Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(keystorePropertiesFile.inputStream())
+}
+
 android {
-    // applicationId .dev de propósito nesta fase — deixa instalar lado a
-    // lado com o app Capacitor (xyz.cqn.cqntrack) no mesmo aparelho pra
-    // comparação direta. Trocar pro id de verdade só no corte final, quando
-    // este app substituir o Capacitor de vez (ver skill android-release).
+    // Corte final (ver skill android-release): applicationId de produção, o mesmo do app
+    // Capacitor que este app substitui — não mais o .dev usado durante o desenvolvimento lado a
+    // lado.
     namespace = "xyz.cqn.cqntrack"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "xyz.cqn.cqntrack.dev"
+        applicationId = "xyz.cqn.cqntrack"
         minSdk = 24
         targetSdk = 37
-        versionCode = 1
-        versionName = "0.1.0-dev"
+        // versionCode 3 > 2 (última versão do Capacitor, v0.2.0) — mantém a semântica de upgrade
+        // do Android mesmo em instalação lado a lado/sideload.
+        versionCode = 3
+        versionName = "1.0.0"
+    }
+
+    signingConfigs {
+        create("release") {
+            if (keystorePropertiesFile.exists()) {
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+            }
+        }
     }
 
     buildTypes {
@@ -27,6 +53,9 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 
