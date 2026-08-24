@@ -34,47 +34,6 @@ export const SeriesSummarySchema = z.object({
 
 export type SeriesSummary = z.infer<typeof SeriesSummarySchema>;
 
-export const SearchSeriesQuerySchema = z.object({
-  q: z.string().min(1).max(100),
-  limit: z.coerce.number().int().min(1).max(50).default(20),
-});
-
-export type SearchSeriesQuery = z.infer<typeof SearchSeriesQuerySchema>;
-
-export const SearchSeriesResponseSchema = z.object({
-  results: z.array(SeriesSummarySchema),
-});
-
-export type SearchSeriesResponse = z.infer<typeof SearchSeriesResponseSchema>;
-
-// Mesmo espírito de DiscoverMoviesResponseSchema (filme) — populares da
-// própria TMDB (GET /tv/popular), índice da seção de séries no menu superior.
-export const DiscoverSeriesQuerySchema = z.object({
-  page: z.coerce.number().int().min(1).max(500).default(1),
-});
-
-export type DiscoverSeriesQuery = z.infer<typeof DiscoverSeriesQuerySchema>;
-
-export const DiscoverSeriesResponseSchema = z.object({
-  results: z.array(SeriesSummarySchema),
-  page: z.number().int(),
-  hasMore: z.boolean(),
-});
-
-export type DiscoverSeriesResponse = z.infer<typeof DiscoverSeriesResponseSchema>;
-
-export const SeriesDetailSchema = SeriesSummarySchema.extend({
-  overview: z.string().nullable(),
-  cast: z.array(CastMemberSchema),
-  // Criador/showrunner (created_by da TMDB) — não é a mesma coisa que
-  // "Direção" (diretores mais frequentes por episódio, ver `directors`
-  // abaixo). Série não tem um diretor único como filme.
-  creators: z.array(CrewMemberSchema),
-  directors: z.array(SeriesDirectorSchema),
-});
-
-export type SeriesDetail = z.infer<typeof SeriesDetailSchema>;
-
 // Episódio "resumido" — usado tanto pro já disponível quanto pro previsto
 // (ver availableEpisode/upcomingEpisode abaixo), mesmo shape pros dois.
 export const SeriesUpcomingEpisodeSchema = z.object({
@@ -123,6 +82,61 @@ export const SeriesEntryWithSeriesSchema = SeriesEntrySchema.extend({
 });
 
 export type SeriesEntryWithSeries = z.infer<typeof SeriesEntryWithSeriesSchema>;
+
+// Mesmo SeriesSummary, com a marcação do usuário logado embutida quando
+// existir (null quando a série nunca foi marcada) — usado em telas que
+// listam várias séries de fontes externas (busca, descobrir, detalhe de
+// lista) e agora também precisam saber o que o usuário já marcou, pras
+// ações rápidas do Card (favoritar/marcar série inteira como assistida sem
+// entrar no detalhe). Diferente de jogo/filme/livro, série não tem status —
+// "marcar" no Card dispara o endpoint bulk (watch-all) com confirmação, não
+// um toggle simples de campo.
+export const SeriesSummaryWithEntrySchema = SeriesSummarySchema.extend({
+  entry: SeriesEntrySchema.nullable(),
+});
+
+export type SeriesSummaryWithEntry = z.infer<typeof SeriesSummaryWithEntrySchema>;
+
+export const SearchSeriesQuerySchema = z.object({
+  q: z.string().min(1).max(100),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+});
+
+export type SearchSeriesQuery = z.infer<typeof SearchSeriesQuerySchema>;
+
+export const SearchSeriesResponseSchema = z.object({
+  results: z.array(SeriesSummaryWithEntrySchema),
+});
+
+export type SearchSeriesResponse = z.infer<typeof SearchSeriesResponseSchema>;
+
+// Mesmo espírito de DiscoverMoviesResponseSchema (filme) — populares da
+// própria TMDB (GET /tv/popular), índice da seção de séries no menu superior.
+export const DiscoverSeriesQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).max(500).default(1),
+});
+
+export type DiscoverSeriesQuery = z.infer<typeof DiscoverSeriesQuerySchema>;
+
+export const DiscoverSeriesResponseSchema = z.object({
+  results: z.array(SeriesSummaryWithEntrySchema),
+  page: z.number().int(),
+  hasMore: z.boolean(),
+});
+
+export type DiscoverSeriesResponse = z.infer<typeof DiscoverSeriesResponseSchema>;
+
+export const SeriesDetailSchema = SeriesSummarySchema.extend({
+  overview: z.string().nullable(),
+  cast: z.array(CastMemberSchema),
+  // Criador/showrunner (created_by da TMDB) — não é a mesma coisa que
+  // "Direção" (diretores mais frequentes por episódio, ver `directors`
+  // abaixo). Série não tem um diretor único como filme.
+  creators: z.array(CrewMemberSchema),
+  directors: z.array(SeriesDirectorSchema),
+});
+
+export type SeriesDetail = z.infer<typeof SeriesDetailSchema>;
 
 export const SeriesDetailResponseSchema = z.object({
   series: SeriesDetailSchema,
@@ -227,8 +241,11 @@ export const SeriesListsResponseSchema = z.object({
 
 export type SeriesListsResponse = z.infer<typeof SeriesListsResponseSchema>;
 
+// items com entry embutida — mesmo racional de GameListDetailSchema
+// (reaproveitado tanto pela rota autenticada quanto pela de perfil público,
+// entry = de quem for dono da lista em cada caso).
 export const SeriesListDetailSchema = SeriesListSchema.extend({
-  items: z.array(SeriesSummarySchema),
+  items: z.array(SeriesSummaryWithEntrySchema),
 });
 
 export type SeriesListDetail = z.infer<typeof SeriesListDetailSchema>;

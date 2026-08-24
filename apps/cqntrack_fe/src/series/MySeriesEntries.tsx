@@ -47,7 +47,7 @@ export function MySeriesEntries() {
         <>
           <div className={styles.grid}>
             {data.items.map((item) => (
-              <SeriesCard key={item.series.tmdbId} series={item.series} entry={item} />
+              <SeriesCard key={item.series.tmdbId} series={item.series} entry={item} interactive />
             ))}
           </div>
           <div className={styles.pagination}>

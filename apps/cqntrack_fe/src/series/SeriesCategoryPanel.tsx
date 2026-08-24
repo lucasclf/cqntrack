@@ -42,7 +42,7 @@ export function SeriesCategoryPanel({ basePath }: SeriesCategoryPanelProps) {
         emptyMessage="Nenhuma série favoritada ainda."
         errorMessage="Falha ao carregar suas séries favoritas."
         getKey={(item) => item.series.tmdbId}
-        renderItem={(item) => <SeriesCard series={item.series} entry={item} />}
+        renderItem={(item) => <SeriesCard series={item.series} entry={item} interactive />}
       />
       <InfiniteMediaGrid
         hidden={subTab !== "recent"}

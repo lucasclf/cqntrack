@@ -67,7 +67,11 @@ export function SeriesListDetail() {
       await apiClient.put(`/api/series-lists/${listId}/items/${series.tmdbId}`);
       setDetail((current) =>
         current && !current.items.some((item) => item.tmdbId === series.tmdbId)
-          ? { ...current, items: [series, ...current.items], itemCount: current.itemCount + 1 }
+          ? {
+              ...current,
+              items: [{ ...series, entry: null }, ...current.items],
+              itemCount: current.itemCount + 1,
+            }
           : current,
       );
     } catch {
@@ -128,7 +132,7 @@ export function SeriesListDetail() {
         <div className={styles.grid}>
           {detail.items.map((series) => (
             <div key={series.tmdbId} className={styles.gridItem}>
-              <SeriesCard series={series} />
+              <SeriesCard series={series} entry={series.entry} interactive />
               <button
                 type="button"
                 className={styles.removeItemBtn}

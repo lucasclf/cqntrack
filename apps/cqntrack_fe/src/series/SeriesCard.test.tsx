@@ -1,8 +1,15 @@
 import type { SeriesEntry, SeriesSummary } from "@cqntrack/shared";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ConfirmDialogProvider } from "../lib/ConfirmDialogProvider";
 import { SeriesCard } from "./SeriesCard";
+
+const { putMock } = vi.hoisted(() => ({ putMock: vi.fn() }));
+
+vi.mock("../lib/api-client", () => ({
+  apiClient: { put: putMock },
+}));
 
 const BASE_SERIES: SeriesSummary = {
   tmdbId: 1396,
@@ -16,11 +23,21 @@ const BASE_SERIES: SeriesSummary = {
   rating: 8.947,
 };
 
-function renderCard(series: SeriesSummary, entry?: SeriesEntry) {
+function renderCard(series: SeriesSummary, entry?: SeriesEntry | null, interactive = false) {
   return render(
     <MemoryRouter>
-      <SeriesCard series={series} entry={entry} />
+      <SeriesCard series={series} entry={entry} interactive={interactive} />
     </MemoryRouter>,
+  );
+}
+
+function renderInteractiveCard(series: SeriesSummary, entry?: SeriesEntry | null) {
+  return render(
+    <ConfirmDialogProvider>
+      <MemoryRouter>
+        <SeriesCard series={series} entry={entry} interactive />
+      </MemoryRouter>
+    </ConfirmDialogProvider>,
   );
 }
 
@@ -127,5 +144,62 @@ describe("SeriesCard", () => {
 
     expect(screen.getByText("Previsto 25/12")).toBeInTheDocument();
     expect(screen.queryByText("Novo episódio")).not.toBeInTheDocument();
+  });
+
+  it("sem interactive, não renderiza os botões de ação rápida", () => {
+    renderCard(BASE_SERIES);
+
+    expect(screen.queryByLabelText("Favoritar")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Marcar série inteira como assistida")).not.toBeInTheDocument();
+  });
+
+  describe("interactive", () => {
+    beforeEach(() => {
+      putMock.mockReset();
+    });
+
+    it("favoritar chama o PUT e atualiza otimista, sem navegar", () => {
+      putMock.mockResolvedValue({});
+      renderInteractiveCard(BASE_SERIES, null);
+
+      fireEvent.click(screen.getByLabelText("Favoritar"));
+
+      expect(putMock).toHaveBeenCalledWith("/api/series/1396/entry", { favorited: true });
+      expect(screen.getByLabelText("Desfavoritar")).toBeInTheDocument();
+    });
+
+    it("marcar a série inteira pede confirmação e chama o PUT watch-all", async () => {
+      putMock.mockResolvedValue(undefined);
+      renderInteractiveCard(BASE_SERIES, null);
+
+      fireEvent.click(screen.getByLabelText("Marcar série inteira como assistida"));
+      expect(
+        await screen.findByText("Marcar todas as temporadas desta série como assistidas?"),
+      ).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Confirmar" }));
+
+      await waitFor(() => expect(putMock).toHaveBeenCalledWith("/api/series/1396/watch-all"));
+      expect(await screen.findByText("62/62 ep.")).toBeInTheDocument();
+    });
+
+    it("cancelando a confirmação, não chama o PUT watch-all", async () => {
+      renderInteractiveCard(BASE_SERIES, null);
+
+      fireEvent.click(screen.getByLabelText("Marcar série inteira como assistida"));
+      fireEvent.click(await screen.findByRole("button", { name: "Cancelar" }));
+
+      expect(putMock).not.toHaveBeenCalledWith("/api/series/1396/watch-all");
+    });
+
+    it("o clique nos botões não navega pro detalhe (preventDefault)", () => {
+      putMock.mockResolvedValue({});
+      renderInteractiveCard(BASE_SERIES, null);
+
+      const clickEvent = new MouseEvent("click", { bubbles: true, cancelable: true });
+      const preventDefaultSpy = vi.spyOn(clickEvent, "preventDefault");
+      screen.getByLabelText("Favoritar").dispatchEvent(clickEvent);
+
+      expect(preventDefaultSpy).toHaveBeenCalled();
+    });
   });
 });

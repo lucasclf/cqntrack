@@ -28,6 +28,7 @@ import { type AuthedEnv, requireSession } from "../auth/require-session";
 import { getContinueWatching } from "./continue-watching.service";
 import { createDb } from "../db/client";
 import {
+  attachEntriesToSeries,
   deleteSeriesEntry,
   getFavorites,
   getNextSeasonToWatch,
@@ -89,7 +90,9 @@ seriesRouter.get("/search", async (c) => {
     return c.json({ error: "invalid_query" }, 400);
   }
 
-  const results = await searchSeriesForUser(c.env, parsed.data.q, parsed.data.limit);
+  const db = createDb(c.env);
+  const summaries = await searchSeriesForUser(c.env, parsed.data.q, parsed.data.limit);
+  const results = await attachEntriesToSeries(db, c.get("userId"), summaries);
 
   const body = SearchSeriesResponseSchema.parse({ results });
   return c.json(body);
@@ -246,7 +249,9 @@ seriesRouter.get("/discover", async (c) => {
     return c.json({ error: "invalid_query" }, 400);
   }
 
-  const { results, hasMore } = await getPopularSeriesForUser(c.env, parsed.data.page);
+  const db = createDb(c.env);
+  const { results: summaries, hasMore } = await getPopularSeriesForUser(c.env, parsed.data.page);
+  const results = await attachEntriesToSeries(db, c.get("userId"), summaries);
   return c.json(DiscoverSeriesResponseSchema.parse({ results, page: parsed.data.page, hasMore }));
 });
 

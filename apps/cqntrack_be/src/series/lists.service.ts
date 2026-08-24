@@ -9,6 +9,7 @@ import type { createDb } from "../db/client";
 import { activity, seriesList, seriesListItem } from "../db/schema";
 import { isUniqueConstraintError } from "../lib/is-unique-constraint-error";
 import { withoutUndefined } from "../lib/without-undefined";
+import { attachEntriesToSeries } from "./entries.service";
 import { getOrCacheSeries, mapCachedSeriesToSummary, toActivitySnapshot } from "./series.service";
 
 type Db = ReturnType<typeof createDb>;
@@ -147,9 +148,10 @@ export async function getSeriesListDetail(
   });
 
   const [list] = await withItemCount(db, [row]);
+  const summaries = items.map((item) => mapCachedSeriesToSummary(item.series));
   return {
     ...list!,
-    items: items.map((item) => mapCachedSeriesToSummary(item.series)),
+    items: await attachEntriesToSeries(db, userId, summaries),
   };
 }
 

@@ -3,6 +3,8 @@ import type {
   RecentlyWatchedSeriesItem,
   SeriesEntry,
   SeriesEntryWithSeries,
+  SeriesSummary,
+  SeriesSummaryWithEntry,
   UpsertSeriesEntryRequest,
 } from "@cqntrack/shared";
 import { and, asc, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
@@ -184,6 +186,47 @@ export async function getSeriesEntryForUser(
   }
   const watched = await getWatchedSummary(db, userId, tmdbId);
   return toSeriesEntry(row, row.series, watched);
+}
+
+// Lookup em lote — dado um conjunto de séries já resolvidas (busca TMDB,
+// descobrir, item de lista), busca de uma vez as entries do usuário pra
+// anexar a cada uma (ações rápidas do Card, sem precisar entrar no
+// detalhe). Diferente de attachEntriesToGames/Movies: aqui a entry só pode
+// existir se a série já estiver cacheada (FK), então o join com `series`
+// (via `with`) sempre resolve — sem precisar de uma 2ª query pro cache.
+export async function attachEntriesToSeries(
+  db: Db,
+  userId: string,
+  seriesList: SeriesSummary[],
+): Promise<SeriesSummaryWithEntry[]> {
+  if (seriesList.length === 0) return [];
+
+  const rows = await db.query.seriesEntry.findMany({
+    where: and(
+      eq(seriesEntry.userId, userId),
+      inArray(
+        seriesEntry.seriesId,
+        seriesList.map((item) => item.tmdbId),
+      ),
+    ),
+    with: { series: true },
+  });
+  const watchedSummaries = await getWatchedSummaries(
+    db,
+    userId,
+    rows.map((row) => row.seriesId),
+  );
+  const entriesBySeriesId = new Map(
+    rows.map((row) => [
+      row.seriesId,
+      toSeriesEntry(row, row.series, watchedSummaries.get(row.seriesId) ?? EMPTY_WATCHED_SUMMARY),
+    ]),
+  );
+
+  return seriesList.map((item) => ({
+    ...item,
+    entry: entriesBySeriesId.get(item.tmdbId) ?? null,
+  }));
 }
 
 // Garante que existe uma marcação (mesmo vazia) pra essa série — usado por

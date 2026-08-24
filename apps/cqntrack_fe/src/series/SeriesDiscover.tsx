@@ -1,4 +1,4 @@
-import type { DiscoverSeriesResponse, SeriesSummary } from "@cqntrack/shared";
+import type { DiscoverSeriesResponse, SeriesSummaryWithEntry } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { MediaSearchInput } from "../components/MediaSearchInput";
 import { apiClient } from "../lib/api-client";
@@ -10,7 +10,7 @@ type LoadStatus = "loading" | "idle" | "error";
 // Índice da seção de séries no menu superior — mesmo espírito de
 // MovieDiscover (populares da própria TMDB, "carregar mais").
 export function SeriesDiscover() {
-  const [results, setResults] = useState<SeriesSummary[]>([]);
+  const [results, setResults] = useState<SeriesSummaryWithEntry[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [status, setStatus] = useState<LoadStatus>("loading");
@@ -58,7 +58,7 @@ export function SeriesDiscover() {
 
       <div className={styles.grid}>
         {results.map((series) => (
-          <SeriesCard key={series.tmdbId} series={series} />
+          <SeriesCard key={series.tmdbId} series={series} entry={series.entry} interactive />
         ))}
       </div>
 

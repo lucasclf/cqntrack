@@ -1,4 +1,4 @@
-import type { SearchSeriesResponse, SeriesSummary } from "@cqntrack/shared";
+import type { SearchSeriesResponse, SeriesSummaryWithEntry } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
 import { apiClient } from "../lib/api-client";
@@ -14,7 +14,7 @@ export function SeriesSearch() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
   const debouncedQuery = useDebouncedValue(query, SEARCH_DEBOUNCE_MS).trim();
-  const [results, setResults] = useState<SeriesSummary[]>([]);
+  const [results, setResults] = useState<SeriesSummaryWithEntry[]>([]);
   const [status, setStatus] = useState<SearchStatus>("idle");
 
   // Ajusta o status assim que a query debounced muda — feito durante o
@@ -80,7 +80,7 @@ export function SeriesSearch() {
       )}
       <div className={styles.grid}>
         {results.map((series) => (
-          <SeriesCard key={series.tmdbId} series={series} />
+          <SeriesCard key={series.tmdbId} series={series} entry={series.entry} interactive />
         ))}
       </div>
       {/* Exigência dos termos de uso da TMDB — não é polimento opcional. */}

@@ -143,6 +143,57 @@ describe("/api/series-lists", () => {
     expect(afterRemove.itemCount).toBe(0);
   });
 
+  it("items vêm com a entry do usuário embutida (null quando nunca marcado)", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    const createRes = await app.request(
+      "/api/series-lists",
+      {
+        method: "POST",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Ação rápida" }),
+      },
+      env,
+    );
+    const { id: listId } = (await createRes.json()) as SeriesList;
+
+    stubTmdbFetchOnce(tmdbSeriesDetail(803, "Dark"));
+    await app.request(
+      `/api/series-lists/${listId}/items/803`,
+      { method: "PUT", headers: { cookie } },
+      env,
+    );
+    vi.unstubAllGlobals();
+    stubTmdbFetchOnce(tmdbSeriesDetail(804, "Chernobyl"));
+    await app.request(
+      `/api/series-lists/${listId}/items/804`,
+      { method: "PUT", headers: { cookie } },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    await app.request(
+      "/api/series/803/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ favorited: true }),
+      },
+      env,
+    );
+
+    const detailRes = await app.request(
+      `/api/series-lists/${listId}`,
+      { headers: { cookie } },
+      env,
+    );
+    const detail = (await detailRes.json()) as SeriesListDetail;
+
+    const dark = detail.items.find((item) => item.tmdbId === 803);
+    const chernobyl = detail.items.find((item) => item.tmdbId === 804);
+    expect(dark?.entry?.favoritedAt).not.toBeNull();
+    expect(chernobyl?.entry).toBeNull();
+  });
+
   it("adicionar a mesma série duas vezes não gera atividade duplicada", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
     const createRes = await app.request(

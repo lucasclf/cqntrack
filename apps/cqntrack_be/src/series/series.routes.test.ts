@@ -163,11 +163,40 @@ describe("GET /api/series/search", () => {
           numberOfEpisodes: null,
           seasons: null,
           rating: 8.9,
+          entry: null,
         },
       ],
     });
 
     vi.unstubAllGlobals();
+  });
+
+  it("quando a série já foi marcada antes, a busca devolve a entry embutida (não null)", async () => {
+    // Id próprio (não 1396, usado por outros testes deste arquivo) — evita
+    // colidir com fixtures compartilhadas.
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubTmdbFetchOnce(tmdbSeriesDetail(88101, "The Leftovers"), tmdbSeriesCredits());
+    await app.request(
+      "/api/series/88101/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ favorited: true }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    stubTmdbFetchOnce({
+      results: [{ ...TMDB_SEARCH_RESULT, id: 88101, name: "The Leftovers" }],
+    });
+    const res = await app.request("/api/series/search?q=leftovers", { headers: { cookie } }, env);
+    vi.unstubAllGlobals();
+
+    const body = (await res.json()) as {
+      results: Array<{ entry: { favoritedAt: string } | null }>;
+    };
+    expect(body.results[0]?.entry?.favoritedAt).not.toBeNull();
   });
 });
 
@@ -199,6 +228,7 @@ describe("GET /api/series/discover", () => {
         numberOfEpisodes: null,
         seasons: null,
         rating: 8.9,
+        entry: null,
       },
     ]);
     vi.unstubAllGlobals();
