@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { ListFormModal } from "../components/ListFormModal";
 import { ApiError, apiClient } from "../lib/api-client";
+import { useConfirm } from "../lib/useConfirm";
 import { AddSeriesSearch } from "./AddSeriesSearch";
 import styles from "./SeriesListDetail.module.css";
 import { SeriesCard } from "./SeriesCard";
@@ -16,6 +17,7 @@ type LoadStatus = "loading" | "ready" | "not-found" | "error";
 export function SeriesListDetail() {
   const { listId } = useParams<{ listId: string }>();
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const [detail, setDetail] = useState<SeriesListDetailDto | null>(null);
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -74,7 +76,12 @@ export function SeriesListDetail() {
   }
 
   async function handleDeleteList() {
-    if (!window.confirm("Remover esta lista? Essa ação não pode ser desfeita.")) {
+    if (
+      !(await confirm({
+        message: "Remover esta lista? Essa ação não pode ser desfeita.",
+        danger: true,
+      }))
+    ) {
       return;
     }
     await apiClient.delete(`/api/series-lists/${listId}`);

@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "../lib/api-client";
+import { ConfirmDialogProvider } from "../lib/ConfirmDialogProvider";
 import { SeriesDetail } from "./SeriesDetail";
 
 const { getMock, putMock, deleteMock } = vi.hoisted(() => ({
@@ -36,11 +37,13 @@ const SERIES = {
 
 function renderDetail(initialEntry = "/series/1396") {
   render(
-    <MemoryRouter initialEntries={[initialEntry]}>
-      <Routes>
-        <Route path="/series/:tmdbId" element={<SeriesDetail />} />
-      </Routes>
-    </MemoryRouter>,
+    <ConfirmDialogProvider>
+      <MemoryRouter initialEntries={[initialEntry]}>
+        <Routes>
+          <Route path="/series/:tmdbId" element={<SeriesDetail />} />
+        </Routes>
+      </MemoryRouter>
+    </ConfirmDialogProvider>,
   );
 }
 
@@ -175,14 +178,16 @@ describe("SeriesDetail", () => {
       return Promise.reject(new Error("rota inesperada: " + path));
     });
     putMock.mockResolvedValue(undefined);
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     renderDetail();
 
     await screen.findByText("1. Pilot");
     fireEvent.click(screen.getByLabelText("Assistido"));
+    fireEvent.click(await screen.findByRole("button", { name: "Confirmar" }));
 
-    expect(putMock).toHaveBeenCalledWith("/api/series/1396/episodes/1/1", { watched: true });
-    expect(putMock).toHaveBeenCalledWith("/api/series/1396/entry", { abandoned: false });
+    await waitFor(() => {
+      expect(putMock).toHaveBeenCalledWith("/api/series/1396/episodes/1/1", { watched: true });
+      expect(putMock).toHaveBeenCalledWith("/api/series/1396/entry", { abandoned: false });
+    });
   });
 
   it("abre direto na temporada pedida via ?temporada= (ex.: link do Continuar assistindo), sem passar pela 1", async () => {

@@ -3,11 +3,13 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { ListFormModal } from "../components/ListFormModal";
 import { apiClient } from "../lib/api-client";
+import { useConfirm } from "../lib/useConfirm";
 import styles from "./MyMovieLists.module.css";
 
 type LoadStatus = "loading" | "ready" | "error";
 
 export function MyMovieLists() {
+  const confirm = useConfirm();
   const [lists, setLists] = useState<MovieList[]>([]);
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
   const [modalOpen, setModalOpen] = useState(false);
@@ -33,7 +35,12 @@ export function MyMovieLists() {
   }, []);
 
   async function handleDelete(listId: string) {
-    if (!window.confirm("Remover esta lista? Essa ação não pode ser desfeita.")) {
+    if (
+      !(await confirm({
+        message: "Remover esta lista? Essa ação não pode ser desfeita.",
+        danger: true,
+      }))
+    ) {
       return;
     }
     await apiClient.delete(`/api/movies-lists/${listId}`);

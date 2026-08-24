@@ -1,7 +1,8 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../lib/api-client";
+import { ConfirmDialogProvider } from "../lib/ConfirmDialogProvider";
 import { MovieListDetail } from "./MovieListDetail";
 
 const { getMock, patchMock, deleteMock, putMock } = vi.hoisted(() => ({
@@ -41,12 +42,14 @@ const DETAIL = {
 
 function renderPage(initialEntry = "/filmes/listas/1") {
   render(
-    <MemoryRouter initialEntries={[initialEntry]}>
-      <Routes>
-        <Route path="/filmes/listas" element={<p>tela de listas</p>} />
-        <Route path="/filmes/listas/:listId" element={<MovieListDetail />} />
-      </Routes>
-    </MemoryRouter>,
+    <ConfirmDialogProvider>
+      <MemoryRouter initialEntries={[initialEntry]}>
+        <Routes>
+          <Route path="/filmes/listas" element={<p>tela de listas</p>} />
+          <Route path="/filmes/listas/:listId" element={<MovieListDetail />} />
+        </Routes>
+      </MemoryRouter>
+    </ConfirmDialogProvider>,
   );
 }
 
@@ -110,13 +113,13 @@ describe("MovieListDetail", () => {
   it("remove a lista após confirmação e volta pra /listas", async () => {
     getMock.mockResolvedValue(DETAIL);
     deleteMock.mockResolvedValue(undefined);
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     renderPage();
 
     await screen.findByRole("heading", { name: "Vistos em 2026" });
     fireEvent.click(screen.getByRole("button", { name: "Remover lista" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Confirmar" }));
 
-    expect(deleteMock).toHaveBeenCalledWith("/api/movies-lists/1");
+    await waitFor(() => expect(deleteMock).toHaveBeenCalledWith("/api/movies-lists/1"));
     expect(await screen.findByText("tela de listas")).toBeInTheDocument();
   });
 

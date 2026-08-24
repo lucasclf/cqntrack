@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ConfirmDialogProvider } from "../lib/ConfirmDialogProvider";
 import { SeriesEpisodeList } from "./SeriesEpisodeList";
 
 function renderList(
@@ -10,9 +11,11 @@ function renderList(
     Partial<Pick<ComponentProps<typeof SeriesEpisodeList>, "abandoned" | "onResume">>,
 ) {
   return render(
-    <MemoryRouter>
-      <SeriesEpisodeList abandoned={false} onResume={vi.fn()} {...props} />
-    </MemoryRouter>,
+    <ConfirmDialogProvider>
+      <MemoryRouter>
+        <SeriesEpisodeList abandoned={false} onResume={vi.fn()} {...props} />
+      </MemoryRouter>
+    </ConfirmDialogProvider>,
   );
 }
 
@@ -236,7 +239,6 @@ describe("SeriesEpisodeList", () => {
   it("marca a temporada inteira sem pedir confirmação", async () => {
     getMock.mockResolvedValue(season1Response());
     putMock.mockResolvedValue(undefined);
-    const confirmSpy = vi.spyOn(window, "confirm");
     renderList({ tmdbId: 1396, seasons: SEASONS });
     await screen.findByText("1. Pilot");
 
@@ -245,7 +247,7 @@ describe("SeriesEpisodeList", () => {
     await waitFor(() =>
       expect(putMock).toHaveBeenCalledWith("/api/series/1396/seasons/1", { watched: true }),
     );
-    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(
       await screen.findByRole("button", { name: "Desmarcar temporada inteira" }),
     ).toBeInTheDocument();
@@ -255,16 +257,18 @@ describe("SeriesEpisodeList", () => {
     getMock.mockResolvedValue(season1Response(true));
     putMock.mockResolvedValue(undefined);
 
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
     renderList({ tmdbId: 1396, seasons: SEASONS });
     await screen.findByRole("button", { name: "Desmarcar temporada inteira" });
 
     fireEvent.click(screen.getByRole("button", { name: "Desmarcar temporada inteira" }));
-    expect(confirmSpy).toHaveBeenCalled();
+    expect(
+      await screen.findByText("Desmarcar todos os episódios desta temporada?"),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
     expect(putMock).not.toHaveBeenCalled();
 
-    confirmSpy.mockReturnValue(true);
     fireEvent.click(screen.getByRole("button", { name: "Desmarcar temporada inteira" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Confirmar" }));
 
     await waitFor(() =>
       expect(putMock).toHaveBeenCalledWith("/api/series/1396/seasons/1", { watched: false }),
@@ -274,16 +278,19 @@ describe("SeriesEpisodeList", () => {
   it("marcar um episódio com anterior(es) não assistido(s) pergunta e marca os anteriores se confirmado", async () => {
     getMock.mockResolvedValue(season1Response());
     putMock.mockResolvedValue(undefined);
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
     renderList({ tmdbId: 1396, seasons: SEASONS });
     await screen.findByText("1. Pilot");
 
     // Marca direto o episódio 2 (índice 1), sem ter marcado o 1 antes.
     fireEvent.click(screen.getAllByLabelText("Assistido")[1]!);
 
-    expect(confirmSpy).toHaveBeenCalledWith(
-      "Você ainda não marcou o episódio anterior desta temporada como assistido. Marcar ele também?",
-    );
+    expect(
+      await screen.findByText(
+        "Você ainda não marcou o episódio anterior desta temporada como assistido. Marcar ele também?",
+      ),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar" }));
+
     await waitFor(() => {
       expect(putMock).toHaveBeenCalledWith("/api/series/1396/episodes/1/1", { watched: true });
       expect(putMock).toHaveBeenCalledWith("/api/series/1396/episodes/1/2", { watched: true });
@@ -295,11 +302,11 @@ describe("SeriesEpisodeList", () => {
   it("recusando a confirmação de episódios anteriores, marca só o episódio clicado", async () => {
     getMock.mockResolvedValue(season1Response());
     putMock.mockResolvedValue(undefined);
-    vi.spyOn(window, "confirm").mockReturnValue(false);
     renderList({ tmdbId: 1396, seasons: SEASONS });
     await screen.findByText("1. Pilot");
 
     fireEvent.click(screen.getAllByLabelText("Assistido")[1]!);
+    fireEvent.click(await screen.findByRole("button", { name: "Cancelar" }));
 
     await waitFor(() =>
       expect(putMock).toHaveBeenCalledWith("/api/series/1396/episodes/1/2", { watched: true }),
@@ -312,28 +319,31 @@ describe("SeriesEpisodeList", () => {
   it("marcar episódio de série abandonada pergunta se quer retomar, e chama onResume se confirmado", async () => {
     getMock.mockResolvedValue(season1Response());
     putMock.mockResolvedValue(undefined);
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
     const onResume = vi.fn();
     renderList({ tmdbId: 1396, seasons: SEASONS, abandoned: true, onResume });
     await screen.findByText("1. Pilot");
 
     fireEvent.click(screen.getAllByLabelText("Assistido")[0]!);
 
-    expect(confirmSpy).toHaveBeenCalledWith(
-      "Esta série está marcada como abandonada. Quer voltar a acompanhá-la?",
-    );
-    expect(onResume).toHaveBeenCalledTimes(1);
+    expect(
+      await screen.findByText(
+        "Esta série está marcada como abandonada. Quer voltar a acompanhá-la?",
+      ),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar" }));
+
+    await waitFor(() => expect(onResume).toHaveBeenCalledTimes(1));
   });
 
   it("recusando a confirmação de retomar, não chama onResume mas ainda marca o episódio", async () => {
     getMock.mockResolvedValue(season1Response());
     putMock.mockResolvedValue(undefined);
-    vi.spyOn(window, "confirm").mockReturnValue(false);
     const onResume = vi.fn();
     renderList({ tmdbId: 1396, seasons: SEASONS, abandoned: true, onResume });
     await screen.findByText("1. Pilot");
 
     fireEvent.click(screen.getAllByLabelText("Assistido")[0]!);
+    fireEvent.click(await screen.findByRole("button", { name: "Cancelar" }));
 
     expect(onResume).not.toHaveBeenCalled();
     await waitFor(() =>
@@ -344,14 +354,13 @@ describe("SeriesEpisodeList", () => {
   it("série não abandonada não pergunta nada ao marcar o 1º episódio", async () => {
     getMock.mockResolvedValue(season1Response());
     putMock.mockResolvedValue(undefined);
-    const confirmSpy = vi.spyOn(window, "confirm");
     const onResume = vi.fn();
     renderList({ tmdbId: 1396, seasons: SEASONS, abandoned: false, onResume });
     await screen.findByText("1. Pilot");
 
     fireEvent.click(screen.getAllByLabelText("Assistido")[0]!);
 
-    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(onResume).not.toHaveBeenCalled();
   });
 

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ConfirmDialogProvider } from "../lib/ConfirmDialogProvider";
 import { MyBookLists } from "./MyBookLists";
 
 const { getMock, postMock, deleteMock } = vi.hoisted(() => ({
@@ -19,9 +20,11 @@ vi.mock("../lib/api-client", async () => {
 
 function renderPage() {
   render(
-    <MemoryRouter>
-      <MyBookLists />
-    </MemoryRouter>,
+    <ConfirmDialogProvider>
+      <MemoryRouter>
+        <MyBookLists />
+      </MemoryRouter>
+    </ConfirmDialogProvider>,
   );
 }
 
@@ -84,13 +87,13 @@ describe("MyBookLists", () => {
   it("remove uma lista após confirmação", async () => {
     getMock.mockResolvedValue({ lists: [LIST] });
     deleteMock.mockResolvedValue(undefined);
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     renderPage();
 
     await screen.findByText("Lidos em 2026");
     fireEvent.click(screen.getByRole("button", { name: "Remover" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Confirmar" }));
 
-    expect(deleteMock).toHaveBeenCalledWith("/api/books-lists/1");
+    await waitFor(() => expect(deleteMock).toHaveBeenCalledWith("/api/books-lists/1"));
     await waitFor(() => expect(screen.queryByText("Lidos em 2026")).not.toBeInTheDocument());
   });
 });

@@ -1,6 +1,7 @@
 import type { MangaVolumesResponse } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { apiClient } from "../lib/api-client";
+import { useConfirm } from "../lib/useConfirm";
 import styles from "./MangaVolumeList.module.css";
 
 interface MangaVolumeListProps {
@@ -30,6 +31,7 @@ function chapterLabel(chapterNumber: number): string {
 // um segundo fetch ao trocar de volume, tudo já está em memória depois do
 // primeiro carregamento.
 export function MangaVolumeList({ mangadexId }: MangaVolumeListProps) {
+  const confirm = useConfirm();
   const [data, setData] = useState<MangaVolumesResponse | null>(null);
   const [selectedVolume, setSelectedVolume] = useState<number | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -99,11 +101,11 @@ export function MangaVolumeList({ mangadexId }: MangaVolumeListProps) {
         .map((chapter) => chapter.chapterNumber);
       if (
         earlierUnread.length > 0 &&
-        window.confirm(
+        (await confirm(
           earlierUnread.length === 1
             ? "Você ainda não marcou o capítulo anterior deste volume como lido. Marcar ele também?"
             : `Você ainda não marcou ${earlierUnread.length} capítulos anteriores deste volume como lidos. Marcar eles também?`,
-        )
+        ))
       ) {
         chapterNumbersToMark = [...earlierUnread, chapterNumber];
       }
@@ -133,7 +135,7 @@ export function MangaVolumeList({ mangadexId }: MangaVolumeListProps) {
     if (!volume) return;
     const allRead = volume.chapters.length > 0 && volume.chapters.every((chapter) => chapter.read);
     const nextRead = !allRead;
-    if (!nextRead && !window.confirm("Desmarcar todos os capítulos deste volume?")) {
+    if (!nextRead && !(await confirm("Desmarcar todos os capítulos deste volume?"))) {
       return;
     }
 

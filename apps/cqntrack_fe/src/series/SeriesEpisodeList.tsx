@@ -2,6 +2,7 @@ import type { SeriesSeasonEpisodesResponse, SeriesSeasonSummary } from "@cqntrac
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { apiClient } from "../lib/api-client";
+import { useConfirm } from "../lib/useConfirm";
 import styles from "./SeriesEpisodeList.module.css";
 
 interface SeriesEpisodeListProps {
@@ -79,6 +80,7 @@ export function SeriesEpisodeList({
   abandoned,
   onResume,
 }: SeriesEpisodeListProps) {
+  const confirm = useConfirm();
   const [selectedSeason, setSelectedSeason] = useState<number | null>(
     pickDefaultSeason(seasons, initialSeasonNumber, nextSeasonToWatch),
   );
@@ -150,11 +152,11 @@ export function SeriesEpisodeList({
         .map((episode) => episode.episodeNumber);
       if (
         earlierUnwatched.length > 0 &&
-        window.confirm(
+        (await confirm(
           earlierUnwatched.length === 1
             ? "Você ainda não marcou o episódio anterior desta temporada como assistido. Marcar ele também?"
             : `Você ainda não marcou ${earlierUnwatched.length} episódios anteriores desta temporada como assistidos. Marcar eles também?`,
-        )
+        ))
       ) {
         episodeNumbersToMark = [...earlierUnwatched, episodeNumber];
       }
@@ -163,7 +165,7 @@ export function SeriesEpisodeList({
     if (
       watched &&
       abandoned &&
-      window.confirm("Esta série está marcada como abandonada. Quer voltar a acompanhá-la?")
+      (await confirm("Esta série está marcada como abandonada. Quer voltar a acompanhá-la?"))
     ) {
       onResume();
     }
@@ -203,7 +205,7 @@ export function SeriesEpisodeList({
     const allWatched =
       current.episodes.length > 0 && current.episodes.every((episode) => episode.watched);
     const nextWatched = !allWatched;
-    if (!nextWatched && !window.confirm("Desmarcar todos os episódios desta temporada?")) {
+    if (!nextWatched && !(await confirm("Desmarcar todos os episódios desta temporada?"))) {
       return;
     }
 
