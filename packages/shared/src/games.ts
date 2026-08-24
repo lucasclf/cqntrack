@@ -50,12 +50,44 @@ export const SearchGamesResponseSchema = z.object({
 
 export type SearchGamesResponse = z.infer<typeof SearchGamesResponseSchema>;
 
+// Conjunto fixo e curto de plataformas populares (não a lista completa da
+// IGDB, que tem centenas) — o mapeamento slug -> id(s) real(is) na IGDB fica
+// isolado no client da integração (integrations/igdb/games.ts), esta lista é
+// só o contrato slug/label entre FE e BE. "mobile" junta Android e iOS num
+// filtro só.
+export const GAME_DISCOVER_PLATFORMS = [
+  "ps5",
+  "ps4",
+  "xbox-series",
+  "xbox-one",
+  "switch2",
+  "switch",
+  "pc",
+  "mobile",
+] as const;
+
+export const GameDiscoverPlatformSchema = z.enum(GAME_DISCOVER_PLATFORMS);
+
+export type GameDiscoverPlatform = z.infer<typeof GameDiscoverPlatformSchema>;
+
+export const GAME_DISCOVER_PLATFORM_LABELS: Record<GameDiscoverPlatform, string> = {
+  ps5: "PS5",
+  ps4: "PS4",
+  "xbox-series": "Xbox Series",
+  "xbox-one": "Xbox One",
+  switch2: "Switch 2",
+  switch: "Switch",
+  pc: "PC",
+  mobile: "Mobile",
+};
+
 // Tela "Descobrir" (aclamados da própria IGDB, ordenado por total_rating com
 // um piso de avaliações pra evitar jogo obscuro com 1 nota 100) — vira o
 // índice da seção de jogos no menu superior. Mesmo espírito de
 // DiscoverMoviesResponseSchema/DiscoverSeriesResponseSchema.
 export const DiscoverGamesQuerySchema = z.object({
   page: z.coerce.number().int().min(1).max(500).default(1),
+  platform: GameDiscoverPlatformSchema.optional(),
 });
 
 export type DiscoverGamesQuery = z.infer<typeof DiscoverGamesQuerySchema>;

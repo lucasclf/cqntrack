@@ -1,4 +1,4 @@
-import type { GameSummary } from "@cqntrack/shared";
+import type { GameDiscoverPlatform, GameSummary } from "@cqntrack/shared";
 import { eq } from "drizzle-orm";
 import type { createDb } from "../db/client";
 import { game } from "../db/schema";
@@ -85,8 +85,9 @@ export async function getPopularGamesForUser(
   env: Env,
   db: Db,
   page: number,
+  platform?: GameDiscoverPlatform,
 ): Promise<{ results: GameSummary[]; hasMore: boolean }> {
-  const games = await getPopularGames(env, db, page);
+  const games = await getPopularGames(env, db, page, platform);
   return {
     results: games.map(mapIgdbGameToSummary),
     hasMore: games.length >= DISCOVER_PAGE_SIZE,

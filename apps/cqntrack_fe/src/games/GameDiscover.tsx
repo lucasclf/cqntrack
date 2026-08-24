@@ -1,4 +1,10 @@
-import type { DiscoverGamesResponse, GameSummary } from "@cqntrack/shared";
+import {
+  GAME_DISCOVER_PLATFORMS,
+  GAME_DISCOVER_PLATFORM_LABELS,
+  type DiscoverGamesResponse,
+  type GameDiscoverPlatform,
+  type GameSummary,
+} from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { MediaSearchInput } from "../components/MediaSearchInput";
 import { apiClient } from "../lib/api-client";
@@ -12,23 +18,33 @@ type LoadStatus = "loading" | "idle" | "error";
 export function GameDiscover() {
   const [results, setResults] = useState<GameSummary[]>([]);
   const [page, setPage] = useState(1);
+  const [platform, setPlatform] = useState<GameDiscoverPlatform | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [status, setStatus] = useState<LoadStatus>("loading");
 
-  // Volta pra "loading" assim que a página muda (ex.: "Carregar mais") —
-  // feito durante o render (mesmo padrão de MovieDiscover), não dentro do
-  // efeito abaixo.
+  // Volta pra "loading" assim que a página ou a plataforma mudam (ex.:
+  // "Carregar mais" ou trocar o filtro) — feito durante o render (mesmo
+  // padrão de MovieDiscover), não dentro do efeito abaixo.
   const [trackedPage, setTrackedPage] = useState(page);
-  if (page !== trackedPage) {
+  const [trackedPlatform, setTrackedPlatform] = useState(platform);
+  if (page !== trackedPage || platform !== trackedPlatform) {
     setTrackedPage(page);
+    setTrackedPlatform(platform);
     setStatus("loading");
+  }
+
+  function selectPlatform(next: GameDiscoverPlatform | null) {
+    setPlatform(next);
+    setPage(1);
   }
 
   useEffect(() => {
     let cancelled = false;
+    const query = new URLSearchParams({ page: String(page) });
+    if (platform) query.set("platform", platform);
 
     apiClient
-      .get<DiscoverGamesResponse>(`/api/games/discover?page=${page}`)
+      .get<DiscoverGamesResponse>(`/api/games/discover?${query}`)
       .then((data) => {
         if (cancelled) return;
         setResults((current) => (page === 1 ? data.results : [...current, ...data.results]));
@@ -42,7 +58,7 @@ export function GameDiscover() {
     return () => {
       cancelled = true;
     };
-  }, [page]);
+  }, [page, platform]);
 
   return (
     <div className={styles.page}>
@@ -52,6 +68,29 @@ export function GameDiscover() {
         placeholder="Nome do jogo..."
         ariaLabel="Buscar jogos"
       />
+
+      <div className={styles.platformFilters} role="group" aria-label="Filtrar por plataforma">
+        <button
+          type="button"
+          className={styles.platformChip}
+          aria-pressed={platform === null}
+          onClick={() => selectPlatform(null)}
+        >
+          Todas
+        </button>
+        {GAME_DISCOVER_PLATFORMS.map((option) => (
+          <button
+            key={option}
+            type="button"
+            className={styles.platformChip}
+            aria-pressed={platform === option}
+            onClick={() => selectPlatform(option)}
+          >
+            {GAME_DISCOVER_PLATFORM_LABELS[option]}
+          </button>
+        ))}
+      </div>
+
       {status === "error" && (
         <p role="alert">Falha ao carregar jogos aclamados. Tente novamente.</p>
       )}

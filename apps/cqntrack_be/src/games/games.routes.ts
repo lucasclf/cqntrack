@@ -80,13 +80,21 @@ gamesRouter.get("/favorites", async (c) => {
 });
 
 gamesRouter.get("/discover", async (c) => {
-  const parsed = DiscoverGamesQuerySchema.safeParse({ page: c.req.query("page") });
+  const parsed = DiscoverGamesQuerySchema.safeParse({
+    page: c.req.query("page"),
+    platform: c.req.query("platform"),
+  });
   if (!parsed.success) {
     return c.json({ error: "invalid_query" }, 400);
   }
 
   const db = createDb(c.env);
-  const { results, hasMore } = await getPopularGamesForUser(c.env, db, parsed.data.page);
+  const { results, hasMore } = await getPopularGamesForUser(
+    c.env,
+    db,
+    parsed.data.page,
+    parsed.data.platform,
+  );
   return c.json(DiscoverGamesResponseSchema.parse({ results, page: parsed.data.page, hasMore }));
 });
 

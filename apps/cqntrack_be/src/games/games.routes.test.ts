@@ -123,6 +123,35 @@ describe("GET /api/games/discover", () => {
 
     vi.unstubAllGlobals();
   });
+
+  it("com platform=ps5, filtra a query da IGDB pelo id real dessa plataforma", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(TOKEN_RESPONSE))
+      .mockResolvedValueOnce(jsonResponse([IGDB_GAME]));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await app.request("/api/games/discover?platform=ps5", { headers: { cookie } }, env);
+
+    expect(res.status).toBe(200);
+    const [, gamesRequestInit] = fetchMock.mock.calls[1] as [string, RequestInit];
+    expect(gamesRequestInit.body).toContain("platforms = (167)");
+
+    vi.unstubAllGlobals();
+  });
+
+  it("platform inválido retorna 400", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+
+    const res = await app.request(
+      "/api/games/discover?platform=xbox-classic",
+      { headers: { cookie } },
+      env,
+    );
+
+    expect(res.status).toBe(400);
+  });
 });
 
 function igdbGame(id: number, name: string) {

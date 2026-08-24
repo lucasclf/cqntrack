@@ -68,4 +68,26 @@ describe("GameDiscover", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Falha ao carregar jogos aclamados");
   });
+
+  it("filtra por plataforma ao clicar num chip, e reseta ao voltar pra 'Todas'", async () => {
+    getMock.mockImplementation((path: string) => {
+      if (path === "/api/games/discover?page=1") {
+        return Promise.resolve({ results: [game(1942, "The Witcher 3")], page: 1, hasMore: false });
+      }
+      if (path === "/api/games/discover?page=1&platform=ps5") {
+        return Promise.resolve({ results: [game(1020, "Celeste")], page: 1, hasMore: false });
+      }
+      return Promise.reject(new Error("rota inesperada: " + path));
+    });
+    renderPage();
+    await screen.findByText("The Witcher 3");
+
+    fireEvent.click(screen.getByRole("button", { name: "PS5" }));
+    expect(await screen.findByText("Celeste")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "PS5" })).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(screen.getByRole("button", { name: "Todas" }));
+    expect(await screen.findByText("The Witcher 3")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Todas" })).toHaveAttribute("aria-pressed", "true");
+  });
 });
