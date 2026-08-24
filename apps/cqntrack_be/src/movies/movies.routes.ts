@@ -20,6 +20,7 @@ import { Hono } from "hono";
 import { type AuthedEnv, requireSession } from "../auth/require-session";
 import { createDb } from "../db/client";
 import {
+  attachEntriesToMovies,
   deleteMovieEntry,
   getFavorites,
   getMovieEntryForUser,
@@ -63,7 +64,9 @@ moviesRouter.get("/search", async (c) => {
     return c.json({ error: "invalid_query" }, 400);
   }
 
-  const results = await searchMoviesForUser(c.env, parsed.data.q, parsed.data.limit);
+  const db = createDb(c.env);
+  const summaries = await searchMoviesForUser(c.env, parsed.data.q, parsed.data.limit);
+  const results = await attachEntriesToMovies(db, c.get("userId"), summaries);
 
   const body = SearchMoviesResponseSchema.parse({ results });
   return c.json(body);
@@ -156,7 +159,9 @@ moviesRouter.get("/discover", async (c) => {
     return c.json({ error: "invalid_query" }, 400);
   }
 
-  const { results, hasMore } = await getPopularMoviesForUser(c.env, parsed.data.page);
+  const db = createDb(c.env);
+  const { results: summaries, hasMore } = await getPopularMoviesForUser(c.env, parsed.data.page);
+  const results = await attachEntriesToMovies(db, c.get("userId"), summaries);
   return c.json(DiscoverMoviesResponseSchema.parse({ results, page: parsed.data.page, hasMore }));
 });
 

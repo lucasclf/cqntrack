@@ -34,45 +34,6 @@ export const MovieSummarySchema = z.object({
 
 export type MovieSummary = z.infer<typeof MovieSummarySchema>;
 
-export const SearchMoviesQuerySchema = z.object({
-  q: z.string().min(1).max(100),
-  limit: z.coerce.number().int().min(1).max(50).default(20),
-});
-
-export type SearchMoviesQuery = z.infer<typeof SearchMoviesQuerySchema>;
-
-export const SearchMoviesResponseSchema = z.object({
-  results: z.array(MovieSummarySchema),
-});
-
-export type SearchMoviesResponse = z.infer<typeof SearchMoviesResponseSchema>;
-
-// Tela "Descobrir" (populares da própria TMDB, GET /movie/popular) — vira o
-// índice da seção de filmes no menu superior. Sem contagem total (a TMDB
-// não garante um número exato útil) — "hasMore" é aproximado: true quando a
-// página veio cheia, false quando veio incompleta (fim da lista).
-export const DiscoverMoviesQuerySchema = z.object({
-  page: z.coerce.number().int().min(1).max(500).default(1),
-});
-
-export type DiscoverMoviesQuery = z.infer<typeof DiscoverMoviesQuerySchema>;
-
-export const DiscoverMoviesResponseSchema = z.object({
-  results: z.array(MovieSummarySchema),
-  page: z.number().int(),
-  hasMore: z.boolean(),
-});
-
-export type DiscoverMoviesResponse = z.infer<typeof DiscoverMoviesResponseSchema>;
-
-export const MovieDetailSchema = MovieSummarySchema.extend({
-  overview: z.string().nullable(),
-  cast: z.array(CastMemberSchema),
-  directors: z.array(CrewMemberSchema),
-});
-
-export type MovieDetail = z.infer<typeof MovieDetailSchema>;
-
 // Marcação do usuário para um filme específico — sem o `movie` embutido
 // (quem consome isso normalmente já sabe de qual filme se trata pelo
 // contexto da chamada). Ver MovieEntryWithMovieSchema para o caso de
@@ -99,6 +60,56 @@ export const MovieEntryWithMovieSchema = MovieEntrySchema.extend({
 });
 
 export type MovieEntryWithMovie = z.infer<typeof MovieEntryWithMovieSchema>;
+
+// Mesmo MovieSummary, com a marcação do usuário logado embutida quando
+// existir (null quando o filme nunca foi marcado) — usado em telas que
+// listam vários filmes de fontes externas (busca, descobrir, detalhe de
+// lista) e agora também precisam saber o que o usuário já marcou, pras
+// ações rápidas do Card (favoritar/marcar assistido sem entrar no detalhe).
+export const MovieSummaryWithEntrySchema = MovieSummarySchema.extend({
+  entry: MovieEntrySchema.nullable(),
+});
+
+export type MovieSummaryWithEntry = z.infer<typeof MovieSummaryWithEntrySchema>;
+
+export const SearchMoviesQuerySchema = z.object({
+  q: z.string().min(1).max(100),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+});
+
+export type SearchMoviesQuery = z.infer<typeof SearchMoviesQuerySchema>;
+
+export const SearchMoviesResponseSchema = z.object({
+  results: z.array(MovieSummaryWithEntrySchema),
+});
+
+export type SearchMoviesResponse = z.infer<typeof SearchMoviesResponseSchema>;
+
+// Tela "Descobrir" (populares da própria TMDB, GET /movie/popular) — vira o
+// índice da seção de filmes no menu superior. Sem contagem total (a TMDB
+// não garante um número exato útil) — "hasMore" é aproximado: true quando a
+// página veio cheia, false quando veio incompleta (fim da lista).
+export const DiscoverMoviesQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).max(500).default(1),
+});
+
+export type DiscoverMoviesQuery = z.infer<typeof DiscoverMoviesQuerySchema>;
+
+export const DiscoverMoviesResponseSchema = z.object({
+  results: z.array(MovieSummaryWithEntrySchema),
+  page: z.number().int(),
+  hasMore: z.boolean(),
+});
+
+export type DiscoverMoviesResponse = z.infer<typeof DiscoverMoviesResponseSchema>;
+
+export const MovieDetailSchema = MovieSummarySchema.extend({
+  overview: z.string().nullable(),
+  cast: z.array(CastMemberSchema),
+  directors: z.array(CrewMemberSchema),
+});
+
+export type MovieDetail = z.infer<typeof MovieDetailSchema>;
 
 export const MovieDetailResponseSchema = z.object({
   movie: MovieDetailSchema,
@@ -168,8 +179,11 @@ export const MovieListsResponseSchema = z.object({
 
 export type MovieListsResponse = z.infer<typeof MovieListsResponseSchema>;
 
+// items com entry embutida — mesmo racional de GameListDetailSchema
+// (reaproveitado tanto pela rota autenticada quanto pela de perfil público,
+// entry = de quem for dono da lista em cada caso).
 export const MovieListDetailSchema = MovieListSchema.extend({
-  items: z.array(MovieSummarySchema),
+  items: z.array(MovieSummaryWithEntrySchema),
 });
 
 export type MovieListDetail = z.infer<typeof MovieListDetailSchema>;

@@ -68,7 +68,7 @@ export function MyMovieEntries() {
         <>
           <div className={styles.grid}>
             {data.items.map((item) => (
-              <MovieCard key={item.movie.tmdbId} movie={item.movie} entry={item} />
+              <MovieCard key={item.movie.tmdbId} movie={item.movie} entry={item} interactive />
             ))}
           </div>
           <div className={styles.pagination}>

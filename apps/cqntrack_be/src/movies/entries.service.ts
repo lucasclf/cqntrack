@@ -2,9 +2,11 @@ import type {
   ListMovieEntriesQuery,
   MovieEntry,
   MovieEntryWithMovie,
+  MovieSummary,
+  MovieSummaryWithEntry,
   UpsertMovieEntryRequest,
 } from "@cqntrack/shared";
-import { and, asc, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import type { createDb } from "../db/client";
 import { activity, movieEntry } from "../db/schema";
 import { withoutUndefined } from "../lib/without-undefined";
@@ -83,6 +85,31 @@ export async function getMovieEntryForUser(
     where: and(eq(movieEntry.userId, userId), eq(movieEntry.movieId, tmdbId)),
   });
   return row ? toMovieEntry(row) : null;
+}
+
+// Lookup em lote — dado um conjunto de filmes já resolvidos (busca TMDB,
+// descobrir, item de lista), busca de uma vez as entries do usuário pra
+// anexar a cada um (ações rápidas do Card, sem precisar entrar no detalhe).
+// Mesmo espírito de attachEntriesToGames.
+export async function attachEntriesToMovies(
+  db: Db,
+  userId: string,
+  movies: MovieSummary[],
+): Promise<MovieSummaryWithEntry[]> {
+  if (movies.length === 0) return [];
+
+  const rows = await db.query.movieEntry.findMany({
+    where: and(
+      eq(movieEntry.userId, userId),
+      inArray(
+        movieEntry.movieId,
+        movies.map((movie) => movie.tmdbId),
+      ),
+    ),
+  });
+  const entriesByMovieId = new Map(rows.map((row) => [row.movieId, toMovieEntry(row)]));
+
+  return movies.map((movie) => ({ ...movie, entry: entriesByMovieId.get(movie.tmdbId) ?? null }));
 }
 
 export async function upsertMovieEntry(

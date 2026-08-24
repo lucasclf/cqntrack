@@ -1,4 +1,4 @@
-import type { DiscoverMoviesResponse, MovieSummary } from "@cqntrack/shared";
+import type { DiscoverMoviesResponse, MovieSummaryWithEntry } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { MediaSearchInput } from "../components/MediaSearchInput";
 import { apiClient } from "../lib/api-client";
@@ -11,7 +11,7 @@ type LoadStatus = "loading" | "idle" | "error";
 // (GET /movie/popular), "carregar mais" em vez de paginação com número de
 // página (a TMDB não devolve um total útil pra mostrar "página X de Y").
 export function MovieDiscover() {
-  const [results, setResults] = useState<MovieSummary[]>([]);
+  const [results, setResults] = useState<MovieSummaryWithEntry[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [status, setStatus] = useState<LoadStatus>("loading");
@@ -59,7 +59,7 @@ export function MovieDiscover() {
 
       <div className={styles.grid}>
         {results.map((movie) => (
-          <MovieCard key={movie.tmdbId} movie={movie} />
+          <MovieCard key={movie.tmdbId} movie={movie} entry={movie.entry} interactive />
         ))}
       </div>
 

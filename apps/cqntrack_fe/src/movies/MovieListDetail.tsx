@@ -67,7 +67,11 @@ export function MovieListDetail() {
       await apiClient.put(`/api/movies-lists/${listId}/items/${movie.tmdbId}`);
       setDetail((current) =>
         current && !current.items.some((item) => item.tmdbId === movie.tmdbId)
-          ? { ...current, items: [movie, ...current.items], itemCount: current.itemCount + 1 }
+          ? {
+              ...current,
+              items: [{ ...movie, entry: null }, ...current.items],
+              itemCount: current.itemCount + 1,
+            }
           : current,
       );
     } catch {
@@ -128,7 +132,7 @@ export function MovieListDetail() {
         <div className={styles.grid}>
           {detail.items.map((movie) => (
             <div key={movie.tmdbId} className={styles.gridItem}>
-              <MovieCard movie={movie} />
+              <MovieCard movie={movie} entry={movie.entry} interactive />
               <button
                 type="button"
                 className={styles.removeItemBtn}

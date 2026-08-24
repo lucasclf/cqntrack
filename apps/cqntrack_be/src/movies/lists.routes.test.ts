@@ -142,6 +142,59 @@ describe("/api/movies-lists", () => {
     expect(afterRemove.itemCount).toBe(0);
   });
 
+  it("items vêm com a entry do usuário embutida (null quando nunca marcado)", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    const createRes = await app.request(
+      "/api/movies-lists",
+      {
+        method: "POST",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Ação rápida" }),
+      },
+      env,
+    );
+    const { id: listId } = (await createRes.json()) as MovieList;
+
+    stubTmdbFetchOnce(tmdbMovieDetail(803, "Parasite"));
+    await app.request(
+      `/api/movies-lists/${listId}/items/803`,
+      { method: "PUT", headers: { cookie } },
+      env,
+    );
+    vi.unstubAllGlobals();
+    stubTmdbFetchOnce(tmdbMovieDetail(804, "Whiplash"));
+    await app.request(
+      `/api/movies-lists/${listId}/items/804`,
+      { method: "PUT", headers: { cookie } },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    stubTmdbFetchOnce(tmdbMovieDetail(803, "Parasite"));
+    await app.request(
+      "/api/movies/803/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ favorited: true }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const detailRes = await app.request(
+      `/api/movies-lists/${listId}`,
+      { headers: { cookie } },
+      env,
+    );
+    const detail = (await detailRes.json()) as MovieListDetail;
+
+    const parasite = detail.items.find((item) => item.tmdbId === 803);
+    const whiplash = detail.items.find((item) => item.tmdbId === 804);
+    expect(parasite?.entry?.favoritedAt).not.toBeNull();
+    expect(whiplash?.entry).toBeNull();
+  });
+
   it("adicionar o mesmo filme duas vezes não gera atividade duplicada", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
     const createRes = await app.request(

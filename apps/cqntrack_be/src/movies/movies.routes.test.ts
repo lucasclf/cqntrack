@@ -109,11 +109,41 @@ describe("GET /api/movies/search", () => {
           genres: ["Action", "Science Fiction"],
           runtime: null,
           rating: 8.4,
+          entry: null,
         },
       ],
     });
 
     vi.unstubAllGlobals();
+  });
+
+  it("quando o filme já foi marcado antes, a busca devolve a entry embutida (não null)", async () => {
+    // Id próprio (não 27205, usado por outros testes deste arquivo) — evita
+    // poluir a activity de outros testes que checam "nenhuma atividade pra
+    // esse tmdbId" (a tabela não é resetada entre testes no mesmo arquivo).
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubMovieCacheFetch(88001, "Paprika");
+    await app.request(
+      "/api/movies/88001/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ favorited: true }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    stubTmdbFetchOnce({
+      results: [{ ...TMDB_SEARCH_RESULT, id: 88001, title: "Paprika" }],
+    });
+    const res = await app.request("/api/movies/search?q=paprika", { headers: { cookie } }, env);
+    vi.unstubAllGlobals();
+
+    const body = (await res.json()) as {
+      results: Array<{ entry: { favoritedAt: string } | null }>;
+    };
+    expect(body.results[0]?.entry?.favoritedAt).not.toBeNull();
   });
 });
 
@@ -141,6 +171,7 @@ describe("GET /api/movies/discover", () => {
           genres: ["Action", "Science Fiction"],
           runtime: null,
           rating: 8.4,
+          entry: null,
         },
       ],
       page: 1,

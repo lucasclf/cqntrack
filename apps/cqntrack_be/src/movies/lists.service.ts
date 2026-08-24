@@ -9,6 +9,7 @@ import type { createDb } from "../db/client";
 import { activity, movieList, movieListItem } from "../db/schema";
 import { isUniqueConstraintError } from "../lib/is-unique-constraint-error";
 import { withoutUndefined } from "../lib/without-undefined";
+import { attachEntriesToMovies } from "./entries.service";
 import { getOrCacheMovie, mapCachedMovieToSummary, toActivitySnapshot } from "./movies.service";
 
 type Db = ReturnType<typeof createDb>;
@@ -147,9 +148,10 @@ export async function getMovieListDetail(
   });
 
   const [list] = await withItemCount(db, [row]);
+  const summaries = items.map((item) => mapCachedMovieToSummary(item.movie));
   return {
     ...list!,
-    items: items.map((item) => mapCachedMovieToSummary(item.movie)),
+    items: await attachEntriesToMovies(db, userId, summaries),
   };
 }
 

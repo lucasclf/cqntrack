@@ -43,7 +43,7 @@ export function MovieCategoryPanel({ basePath }: MovieCategoryPanelProps) {
         emptyMessage="Nenhum filme favoritado ainda."
         errorMessage="Falha ao carregar seus filmes favoritos."
         getKey={(item) => item.movie.tmdbId}
-        renderItem={(item) => <MovieCard movie={item.movie} entry={item} />}
+        renderItem={(item) => <MovieCard movie={item.movie} entry={item} interactive />}
       />
       <InfiniteMediaGrid
         hidden={subTab !== "recent"}
@@ -51,7 +51,7 @@ export function MovieCategoryPanel({ basePath }: MovieCategoryPanelProps) {
         emptyMessage="Nenhum filme assistido recentemente."
         errorMessage="Falha ao carregar seus filmes assistidos recentemente."
         getKey={(item) => item.movie.tmdbId}
-        renderItem={(item) => <MovieCard movie={item.movie} entry={item} />}
+        renderItem={(item) => <MovieCard movie={item.movie} entry={item} interactive />}
       />
     </div>
   );

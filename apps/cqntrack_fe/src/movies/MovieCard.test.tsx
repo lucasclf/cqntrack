@@ -1,8 +1,14 @@
 import type { MovieEntry, MovieSummary } from "@cqntrack/shared";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MovieCard } from "./MovieCard";
+
+const { putMock } = vi.hoisted(() => ({ putMock: vi.fn() }));
+
+vi.mock("../lib/api-client", () => ({
+  apiClient: { put: putMock },
+}));
 
 const BASE_MOVIE: MovieSummary = {
   tmdbId: 27205,
@@ -14,10 +20,10 @@ const BASE_MOVIE: MovieSummary = {
   rating: 8.368,
 };
 
-function renderCard(movie: MovieSummary, entry?: MovieEntry) {
+function renderCard(movie: MovieSummary, entry?: MovieEntry | null, interactive = false) {
   return render(
     <MemoryRouter>
-      <MovieCard movie={movie} entry={entry} />
+      <MovieCard movie={movie} entry={entry} interactive={interactive} />
     </MemoryRouter>,
   );
 }
@@ -78,5 +84,80 @@ describe("MovieCard", () => {
     });
 
     expect(container.querySelector("p:last-child")).toBeEmptyDOMElement();
+  });
+
+  it("sem interactive, não renderiza os botões de ação rápida", () => {
+    renderCard(BASE_MOVIE);
+
+    expect(screen.queryByLabelText("Favoritar")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Marcar como assistido")).not.toBeInTheDocument();
+  });
+
+  describe("interactive", () => {
+    beforeEach(() => {
+      putMock.mockReset();
+    });
+
+    it("favoritar chama o PUT e atualiza otimista", () => {
+      putMock.mockResolvedValue({});
+      renderCard(BASE_MOVIE, null, true);
+
+      fireEvent.click(screen.getByLabelText("Favoritar"));
+
+      expect(putMock).toHaveBeenCalledWith("/api/movies/27205/entry", { favorited: true });
+      expect(screen.getByLabelText("Desfavoritar")).toBeInTheDocument();
+    });
+
+    it("marcar como assistido chama o PUT com status watched", () => {
+      putMock.mockResolvedValue({});
+      renderCard(BASE_MOVIE, null, true);
+
+      fireEvent.click(screen.getByLabelText("Marcar como assistido"));
+
+      expect(putMock).toHaveBeenCalledWith("/api/movies/27205/entry", { status: "watched" });
+      expect(screen.getByLabelText("Desmarcar como assistido")).toBeInTheDocument();
+    });
+
+    it("clicar de novo em assistido desmarca (status: null)", () => {
+      putMock.mockResolvedValue({});
+      renderCard(
+        BASE_MOVIE,
+        {
+          id: "1",
+          status: "watched",
+          rating: null,
+          watchedAt: "2026-01-01T00:00:00.000Z",
+          favoritedAt: null,
+          review: null,
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        },
+        true,
+      );
+
+      fireEvent.click(screen.getByLabelText("Desmarcar como assistido"));
+
+      expect(putMock).toHaveBeenCalledWith("/api/movies/27205/entry", { status: null });
+    });
+
+    it("reverte a marcação otimista quando o PUT falha", async () => {
+      putMock.mockRejectedValue(new Error("falha de rede"));
+      renderCard(BASE_MOVIE, null, true);
+
+      fireEvent.click(screen.getByLabelText("Favoritar"));
+      expect(screen.getByLabelText("Desfavoritar")).toBeInTheDocument();
+
+      await waitFor(() => expect(screen.getByLabelText("Favoritar")).toBeInTheDocument());
+    });
+
+    it("o clique no botão não navega pro detalhe (preventDefault)", () => {
+      putMock.mockResolvedValue({});
+      renderCard(BASE_MOVIE, null, true);
+
+      const clickEvent = new MouseEvent("click", { bubbles: true, cancelable: true });
+      const preventDefaultSpy = vi.spyOn(clickEvent, "preventDefault");
+      screen.getByLabelText("Favoritar").dispatchEvent(clickEvent);
+
+      expect(preventDefaultSpy).toHaveBeenCalled();
+    });
   });
 });
