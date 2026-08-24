@@ -59,6 +59,9 @@ object NavRoutes {
     const val MANGA_AUTHOR_DETAIL = "manga_author_detail/{authorId}"
     fun mangaAuthorDetail(authorId: String) = "manga_author_detail/$authorId"
 
+    const val PERSON_DETAIL = "person_detail/{personId}"
+    fun personDetail(personId: Int) = "person_detail/$personId"
+
     const val ACCOUNT = "account"
     const val PUBLIC_PROFILE = "public_profile/{username}"
     fun publicProfile(username: String) = "public_profile/$username"

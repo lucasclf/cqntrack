@@ -47,6 +47,8 @@ import coil3.compose.AsyncImage
 import xyz.cqn.cqntrack.core.designsystem.StarRating
 import xyz.cqn.cqntrack.movies.data.MovieListDto
 import xyz.cqn.cqntrack.movies.data.MovieStatus
+import xyz.cqn.cqntrack.people.ui.CastSection
+import xyz.cqn.cqntrack.people.ui.CrewSection
 
 private val STATUS_LABELS = mapOf(
     MovieStatus.WantToWatch to "Quero ver",
@@ -57,6 +59,7 @@ private val STATUS_LABELS = mapOf(
 @Composable
 fun MovieDetailScreen(
     onBack: () -> Unit,
+    onPersonClick: (Int) -> Unit,
     viewModel: MovieDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -142,6 +145,9 @@ fun MovieDetailScreen(
                         modifier = Modifier.padding(top = 16.dp),
                     )
                 }
+
+                CrewSection(title = "Direção", crew = movie.directors, onPersonClick = onPersonClick)
+                CastSection(title = "Elenco", cast = movie.cast, onPersonClick = onPersonClick)
 
                 var reviewDraft by remember(uiState.entry?.review) {
                     mutableStateOf(uiState.entry?.review.orEmpty())

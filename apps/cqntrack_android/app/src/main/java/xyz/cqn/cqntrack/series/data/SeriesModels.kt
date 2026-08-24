@@ -1,6 +1,8 @@
 package xyz.cqn.cqntrack.series.data
 
 import kotlinx.serialization.Serializable
+import xyz.cqn.cqntrack.people.data.CastMemberDto
+import xyz.cqn.cqntrack.people.data.CrewMemberDto
 
 /** Espelha SeriesSeasonSummarySchema — vem de graça no detalhe, sem chamada extra. */
 @Serializable
@@ -26,7 +28,7 @@ data class SeriesSummaryDto(
     val rating: Double? = null,
 )
 
-/** Espelha SeriesDetailSchema (SeriesSummarySchema + overview; sem cast/creators/directors nesta versão). */
+/** Espelha SeriesDetailSchema (SeriesSummarySchema + overview + cast/creators/directors). */
 @Serializable
 data class SeriesDetailDto(
     val tmdbId: Int,
@@ -39,6 +41,12 @@ data class SeriesDetailDto(
     val seasons: List<SeriesSeasonSummaryDto>? = null,
     val rating: Double? = null,
     val overview: String? = null,
+    val cast: List<CastMemberDto> = emptyList(),
+    // Criador/showrunner (created_by da TMDB) — diferente de `directors`
+    // (diretores mais frequentes por episódio). Série não tem um diretor
+    // único como filme.
+    val creators: List<CrewMemberDto> = emptyList(),
+    val directors: List<CrewMemberDto> = emptyList(),
 )
 
 /**
@@ -110,14 +118,6 @@ data class SeriesSeasonEpisodesResponseDto(
 @Serializable
 data class SetWatchedRequestDto(
     val watched: Boolean,
-)
-
-/** Espelha CrewMemberSchema em packages/shared/src/credits.ts. */
-@Serializable
-data class CrewMemberDto(
-    val personId: Int,
-    val name: String,
-    val profileUrl: String? = null,
 )
 
 /**

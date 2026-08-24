@@ -46,6 +46,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import xyz.cqn.cqntrack.core.designsystem.StarRating
+import xyz.cqn.cqntrack.people.ui.CastSection
+import xyz.cqn.cqntrack.people.ui.CrewSection
 import xyz.cqn.cqntrack.series.data.SeriesEpisodeDto
 import xyz.cqn.cqntrack.series.data.SeriesListDto
 
@@ -54,6 +56,7 @@ import xyz.cqn.cqntrack.series.data.SeriesListDto
 fun SeriesDetailScreen(
     onBack: () -> Unit,
     onEpisodeClick: (tmdbId: Int, seasonNumber: Int, episodeNumber: Int) -> Unit,
+    onPersonClick: (Int) -> Unit,
     viewModel: SeriesDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -155,7 +158,13 @@ fun SeriesDetailScreen(
                                     modifier = Modifier.padding(top = 16.dp),
                                 )
                             }
+                        }
 
+                        CrewSection(title = "Criado por", crew = series.creators, onPersonClick = onPersonClick)
+                        CrewSection(title = "Direção", crew = series.directors, onPersonClick = onPersonClick)
+                        CastSection(title = "Elenco", cast = series.cast, onPersonClick = onPersonClick)
+
+                        Column(modifier = Modifier.padding(16.dp)) {
                             var reviewDraft by remember(uiState.entry?.review) {
                                 mutableStateOf(uiState.entry?.review.orEmpty())
                             }

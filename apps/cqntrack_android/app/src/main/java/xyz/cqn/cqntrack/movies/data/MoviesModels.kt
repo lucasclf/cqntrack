@@ -2,6 +2,8 @@ package xyz.cqn.cqntrack.movies.data
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import xyz.cqn.cqntrack.people.data.CastMemberDto
+import xyz.cqn.cqntrack.people.data.CrewMemberDto
 
 /** Espelha MovieSummarySchema em packages/shared/src/movies.ts. */
 @Serializable
@@ -15,7 +17,7 @@ data class MovieSummaryDto(
     val rating: Double? = null,
 )
 
-/** Espelha MovieDetailSchema (MovieSummarySchema + overview; sem cast/directors nesta versão). */
+/** Espelha MovieDetailSchema (MovieSummarySchema + overview + cast/directors). */
 @Serializable
 data class MovieDetailDto(
     val tmdbId: Int,
@@ -26,6 +28,8 @@ data class MovieDetailDto(
     val runtime: Int? = null,
     val rating: Double? = null,
     val overview: String? = null,
+    val cast: List<CastMemberDto> = emptyList(),
+    val directors: List<CrewMemberDto> = emptyList(),
 )
 
 /** Espelha MOVIE_STATUSES em packages/shared/src/movies.ts (fonte única de verdade lá). */

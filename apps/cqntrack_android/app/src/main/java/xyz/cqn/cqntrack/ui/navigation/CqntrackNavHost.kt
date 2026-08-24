@@ -35,6 +35,8 @@ import xyz.cqn.cqntrack.movies.ui.MovieEntriesScreen
 import xyz.cqn.cqntrack.movies.ui.MovieListDetailScreen
 import xyz.cqn.cqntrack.movies.ui.MovieListsScreen
 import xyz.cqn.cqntrack.movies.ui.MovieSearchScreen
+import xyz.cqn.cqntrack.people.data.PersonCreditMediaType
+import xyz.cqn.cqntrack.people.ui.PersonDetailScreen
 import xyz.cqn.cqntrack.profile.data.FavoriteMediaType
 import xyz.cqn.cqntrack.profile.ui.AccountScreen
 import xyz.cqn.cqntrack.profile.ui.PublicProfileScreen
@@ -87,6 +89,16 @@ fun CqntrackNavHost() {
                 onOpenManga = { navController.navigate(NavRoutes.MANGA_DISCOVER) },
                 onOpenAccount = { navController.navigate(NavRoutes.ACCOUNT) },
             )
+        }
+
+        composable(NavRoutes.PERSON_DETAIL) {
+            PersonDetailScreen(onCreditClick = { mediaType, id ->
+                val route = when (mediaType) {
+                    PersonCreditMediaType.Movies -> NavRoutes.movieDetail(id)
+                    PersonCreditMediaType.Series -> NavRoutes.seriesDetail(id)
+                }
+                navController.navigate(route)
+            })
         }
 
         composable(NavRoutes.ACCOUNT) {
@@ -161,7 +173,10 @@ fun CqntrackNavHost() {
             })
         }
         composable(NavRoutes.MOVIE_DETAIL) {
-            MovieDetailScreen(onBack = { navController.popBackStack() })
+            MovieDetailScreen(
+                onBack = { navController.popBackStack() },
+                onPersonClick = { personId -> navController.navigate(NavRoutes.personDetail(personId)) },
+            )
         }
         composable(NavRoutes.MOVIE_LISTS) {
             MovieListsScreen(
@@ -232,6 +247,7 @@ fun CqntrackNavHost() {
                 onEpisodeClick = { tmdbId, seasonNumber, episodeNumber ->
                     navController.navigate(NavRoutes.seriesEpisodeDetail(tmdbId, seasonNumber, episodeNumber))
                 },
+                onPersonClick = { personId -> navController.navigate(NavRoutes.personDetail(personId)) },
             )
         }
         composable(NavRoutes.SERIES_EPISODE_DETAIL) {
