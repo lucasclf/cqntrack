@@ -114,8 +114,8 @@ export function PersonDetail() {
         <p className={styles.hint}>Nenhum crédito de ator ou diretor encontrado.</p>
       )}
 
-      <CreditsSection title="Como ator" credits={actingCredits} />
-      <CreditsSection title="Como diretor" credits={directingCredits} />
+      <CreditsSection title="Atuou em:" credits={actingCredits} />
+      <CreditsSection title="Dirigiu:" credits={directingCredits} />
     </div>
   );
 }

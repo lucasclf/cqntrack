@@ -53,14 +53,14 @@ describe("PersonDetail", () => {
     expect(screen.getByText("Cineasta britânico e americano.")).toBeInTheDocument();
     expect(getMock).toHaveBeenCalledWith("/api/people/525");
 
-    expect(screen.getByRole("heading", { name: "Como diretor" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Dirigiu:" })).toBeInTheDocument();
     expect(screen.getByText("Inception")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Inception/ })).toHaveAttribute(
       "href",
       "/filmes/27205",
     );
     // Sem créditos de ator — a seção não aparece.
-    expect(screen.queryByRole("heading", { name: "Como ator" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Atuou em:" })).not.toBeInTheDocument();
   });
 
   it("linka um crédito de série pra /series/:id", async () => {
