@@ -34,6 +34,9 @@ class SeriesRepository @Inject constructor(
     suspend fun getSeasonEpisodes(tmdbId: Int, seasonNumber: Int): SeriesSeasonEpisodesResponseDto =
         runApiCall { seriesApi.getSeasonEpisodes(tmdbId, seasonNumber) }
 
+    suspend fun getEpisodeDetail(tmdbId: Int, seasonNumber: Int, episodeNumber: Int): SeriesEpisodeDetailDto =
+        runApiCall { seriesApi.getEpisodeDetail(tmdbId, seasonNumber, episodeNumber) }
+
     suspend fun setEpisodeWatched(tmdbId: Int, seasonNumber: Int, episodeNumber: Int, watched: Boolean) =
         runApiCall { seriesApi.setEpisodeWatched(tmdbId, seasonNumber, episodeNumber, SetWatchedRequestDto(watched)) }
 

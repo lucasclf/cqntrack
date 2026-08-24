@@ -36,6 +36,7 @@ import xyz.cqn.cqntrack.movies.ui.MovieSearchScreen
 import xyz.cqn.cqntrack.profile.data.FavoriteMediaType
 import xyz.cqn.cqntrack.profile.ui.AccountScreen
 import xyz.cqn.cqntrack.profile.ui.PublicProfileScreen
+import xyz.cqn.cqntrack.series.ui.EpisodeDetailScreen
 import xyz.cqn.cqntrack.series.ui.SeriesDetailScreen
 import xyz.cqn.cqntrack.series.ui.SeriesDiscoverScreen
 import xyz.cqn.cqntrack.series.ui.SeriesEntriesScreen
@@ -216,7 +217,15 @@ fun CqntrackNavHost() {
             })
         }
         composable(NavRoutes.SERIES_DETAIL) {
-            SeriesDetailScreen(onBack = { navController.popBackStack() })
+            SeriesDetailScreen(
+                onBack = { navController.popBackStack() },
+                onEpisodeClick = { tmdbId, seasonNumber, episodeNumber ->
+                    navController.navigate(NavRoutes.seriesEpisodeDetail(tmdbId, seasonNumber, episodeNumber))
+                },
+            )
+        }
+        composable(NavRoutes.SERIES_EPISODE_DETAIL) {
+            EpisodeDetailScreen(onBack = { navController.popBackStack() })
         }
         composable(NavRoutes.SERIES_LISTS) {
             SeriesListsScreen(

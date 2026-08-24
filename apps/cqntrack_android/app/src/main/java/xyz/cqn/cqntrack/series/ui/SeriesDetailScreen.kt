@@ -53,6 +53,7 @@ import xyz.cqn.cqntrack.series.data.SeriesListDto
 @Composable
 fun SeriesDetailScreen(
     onBack: () -> Unit,
+    onEpisodeClick: (tmdbId: Int, seasonNumber: Int, episodeNumber: Int) -> Unit,
     viewModel: SeriesDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -243,6 +244,12 @@ fun SeriesDetailScreen(
                                 EpisodeRow(
                                     episode = episode,
                                     onToggle = { watched -> viewModel.toggleEpisode(episode.episodeNumber, watched) },
+                                    onClick = {
+                                        val season = uiState.selectedSeason
+                                        if (season != null) {
+                                            onEpisodeClick(series.tmdbId, season, episode.episodeNumber)
+                                        }
+                                    },
                                 )
                             }
                         }
@@ -317,7 +324,7 @@ private fun SeriesAddToListDialog(
 }
 
 @Composable
-private fun EpisodeRow(episode: SeriesEpisodeDto, onToggle: (Boolean) -> Unit) {
+private fun EpisodeRow(episode: SeriesEpisodeDto, onToggle: (Boolean) -> Unit, onClick: () -> Unit) {
     ListItem(
         headlineContent = { Text("${episode.episodeNumber}. ${episode.name}") },
         supportingContent = episode.airDate?.let { { Text(it) } },
@@ -331,5 +338,6 @@ private fun EpisodeRow(episode: SeriesEpisodeDto, onToggle: (Boolean) -> Unit) {
         trailingContent = {
             Checkbox(checked = episode.watched, onCheckedChange = onToggle)
         },
+        modifier = Modifier.clickable(onClick = onClick),
     )
 }

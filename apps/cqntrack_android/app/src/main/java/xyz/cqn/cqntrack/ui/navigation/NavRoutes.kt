@@ -40,6 +40,9 @@ object NavRoutes {
     const val SERIES_LIST_DETAIL = "series_list_detail/{listId}"
     fun seriesListDetail(listId: String) = "series_list_detail/$listId"
     const val SERIES_ENTRIES = "series_entries"
+    const val SERIES_EPISODE_DETAIL = "series_episode_detail/{tmdbId}/{seasonNumber}/{episodeNumber}"
+    fun seriesEpisodeDetail(tmdbId: Int, seasonNumber: Int, episodeNumber: Int) =
+        "series_episode_detail/$tmdbId/$seasonNumber/$episodeNumber"
 
     const val MANGA_DISCOVER = "manga_discover"
     const val MANGA_SEARCH = "manga_search"

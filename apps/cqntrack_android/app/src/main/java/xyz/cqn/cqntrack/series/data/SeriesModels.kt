@@ -111,3 +111,30 @@ data class SeriesSeasonEpisodesResponseDto(
 data class SetWatchedRequestDto(
     val watched: Boolean,
 )
+
+/** Espelha CrewMemberSchema em packages/shared/src/credits.ts. */
+@Serializable
+data class CrewMemberDto(
+    val personId: Int,
+    val name: String,
+    val profileUrl: String? = null,
+)
+
+/**
+ * Espelha SeriesEpisodeDetailSchema — página própria do episódio (diferente de
+ * SeriesEpisodeDto, usado só na lista da temporada, sem sinopse/duração/diretor).
+ * `directors` aqui é só os do episódio, não os mais frequentes da série inteira.
+ */
+@Serializable
+data class SeriesEpisodeDetailDto(
+    val seasonNumber: Int,
+    val episodeNumber: Int,
+    val name: String,
+    val overview: String? = null,
+    val airDate: String? = null,
+    val stillUrl: String? = null,
+    val runtime: Int? = null,
+    val rating: Double? = null,
+    val watched: Boolean,
+    val directors: List<CrewMemberDto>,
+)

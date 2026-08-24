@@ -38,6 +38,13 @@ interface SeriesApi {
         @Path("seasonNumber") seasonNumber: Int,
     ): SeriesSeasonEpisodesResponseDto
 
+    @GET("api/series/{tmdbId}/episodes/{seasonNumber}/{episodeNumber}")
+    suspend fun getEpisodeDetail(
+        @Path("tmdbId") tmdbId: Int,
+        @Path("seasonNumber") seasonNumber: Int,
+        @Path("episodeNumber") episodeNumber: Int,
+    ): SeriesEpisodeDetailDto
+
     @PUT("api/series/{tmdbId}/episodes/{seasonNumber}/{episodeNumber}")
     suspend fun setEpisodeWatched(
         @Path("tmdbId") tmdbId: Int,
