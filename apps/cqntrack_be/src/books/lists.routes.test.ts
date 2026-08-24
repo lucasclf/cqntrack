@@ -143,6 +143,53 @@ describe("/api/books-lists", () => {
     expect(afterRemove.itemCount).toBe(0);
   });
 
+  it("items vêm com a entry do usuário embutida (null quando nunca marcado)", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    const createRes = await app.request(
+      "/api/books-lists",
+      {
+        method: "POST",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Ação rápida" }),
+      },
+      env,
+    );
+    const { id: listId } = (await createRes.json()) as BookList;
+
+    stubGoogleBooksFetchOnce(googleBooksVolume("book-803", "Parasita"));
+    await app.request(
+      `/api/books-lists/${listId}/items/book-803`,
+      { method: "PUT", headers: { cookie } },
+      env,
+    );
+    vi.unstubAllGlobals();
+    stubGoogleBooksFetchOnce(googleBooksVolume("book-804", "Duna"));
+    await app.request(
+      `/api/books-lists/${listId}/items/book-804`,
+      { method: "PUT", headers: { cookie } },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    await app.request(
+      "/api/books/book-803/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ favorited: true }),
+      },
+      env,
+    );
+
+    const detailRes = await app.request(`/api/books-lists/${listId}`, { headers: { cookie } }, env);
+    const detail = (await detailRes.json()) as BookListDetail;
+
+    const parasita = detail.items.find((item) => item.googleBooksId === "book-803");
+    const duna = detail.items.find((item) => item.googleBooksId === "book-804");
+    expect(parasita?.entry?.favoritedAt).not.toBeNull();
+    expect(duna?.entry).toBeNull();
+  });
+
   it("adicionar o mesmo livro duas vezes não gera atividade duplicada", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
     const createRes = await app.request(

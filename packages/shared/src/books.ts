@@ -35,25 +35,6 @@ export const BookSummarySchema = z.object({
 
 export type BookSummary = z.infer<typeof BookSummarySchema>;
 
-export const SearchBooksQuerySchema = z.object({
-  q: z.string().min(1).max(100),
-  limit: z.coerce.number().int().min(1).max(40).default(20),
-});
-
-export type SearchBooksQuery = z.infer<typeof SearchBooksQuerySchema>;
-
-export const SearchBooksResponseSchema = z.object({
-  results: z.array(BookSummarySchema),
-});
-
-export type SearchBooksResponse = z.infer<typeof SearchBooksResponseSchema>;
-
-export const BookDetailSchema = BookSummarySchema.extend({
-  description: z.string().nullable(),
-});
-
-export type BookDetail = z.infer<typeof BookDetailSchema>;
-
 // Marcação do usuário para um livro específico — sem o `book` embutido (quem
 // consome isso normalmente já sabe de qual livro se trata pelo contexto da
 // chamada). Ver BookEntryWithBookSchema para o caso de listas/feeds.
@@ -75,6 +56,36 @@ export const BookEntryWithBookSchema = BookEntrySchema.extend({
 });
 
 export type BookEntryWithBook = z.infer<typeof BookEntryWithBookSchema>;
+
+// Mesmo BookSummary, com a marcação do usuário logado embutida quando
+// existir (null quando o livro nunca foi marcado) — usado em telas que
+// listam vários livros de fontes externas (busca, detalhe de lista) e agora
+// também precisam saber o que o usuário já marcou, pras ações rápidas do
+// Card (favoritar/marcar como lido sem entrar no detalhe).
+export const BookSummaryWithEntrySchema = BookSummarySchema.extend({
+  entry: BookEntrySchema.nullable(),
+});
+
+export type BookSummaryWithEntry = z.infer<typeof BookSummaryWithEntrySchema>;
+
+export const SearchBooksQuerySchema = z.object({
+  q: z.string().min(1).max(100),
+  limit: z.coerce.number().int().min(1).max(40).default(20),
+});
+
+export type SearchBooksQuery = z.infer<typeof SearchBooksQuerySchema>;
+
+export const SearchBooksResponseSchema = z.object({
+  results: z.array(BookSummaryWithEntrySchema),
+});
+
+export type SearchBooksResponse = z.infer<typeof SearchBooksResponseSchema>;
+
+export const BookDetailSchema = BookSummarySchema.extend({
+  description: z.string().nullable(),
+});
+
+export type BookDetail = z.infer<typeof BookDetailSchema>;
 
 export const BookDetailResponseSchema = z.object({
   book: BookDetailSchema,
@@ -142,8 +153,11 @@ export const BookListsResponseSchema = z.object({
 
 export type BookListsResponse = z.infer<typeof BookListsResponseSchema>;
 
+// items com entry embutida — mesmo racional de GameListDetailSchema
+// (reaproveitado tanto pela rota autenticada quanto pela de perfil público,
+// entry = de quem for dono da lista em cada caso).
 export const BookListDetailSchema = BookListSchema.extend({
-  items: z.array(BookSummarySchema),
+  items: z.array(BookSummaryWithEntrySchema),
 });
 
 export type BookListDetail = z.infer<typeof BookListDetailSchema>;

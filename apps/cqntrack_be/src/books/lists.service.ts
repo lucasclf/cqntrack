@@ -9,6 +9,7 @@ import type { createDb } from "../db/client";
 import { activity, bookList, bookListItem } from "../db/schema";
 import { isUniqueConstraintError } from "../lib/is-unique-constraint-error";
 import { withoutUndefined } from "../lib/without-undefined";
+import { attachEntriesToBooks } from "./entries.service";
 import { getOrCacheBook, mapCachedBookToSummary, toActivitySnapshot } from "./books.service";
 
 type Db = ReturnType<typeof createDb>;
@@ -147,9 +148,10 @@ export async function getBookListDetail(
   });
 
   const [list] = await withItemCount(db, [row]);
+  const summaries = items.map((item) => mapCachedBookToSummary(item.book));
   return {
     ...list!,
-    items: items.map((item) => mapCachedBookToSummary(item.book)),
+    items: await attachEntriesToBooks(db, userId, summaries),
   };
 }
 

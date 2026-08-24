@@ -40,7 +40,7 @@ export function BookCategoryPanel({ basePath }: BookCategoryPanelProps) {
         emptyMessage="Nenhum livro favoritado ainda."
         errorMessage="Falha ao carregar seus livros favoritos."
         getKey={(item) => item.book.googleBooksId}
-        renderItem={(item) => <BookCard book={item.book} entry={item} />}
+        renderItem={(item) => <BookCard book={item.book} entry={item} interactive />}
       />
       <InfiniteMediaGrid
         hidden={subTab !== "recent"}
@@ -48,7 +48,7 @@ export function BookCategoryPanel({ basePath }: BookCategoryPanelProps) {
         emptyMessage="Nenhum livro lido recentemente."
         errorMessage="Falha ao carregar seus livros lidos recentemente."
         getKey={(item) => item.book.googleBooksId}
-        renderItem={(item) => <BookCard book={item.book} entry={item} />}
+        renderItem={(item) => <BookCard book={item.book} entry={item} interactive />}
       />
     </div>
   );

@@ -69,6 +69,39 @@
   line-height: 1;
 }
 
+.favoriteButton {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: var(--form-bg);
+  color: var(--error);
+  border: none;
+  border-radius: var(--radius);
+  padding: 4px 7px;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.completeButton {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: var(--form-bg);
+  color: var(--text-secondary);
+  border: none;
+  border-radius: var(--radius);
+  padding: 4px 7px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.completeButton[aria-pressed="true"] {
+  color: var(--accent);
+}
+
 .info {
   padding: 10px 12px;
   overflow: hidden;

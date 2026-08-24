@@ -1,10 +1,12 @@
 import type {
   BookEntry,
   BookEntryWithBook,
+  BookSummary,
+  BookSummaryWithEntry,
   ListBookEntriesQuery,
   UpsertBookEntryRequest,
 } from "@cqntrack/shared";
-import { and, asc, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import type { createDb } from "../db/client";
 import { activity, bookEntry } from "../db/schema";
 import { withoutUndefined } from "../lib/without-undefined";
@@ -82,6 +84,31 @@ export async function getBookEntryForUser(
     where: and(eq(bookEntry.userId, userId), eq(bookEntry.bookId, googleBooksId)),
   });
   return row ? toBookEntry(row) : null;
+}
+
+// Lookup em lote — dado um conjunto de livros já resolvidos (busca Google
+// Books, item de lista), busca de uma vez as entries do usuário pra anexar
+// a cada um (ações rápidas do Card, sem precisar entrar no detalhe). Mesmo
+// espírito de attachEntriesToGames.
+export async function attachEntriesToBooks(
+  db: Db,
+  userId: string,
+  books: BookSummary[],
+): Promise<BookSummaryWithEntry[]> {
+  if (books.length === 0) return [];
+
+  const rows = await db.query.bookEntry.findMany({
+    where: and(
+      eq(bookEntry.userId, userId),
+      inArray(
+        bookEntry.bookId,
+        books.map((book) => book.googleBooksId),
+      ),
+    ),
+  });
+  const entriesByBookId = new Map(rows.map((row) => [row.bookId, toBookEntry(row)]));
+
+  return books.map((book) => ({ ...book, entry: entriesByBookId.get(book.googleBooksId) ?? null }));
 }
 
 export async function upsertBookEntry(

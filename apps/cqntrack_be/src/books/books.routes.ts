@@ -20,6 +20,7 @@ import {
   searchBooksForUser,
 } from "./books.service";
 import {
+  attachEntriesToBooks,
   deleteBookEntry,
   getBookEntryForUser,
   getFavorites,
@@ -48,7 +49,9 @@ booksRouter.get("/search", async (c) => {
     return c.json({ error: "invalid_query" }, 400);
   }
 
-  const results = await searchBooksForUser(c.env, parsed.data.q, parsed.data.limit);
+  const db = createDb(c.env);
+  const summaries = await searchBooksForUser(c.env, parsed.data.q, parsed.data.limit);
+  const results = await attachEntriesToBooks(db, c.get("userId"), summaries);
 
   const body = SearchBooksResponseSchema.parse({ results });
   return c.json(body);

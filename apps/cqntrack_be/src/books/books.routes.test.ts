@@ -85,11 +85,39 @@ describe("GET /api/books/search", () => {
           categories: ["Fiction"],
           pageCount: null,
           rating: 4,
+          entry: null,
         },
       ],
     });
 
     vi.unstubAllGlobals();
+  });
+
+  it("quando o livro já foi marcado antes, a busca devolve a entry embutida (não null)", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubGoogleBooksFetchOnce({
+      id: "PCq3AAAAQBAJ",
+      volumeInfo: { title: "Dom Casmurro", authors: ["Machado de Assis"], publishedDate: "1899" },
+    });
+    await app.request(
+      "/api/books/PCq3AAAAQBAJ/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ favorited: true }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    stubGoogleBooksFetchOnce({ items: [GOOGLE_BOOKS_SEARCH_RESULT], totalItems: 1 });
+    const res = await app.request("/api/books/search?q=dom+casmurro", { headers: { cookie } }, env);
+    vi.unstubAllGlobals();
+
+    const body = (await res.json()) as {
+      results: Array<{ entry: { favoritedAt: string } | null }>;
+    };
+    expect(body.results[0]?.entry?.favoritedAt).not.toBeNull();
   });
 });
 

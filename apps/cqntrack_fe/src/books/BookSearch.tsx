@@ -1,4 +1,4 @@
-import type { BookSummary, SearchBooksResponse } from "@cqntrack/shared";
+import type { BookSummaryWithEntry, SearchBooksResponse } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
 import { apiClient } from "../lib/api-client";
@@ -14,7 +14,7 @@ export function BookSearch() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
   const debouncedQuery = useDebouncedValue(query, SEARCH_DEBOUNCE_MS).trim();
-  const [results, setResults] = useState<BookSummary[]>([]);
+  const [results, setResults] = useState<BookSummaryWithEntry[]>([]);
   const [status, setStatus] = useState<SearchStatus>("idle");
 
   // Ajusta o status assim que a query debounced muda — feito durante o
@@ -80,7 +80,7 @@ export function BookSearch() {
       )}
       <div className={styles.grid}>
         {results.map((book) => (
-          <BookCard key={book.googleBooksId} book={book} />
+          <BookCard key={book.googleBooksId} book={book} entry={book.entry} interactive />
         ))}
       </div>
     </div>

@@ -67,7 +67,7 @@ export function MyBookEntries() {
         <>
           <div className={styles.grid}>
             {data.items.map((item) => (
-              <BookCard key={item.book.googleBooksId} book={item.book} entry={item} />
+              <BookCard key={item.book.googleBooksId} book={item.book} entry={item} interactive />
             ))}
           </div>
           <div className={styles.pagination}>

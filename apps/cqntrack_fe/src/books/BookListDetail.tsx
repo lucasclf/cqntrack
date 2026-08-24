@@ -63,7 +63,11 @@ export function BookListDetail() {
       await apiClient.put(`/api/books-lists/${listId}/items/${book.googleBooksId}`);
       setDetail((current) =>
         current && !current.items.some((item) => item.googleBooksId === book.googleBooksId)
-          ? { ...current, items: [book, ...current.items], itemCount: current.itemCount + 1 }
+          ? {
+              ...current,
+              items: [{ ...book, entry: null }, ...current.items],
+              itemCount: current.itemCount + 1,
+            }
           : current,
       );
     } catch {
@@ -124,7 +128,7 @@ export function BookListDetail() {
         <div className={styles.grid}>
           {detail.items.map((book) => (
             <div key={book.googleBooksId} className={styles.gridItem}>
-              <BookCard book={book} />
+              <BookCard book={book} entry={book.entry} interactive />
               <button
                 type="button"
                 className={styles.removeItemBtn}
