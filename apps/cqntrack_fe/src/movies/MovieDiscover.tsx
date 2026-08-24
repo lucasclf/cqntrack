@@ -1,5 +1,6 @@
 import type { DiscoverMoviesResponse, MovieSummary } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
+import { MediaSearchInput } from "../components/MediaSearchInput";
 import { apiClient } from "../lib/api-client";
 import { MovieCard } from "./MovieCard";
 import styles from "./MovieDiscover.module.css";
@@ -47,6 +48,11 @@ export function MovieDiscover() {
   return (
     <div className={styles.page}>
       <h1>Descobrir filmes</h1>
+      <MediaSearchInput
+        sectionPath="/filmes"
+        placeholder="Nome do filme..."
+        ariaLabel="Buscar filmes"
+      />
       {status === "error" && (
         <p role="alert">Falha ao carregar filmes populares. Tente novamente.</p>
       )}

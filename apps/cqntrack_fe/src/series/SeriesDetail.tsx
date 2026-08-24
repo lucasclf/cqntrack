@@ -6,6 +6,7 @@ import type {
 } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router";
+import { BackButton } from "../components/BackButton";
 import { CastList } from "../components/CastList";
 import { CrewList } from "../components/CrewList";
 import { StarRating } from "../components/StarRating";
@@ -126,6 +127,7 @@ export function SeriesDetail() {
 
   return (
     <div className={styles.page}>
+      <BackButton />
       <div className={styles.header}>
         {series.posterUrl && <img className={styles.cover} src={series.posterUrl} alt="" />}
         <div>

@@ -1,5 +1,6 @@
 import type { DiscoverGamesResponse, GameSummary } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
+import { MediaSearchInput } from "../components/MediaSearchInput";
 import { apiClient } from "../lib/api-client";
 import styles from "./GameDiscover.module.css";
 import { GameCard } from "./GameCard";
@@ -46,6 +47,11 @@ export function GameDiscover() {
   return (
     <div className={styles.page}>
       <h1>Descobrir jogos</h1>
+      <MediaSearchInput
+        sectionPath="/jogos"
+        placeholder="Nome do jogo..."
+        ariaLabel="Buscar jogos"
+      />
       {status === "error" && (
         <p role="alert">Falha ao carregar jogos aclamados. Tente novamente.</p>
       )}

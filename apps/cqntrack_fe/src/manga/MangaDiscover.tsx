@@ -1,5 +1,6 @@
 import type { DiscoverMangaResponse, MangaSummary } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
+import { MediaSearchInput } from "../components/MediaSearchInput";
 import { apiClient } from "../lib/api-client";
 import styles from "./MangaDiscover.module.css";
 import { MangaCard } from "./MangaCard";
@@ -49,6 +50,11 @@ export function MangaDiscover() {
   return (
     <div className={styles.page}>
       <h1>Descobrir mangás</h1>
+      <MediaSearchInput
+        sectionPath="/mangas"
+        placeholder="Título do mangá..."
+        ariaLabel="Buscar mangás"
+      />
       {status === "error" && (
         <p role="alert">Falha ao carregar mangás populares. Tente novamente.</p>
       )}

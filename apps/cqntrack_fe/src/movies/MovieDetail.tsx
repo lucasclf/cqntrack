@@ -1,6 +1,7 @@
 import type { MovieDetailResponse, MovieEntry, UpsertMovieEntryRequest } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router";
+import { BackButton } from "../components/BackButton";
 import { CastList } from "../components/CastList";
 import { CrewList } from "../components/CrewList";
 import { StarRating } from "../components/StarRating";
@@ -98,6 +99,7 @@ export function MovieDetail() {
 
   return (
     <div className={styles.page}>
+      <BackButton />
       <div className={styles.header}>
         {movie.posterUrl && <img className={styles.cover} src={movie.posterUrl} alt="" />}
         <div>

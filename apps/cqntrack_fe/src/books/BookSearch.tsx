@@ -1,5 +1,6 @@
 import type { BookSummary, SearchBooksResponse } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router";
 import { apiClient } from "../lib/api-client";
 import { useDebouncedValue } from "../lib/useDebouncedValue";
 import { BookCard } from "./BookCard";
@@ -10,7 +11,8 @@ const SEARCH_DEBOUNCE_MS = 300;
 type SearchStatus = "idle" | "loading" | "error";
 
 export function BookSearch() {
-  const [query, setQuery] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
   const debouncedQuery = useDebouncedValue(query, SEARCH_DEBOUNCE_MS).trim();
   const [results, setResults] = useState<BookSummary[]>([]);
   const [status, setStatus] = useState<SearchStatus>("idle");
@@ -18,6 +20,8 @@ export function BookSearch() {
   // Ajusta o status assim que a query debounced muda — feito durante o
   // render (padrão recomendado pelo React pra "adjusting state when props
   // change"), não dentro do efeito, que fica só com a chamada assíncrona.
+  // Também espelha a query pra URL (?q=), pra sobreviver a navegação e dar
+  // ao botão "Voltar" um resultado pra restaurar (ver BackButton).
   const [trackedQuery, setTrackedQuery] = useState(debouncedQuery);
   if (debouncedQuery !== trackedQuery) {
     setTrackedQuery(debouncedQuery);
@@ -25,6 +29,7 @@ export function BookSearch() {
     if (!debouncedQuery) {
       setResults([]);
     }
+    setSearchParams(debouncedQuery ? { q: debouncedQuery } : {}, { replace: true });
   }
 
   useEffect(() => {

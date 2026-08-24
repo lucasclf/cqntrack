@@ -6,6 +6,7 @@ import {
 } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
+import { BackButton } from "../components/BackButton";
 import { StarRating } from "../components/StarRating";
 import { ApiError, apiClient } from "../lib/api-client";
 import { AddToMangaListMenu } from "./AddToMangaListMenu";
@@ -95,6 +96,7 @@ export function MangaDetail() {
 
   return (
     <div className={styles.page}>
+      <BackButton />
       <div className={styles.header}>
         {manga.coverUrl && <img className={styles.cover} src={manga.coverUrl} alt="" />}
         <div>

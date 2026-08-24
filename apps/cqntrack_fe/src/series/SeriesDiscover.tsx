@@ -1,5 +1,6 @@
 import type { DiscoverSeriesResponse, SeriesSummary } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
+import { MediaSearchInput } from "../components/MediaSearchInput";
 import { apiClient } from "../lib/api-client";
 import styles from "./SeriesDiscover.module.css";
 import { SeriesCard } from "./SeriesCard";
@@ -46,6 +47,11 @@ export function SeriesDiscover() {
   return (
     <div className={styles.page}>
       <h1>Descobrir séries</h1>
+      <MediaSearchInput
+        sectionPath="/series"
+        placeholder="Nome da série..."
+        ariaLabel="Buscar séries"
+      />
       {status === "error" && (
         <p role="alert">Falha ao carregar séries populares. Tente novamente.</p>
       )}

@@ -4,6 +4,7 @@ import { useParams } from "react-router";
 import { ApiError, apiClient } from "../lib/api-client";
 import { AddToListMenu } from "./AddToListMenu";
 import styles from "./GameDetail.module.css";
+import { BackButton } from "../components/BackButton";
 import { StarRating } from "../components/StarRating";
 import { StatusBadge } from "./StatusBadge";
 
@@ -94,6 +95,7 @@ export function GameDetail() {
 
   return (
     <div className={styles.page}>
+      <BackButton />
       <div className={styles.header}>
         {game.coverUrl && <img className={styles.cover} src={game.coverUrl} alt="" />}
         <div>

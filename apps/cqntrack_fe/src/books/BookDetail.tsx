@@ -1,6 +1,7 @@
 import type { BookDetailResponse, BookEntry, UpsertBookEntryRequest } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
+import { BackButton } from "../components/BackButton";
 import { StarRating } from "../components/StarRating";
 import { ApiError, apiClient } from "../lib/api-client";
 import { AddToBookListMenu } from "./AddToBookListMenu";
@@ -83,6 +84,7 @@ export function BookDetail() {
 
   return (
     <div className={styles.page}>
+      <BackButton />
       <div className={styles.header}>
         {book.coverUrl && <img className={styles.cover} src={book.coverUrl} alt="" />}
         <div>
