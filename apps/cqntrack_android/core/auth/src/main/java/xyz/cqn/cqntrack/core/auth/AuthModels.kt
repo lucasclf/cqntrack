@@ -37,3 +37,17 @@ data class ChangePasswordRequestDto(
  * auth.ts no backend). Corpo tipado como Unit: só nos importa a resposta
  * ter vindo 2xx e o header estar presente — ver AuthRepository.
  */
+
+/**
+ * Envelope mínimo de GET /api/auth/get-session (better-auth) — a resposta
+ * de verdade carrega `session` inteira + todos os campos de `user`, mas
+ * `image` é o único que este app precisa daqui (o resto já vem de
+ * GET /api/me, que não expõe `image` — AuthUserSchema em
+ * packages/shared/src/auth.ts não tem esse campo, só o better-auth tem).
+ * `ignoreUnknownKeys = true` (Json global) cobre o resto do corpo sozinho.
+ */
+@Serializable
+data class SessionUserDto(val image: String? = null)
+
+@Serializable
+data class SessionResponseDto(val user: SessionUserDto? = null)

@@ -2,6 +2,7 @@ package xyz.cqn.cqntrack.profile.data
 
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import okhttp3.MultipartBody
 import retrofit2.HttpException
 import xyz.cqn.cqntrack.books.data.BookStatus
 import xyz.cqn.cqntrack.books.data.PaginatedBookEntriesResponseDto
@@ -26,6 +27,9 @@ class ProfileRepository @Inject constructor(
 
     suspend fun getPublicProfile(username: String): PublicProfileDto =
         runApiCall { profileApi.getPublicProfile(username) }
+
+    suspend fun uploadAvatar(file: MultipartBody.Part): UploadAvatarResponseDto =
+        runApiCall { profileApi.uploadAvatar(file) }
 
     /**
      * Busca os favoritos das 5 seções em paralelo e devolve tudo já

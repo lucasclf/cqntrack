@@ -4,6 +4,7 @@ import kotlinx.serialization.json.JsonObject
 import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.GET
 import retrofit2.http.POST
 
 /**
@@ -29,4 +30,8 @@ interface AuthApi {
 
     @POST("api/auth/change-password")
     suspend fun changePassword(@Body body: ChangePasswordRequestDto): Response<ResponseBody>
+
+    /** Corpo nulável: a rota devolve `null` quando não há sessão (ver contrato em session.mjs do better-auth). */
+    @GET("api/auth/get-session")
+    suspend fun getSession(): SessionResponseDto?
 }

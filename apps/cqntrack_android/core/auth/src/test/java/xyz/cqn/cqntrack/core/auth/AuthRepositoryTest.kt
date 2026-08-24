@@ -142,4 +142,52 @@ class AuthRepositoryTest {
         assertTrue(result is AuthResult.Error)
         coVerify(exactly = 0) { tokenStorage.saveToken(any()) }
     }
+
+    @Test
+    fun `updateImage bem-sucedido nao exige header de token`() = runTest {
+        val response = Response.success(emptyBody(), rawResponse(200))
+        coEvery { authApi.updateUser(any()) } returns response
+
+        val result = repository.updateImage("https://res.cloudinary.com/x/avatar.jpg")
+
+        assertEquals(AuthResult.Success, result)
+        coVerify(exactly = 0) { tokenStorage.saveToken(any()) }
+    }
+
+    @Test
+    fun `updateImage com erro devolve Error`() = runTest {
+        val response = Response.error<okhttp3.ResponseBody>(401, emptyBody())
+        coEvery { authApi.updateUser(any()) } returns response
+
+        val result = repository.updateImage("https://res.cloudinary.com/x/avatar.jpg")
+
+        assertTrue(result is AuthResult.Error)
+    }
+
+    @Test
+    fun `getAvatarUrl devolve a imagem da sessao quando presente`() = runTest {
+        coEvery { authApi.getSession() } returns SessionResponseDto(SessionUserDto("https://res.cloudinary.com/x/avatar.jpg"))
+
+        val url = repository.getAvatarUrl()
+
+        assertEquals("https://res.cloudinary.com/x/avatar.jpg", url)
+    }
+
+    @Test
+    fun `getAvatarUrl devolve null sem sessao ou sem avatar definido`() = runTest {
+        coEvery { authApi.getSession() } returns null
+
+        val url = repository.getAvatarUrl()
+
+        assertEquals(null, url)
+    }
+
+    @Test
+    fun `getAvatarUrl devolve null se a chamada falhar`() = runTest {
+        coEvery { authApi.getSession() } throws RuntimeException("falha de rede")
+
+        val url = repository.getAvatarUrl()
+
+        assertEquals(null, url)
+    }
 }

@@ -26,3 +26,7 @@ data class PublicProfileDto(
     val memberSince: String,
     val image: String? = null,
 )
+
+/** Espelha UploadAvatarResponseSchema — resposta de PUT /api/me/avatar. */
+@Serializable
+data class UploadAvatarResponseDto(val url: String)

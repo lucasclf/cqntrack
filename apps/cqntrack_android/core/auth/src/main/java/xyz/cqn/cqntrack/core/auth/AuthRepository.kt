@@ -55,6 +55,19 @@ class AuthRepository @Inject constructor(
         }
     }
 
+    suspend fun updateImage(url: String): AuthResult {
+        val response = runCatching { authApi.updateUser(buildJsonObject { put("image", url) }) }
+            .getOrElse { return AuthResult.Error("Falha de conexão. Tente novamente.") }
+        return if (response.isSuccessful) {
+            AuthResult.Success
+        } else {
+            AuthResult.Error(errorMessageFor(response.code()))
+        }
+    }
+
+    /** `null` tanto sem sessão quanto sem avatar definido — a tela de conta não distingue os dois casos. */
+    suspend fun getAvatarUrl(): String? = runCatching { authApi.getSession()?.user?.image }.getOrNull()
+
     /**
      * `revokeOtherSessions = true` (mesmo comportamento do web) faz o servidor rotacionar o
      * token da sessão atual também — sem atualizar o token salvo aqui, as próximas chamadas
