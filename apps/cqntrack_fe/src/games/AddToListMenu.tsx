@@ -1,5 +1,6 @@
 import type { GameList, GameListsResponse } from "@cqntrack/shared";
 import { useEffect, useRef, useState } from "react";
+import { ListFormModal, type ListFormValues } from "../components/ListFormModal";
 import { apiClient } from "../lib/api-client";
 import { useCloseOnOutsideClick } from "../lib/useCloseOnOutsideClick";
 import styles from "./AddToListMenu.module.css";
@@ -12,11 +13,14 @@ interface AddToListMenuProps {
 // mostra em quais listas o jogo já está (não existe endpoint pra isso ainda);
 // só marca com ✓ as listas em que o clique nesta sessão já confirmou a
 // adição — adicionar de novo é idempotente no backend de qualquer forma.
+// "+ Nova lista" cria e já adiciona o jogo nela, sem precisar sair daqui pra
+// ir em "Minhas listas" primeiro.
 export function AddToListMenu({ igdbId }: AddToListMenuProps) {
   const [open, setOpen] = useState(false);
   const [lists, setLists] = useState<GameList[] | null>(null);
   const [addedIds, setAddedIds] = useState<ReadonlySet<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   useCloseOnOutsideClick(wrapperRef, open, () => setOpen(false));
 
@@ -39,6 +43,12 @@ export function AddToListMenu({ igdbId }: AddToListMenuProps) {
     } catch {
       setError("Falha ao adicionar o jogo à lista.");
     }
+  }
+
+  async function handleCreateAndAdd(values: ListFormValues) {
+    const created = await apiClient.post<GameList>("/api/lists", values);
+    setLists((current) => [created, ...(current ?? [])]);
+    await handleAdd(created.id);
   }
 
   return (
@@ -66,7 +76,17 @@ export function AddToListMenu({ igdbId }: AddToListMenuProps) {
               {addedIds.has(list.id) ? `✓ ${list.name}` : list.name}
             </button>
           ))}
+          <button type="button" className={styles.option} onClick={() => setCreateModalOpen(true)}>
+            + Nova lista
+          </button>
         </div>
+      )}
+      {createModalOpen && (
+        <ListFormModal
+          mode="create"
+          onSubmit={handleCreateAndAdd}
+          onClose={() => setCreateModalOpen(false)}
+        />
       )}
     </div>
   );

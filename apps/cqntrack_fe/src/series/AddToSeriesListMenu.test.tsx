@@ -2,13 +2,17 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AddToSeriesListMenu } from "./AddToSeriesListMenu";
 
-const { getMock, putMock } = vi.hoisted(() => ({ getMock: vi.fn(), putMock: vi.fn() }));
+const { getMock, putMock, postMock } = vi.hoisted(() => ({
+  getMock: vi.fn(),
+  putMock: vi.fn(),
+  postMock: vi.fn(),
+}));
 
 vi.mock("../lib/api-client", async () => {
   const actual = await vi.importActual<typeof import("../lib/api-client")>("../lib/api-client");
   return {
     ...actual,
-    apiClient: { get: getMock, put: putMock, post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
+    apiClient: { get: getMock, put: putMock, post: postMock, patch: vi.fn(), delete: vi.fn() },
   };
 });
 
@@ -58,5 +62,35 @@ describe("AddToSeriesListMenu", () => {
     fireEvent.click(screen.getByRole("button", { name: "Adicionar a uma lista" }));
 
     expect(await screen.findByText("Você ainda não tem listas.")).toBeInTheDocument();
+  });
+
+  it("cria uma lista nova pelo '+ Nova lista' e já adiciona a série nela", async () => {
+    getMock.mockResolvedValue({ lists: [] });
+    postMock.mockResolvedValue({
+      id: "2",
+      name: "Quero assistir",
+      description: null,
+      itemCount: 0,
+      createdAt: "",
+      updatedAt: "",
+    });
+    putMock.mockResolvedValue(undefined);
+    render(<AddToSeriesListMenu tmdbId={1396} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Adicionar a uma lista" }));
+    await screen.findByText("Você ainda não tem listas.");
+    fireEvent.click(screen.getByRole("button", { name: "+ Nova lista" }));
+
+    fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "Quero assistir" } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+    await waitFor(() =>
+      expect(postMock).toHaveBeenCalledWith("/api/series-lists", {
+        name: "Quero assistir",
+        description: null,
+      }),
+    );
+    expect(putMock).toHaveBeenCalledWith("/api/series-lists/2/items/1396");
+    await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());
   });
 });

@@ -2,13 +2,17 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AddToListMenu } from "./AddToListMenu";
 
-const { getMock, putMock } = vi.hoisted(() => ({ getMock: vi.fn(), putMock: vi.fn() }));
+const { getMock, putMock, postMock } = vi.hoisted(() => ({
+  getMock: vi.fn(),
+  putMock: vi.fn(),
+  postMock: vi.fn(),
+}));
 
 vi.mock("../lib/api-client", async () => {
   const actual = await vi.importActual<typeof import("../lib/api-client")>("../lib/api-client");
   return {
     ...actual,
-    apiClient: { get: getMock, put: putMock, post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
+    apiClient: { get: getMock, put: putMock, post: postMock, patch: vi.fn(), delete: vi.fn() },
   };
 });
 
@@ -51,5 +55,36 @@ describe("AddToListMenu", () => {
     fireEvent.click(screen.getByRole("button", { name: "Adicionar a uma lista" }));
 
     expect(await screen.findByText("Você ainda não tem listas.")).toBeInTheDocument();
+  });
+
+  it("cria uma lista nova pelo '+ Nova lista' e já adiciona o jogo nela", async () => {
+    getMock.mockResolvedValue({ lists: [] });
+    postMock.mockResolvedValue({
+      id: "2",
+      name: "Jogado em 2026",
+      description: null,
+      itemCount: 0,
+      createdAt: "",
+      updatedAt: "",
+    });
+    putMock.mockResolvedValue(undefined);
+    render(<AddToListMenu igdbId={1942} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Adicionar a uma lista" }));
+    await screen.findByText("Você ainda não tem listas.");
+    fireEvent.click(screen.getByRole("button", { name: "+ Nova lista" }));
+
+    fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "Jogado em 2026" } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+    await waitFor(() =>
+      expect(postMock).toHaveBeenCalledWith("/api/lists", {
+        name: "Jogado em 2026",
+        description: null,
+      }),
+    );
+    expect(putMock).toHaveBeenCalledWith("/api/lists/2/items/1942");
+    // A criação já adiciona o jogo, mesmo comportamento de escolher uma lista existente: fecha o submenu.
+    await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());
   });
 });
