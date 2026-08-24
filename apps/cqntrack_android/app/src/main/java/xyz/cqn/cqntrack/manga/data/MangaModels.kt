@@ -126,3 +126,15 @@ data class MangaVolumesResponseDto(
 data class SetChapterReadRequestDto(
     val read: Boolean,
 )
+
+/**
+ * Espelha AuthorMangaResponseSchema. Diferente de livro (Google Books, sem ID
+ * de autor de verdade): a MangaDex tem GET /author/:id de verdade, então o
+ * nome já vem resolvido pela própria API em vez de ecoar o parâmetro da rota.
+ */
+@Serializable
+data class AuthorMangaResponseDto(
+    val id: String,
+    val name: String,
+    val manga: List<MangaSummaryDto>,
+)

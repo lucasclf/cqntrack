@@ -1,5 +1,7 @@
 package xyz.cqn.cqntrack.ui.navigation
 
+import android.net.Uri
+
 object NavRoutes {
     const val LOGIN = "login"
     const val HOME = "home"
@@ -11,6 +13,8 @@ object NavRoutes {
     const val BOOK_LIST_DETAIL = "book_list_detail/{listId}"
     fun bookListDetail(listId: String) = "book_list_detail/$listId"
     const val BOOK_ENTRIES = "book_entries"
+    const val BOOK_AUTHOR_DETAIL = "book_author_detail/{name}"
+    fun bookAuthorDetail(name: String) = "book_author_detail/${Uri.encode(name)}"
 
     // Livro não tem Discover — Google Books não suporta popularidade real
     // (ver skill new-media-section) — Home leva direto pra busca.
@@ -52,6 +56,8 @@ object NavRoutes {
     const val MANGA_LIST_DETAIL = "manga_list_detail/{listId}"
     fun mangaListDetail(listId: String) = "manga_list_detail/$listId"
     const val MANGA_ENTRIES = "manga_entries"
+    const val MANGA_AUTHOR_DETAIL = "manga_author_detail/{authorId}"
+    fun mangaAuthorDetail(authorId: String) = "manga_author_detail/$authorId"
 
     const val ACCOUNT = "account"
     const val PUBLIC_PROFILE = "public_profile/{username}"

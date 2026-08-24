@@ -10,6 +10,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import xyz.cqn.cqntrack.books.ui.AuthorDetailScreen as BookAuthorDetailScreen
 import xyz.cqn.cqntrack.books.ui.BookDetailScreen
 import xyz.cqn.cqntrack.books.ui.BookEntriesScreen
 import xyz.cqn.cqntrack.books.ui.BookListDetailScreen
@@ -21,6 +22,7 @@ import xyz.cqn.cqntrack.games.ui.GameEntriesScreen
 import xyz.cqn.cqntrack.games.ui.GameListDetailScreen
 import xyz.cqn.cqntrack.games.ui.GameListsScreen
 import xyz.cqn.cqntrack.games.ui.GameSearchScreen
+import xyz.cqn.cqntrack.manga.ui.AuthorDetailScreen as MangaAuthorDetailScreen
 import xyz.cqn.cqntrack.manga.ui.MangaDetailScreen
 import xyz.cqn.cqntrack.manga.ui.MangaDiscoverScreen
 import xyz.cqn.cqntrack.manga.ui.MangaEntriesScreen
@@ -118,7 +120,15 @@ fun CqntrackNavHost() {
             )
         }
         composable(NavRoutes.BOOK_DETAIL) {
-            BookDetailScreen(onBack = { navController.popBackStack() })
+            BookDetailScreen(
+                onBack = { navController.popBackStack() },
+                onAuthorClick = { name -> navController.navigate(NavRoutes.bookAuthorDetail(name)) },
+            )
+        }
+        composable(NavRoutes.BOOK_AUTHOR_DETAIL) {
+            BookAuthorDetailScreen(
+                onBookClick = { book -> navController.navigate(NavRoutes.bookDetail(book.googleBooksId)) },
+            )
         }
         composable(NavRoutes.BOOK_LISTS) {
             BookListsScreen(
@@ -258,7 +268,15 @@ fun CqntrackNavHost() {
             })
         }
         composable(NavRoutes.MANGA_DETAIL) {
-            MangaDetailScreen(onBack = { navController.popBackStack() })
+            MangaDetailScreen(
+                onBack = { navController.popBackStack() },
+                onAuthorClick = { authorId -> navController.navigate(NavRoutes.mangaAuthorDetail(authorId)) },
+            )
+        }
+        composable(NavRoutes.MANGA_AUTHOR_DETAIL) {
+            MangaAuthorDetailScreen(
+                onMangaClick = { manga -> navController.navigate(NavRoutes.mangaDetail(manga.mangadexId)) },
+            )
         }
         composable(NavRoutes.MANGA_LISTS) {
             MangaListsScreen(

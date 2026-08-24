@@ -48,4 +48,8 @@ interface BooksApi {
         @Query("order") order: String = "desc",
         @Query("page") page: Int = 1,
     ): PaginatedBookEntriesResponseDto
+
+    /** Sem ID de autor de verdade (Google Books) — busca textual pelo nome exato. */
+    @GET("api/books/authors/{name}")
+    suspend fun getAuthor(@Path("name") name: String): AuthorBooksResponseDto
 }

@@ -80,6 +80,7 @@ private fun chapterLabel(chapterNumber: Double): String {
 @Composable
 fun MangaDetailScreen(
     onBack: () -> Unit,
+    onAuthorClick: (String) -> Unit,
     viewModel: MangaDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -135,10 +136,17 @@ fun MangaDetailScreen(
                                 )
                                 Column(modifier = Modifier.padding(start = 16.dp)) {
                                     Text(manga.title, style = MaterialTheme.typography.titleLarge)
-                                    Text(
-                                        manga.authors.joinToString(", ") { it.name },
-                                        style = MaterialTheme.typography.bodyMedium,
-                                    )
+                                    Row {
+                                        manga.authors.forEachIndexed { index, author ->
+                                            if (index > 0) Text(", ", style = MaterialTheme.typography.bodyMedium)
+                                            Text(
+                                                text = author.name,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.clickable { onAuthorClick(author.id) },
+                                            )
+                                        }
+                                    }
                                     val read = uiState.entry?.readChapterCount ?: 0
                                     Text("$read capítulos lidos", style = MaterialTheme.typography.bodySmall)
                                     IconButton(onClick = viewModel::toggleFavorite) {

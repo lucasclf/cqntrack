@@ -38,6 +38,8 @@ class BooksRepository @Inject constructor(
         booksApi.getEntries(status?.toApiValue(), favorite, sortBy, order, page)
     }
 
+    suspend fun getAuthor(name: String): AuthorBooksResponseDto = runApiCall { booksApi.getAuthor(name) }
+
     /** Traduz HttpException (Retrofit) pra ApiException (:core:network) — mesmo formato de erro em todo o app, não só em books. */
     private suspend fun <T> runApiCall(block: suspend () -> T): T =
         try {

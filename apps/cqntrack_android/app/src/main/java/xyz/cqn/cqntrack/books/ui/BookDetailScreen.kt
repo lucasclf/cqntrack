@@ -59,6 +59,7 @@ private val STATUS_LABELS = mapOf(
 @Composable
 fun BookDetailScreen(
     onBack: () -> Unit,
+    onAuthorClick: (String) -> Unit,
     viewModel: BookDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -108,7 +109,17 @@ fun BookDetailScreen(
                     )
                     Column(modifier = Modifier.padding(start = 16.dp)) {
                         Text(book.title, style = MaterialTheme.typography.titleLarge)
-                        Text(book.authors.joinToString(", "), style = MaterialTheme.typography.bodyMedium)
+                        Row {
+                            book.authors.forEachIndexed { index, author ->
+                                if (index > 0) Text(", ", style = MaterialTheme.typography.bodyMedium)
+                                Text(
+                                    text = author,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.clickable { onAuthorClick(author) },
+                                )
+                            }
+                        }
                         IconButton(onClick = viewModel::toggleFavorite) {
                             Icon(
                                 imageVector = if (uiState.entry?.favoritedAt != null) {

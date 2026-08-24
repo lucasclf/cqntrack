@@ -50,6 +50,8 @@ class MangaRepository @Inject constructor(
         mangaApi.getEntries(status?.toApiValue(), favorite, sortBy, order, page)
     }
 
+    suspend fun getAuthor(authorId: String): AuthorMangaResponseDto = runApiCall { mangaApi.getAuthor(authorId) }
+
     private suspend fun <T> runApiCall(block: suspend () -> T): T =
         try {
             block()

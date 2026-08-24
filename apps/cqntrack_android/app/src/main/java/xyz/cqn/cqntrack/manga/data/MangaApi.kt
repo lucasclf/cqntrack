@@ -59,4 +59,8 @@ interface MangaApi {
         @Query("order") order: String = "desc",
         @Query("page") page: Int = 1,
     ): PaginatedMangaEntriesResponseDto
+
+    /** MangaDex tem ID de autor de verdade, diferente de livro — sem busca textual. */
+    @GET("api/manga/authors/{authorId}")
+    suspend fun getAuthor(@Path("authorId") authorId: String): AuthorMangaResponseDto
 }

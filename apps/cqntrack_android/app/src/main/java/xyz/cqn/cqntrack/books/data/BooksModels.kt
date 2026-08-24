@@ -75,3 +75,14 @@ data class UpsertBookEntryRequestDto(
     val review: String? = null,
     val favorited: Boolean? = null,
 )
+
+/**
+ * Espelha AuthorBooksResponseSchema. Diferente de série/filme (sem "detalhe
+ * do autor" — a Google Books não tem ID de autor, só o nome buscado e os
+ * livros encontrados pra ele, sem paginação).
+ */
+@Serializable
+data class AuthorBooksResponseDto(
+    val name: String,
+    val books: List<BookSummaryDto>,
+)
