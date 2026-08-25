@@ -85,6 +85,7 @@ describe("GET /api/manga/search", () => {
           tags: ["Ação"],
           publicationStatus: "ongoing",
           year: 2020,
+          entry: null,
         },
       ],
     });
@@ -573,5 +574,35 @@ describe("GET /api/manga/authors/:authorId", () => {
 
     expect(res.status).toBe(404);
     await expect(res.json()).resolves.toEqual({ error: "author_not_found" });
+  });
+});
+
+// Describe deliberadamente no fim do arquivo — o teste de PUT /entry acima
+// ("grava status/nota/favorito...") lê a tabela activity inteira sem filtro
+// de usuário/item, então roda antes de qualquer teste que também gere
+// activity (ordem de declaração no arquivo = ordem de execução no vitest).
+describe("GET /api/manga/search com entry embutida", () => {
+  it("quando o mangá já foi marcado antes, a busca devolve a entry embutida (não null)", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubMangadexFetchOnce({ data: mangadexManga("manga-99", "Vagabond") });
+    await app.request(
+      "/api/manga/manga-99/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ favorited: true }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    stubMangadexFetchOnce({ data: [mangadexManga("manga-99", "Vagabond")], total: 1 });
+    const res = await app.request("/api/manga/search?q=vagabond", { headers: { cookie } }, env);
+    vi.unstubAllGlobals();
+
+    const body = (await res.json()) as {
+      results: Array<{ entry: { favoritedAt: string } | null }>;
+    };
+    expect(body.results[0]?.entry?.favoritedAt).not.toBeNull();
   });
 });

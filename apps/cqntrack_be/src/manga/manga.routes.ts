@@ -24,6 +24,7 @@ import {
   setVolumeRead,
 } from "./chapters.service";
 import {
+  attachEntriesToManga,
   deleteMangaEntry,
   getMangaEntryForUser,
   getFavorites,
@@ -72,7 +73,9 @@ mangaRouter.get("/search", async (c) => {
     return c.json({ error: "invalid_query" }, 400);
   }
 
-  const results = await searchMangaForUser(parsed.data.q, parsed.data.limit);
+  const db = createDb(c.env);
+  const summaries = await searchMangaForUser(parsed.data.q, parsed.data.limit);
+  const results = await attachEntriesToManga(db, c.get("userId"), summaries);
   return c.json(SearchMangaResponseSchema.parse({ results }));
 });
 
@@ -82,7 +85,9 @@ mangaRouter.get("/discover", async (c) => {
     return c.json({ error: "invalid_query" }, 400);
   }
 
-  const { results, hasMore } = await discoverMangaForUser(parsed.data.page);
+  const db = createDb(c.env);
+  const { results: summaries, hasMore } = await discoverMangaForUser(parsed.data.page);
+  const results = await attachEntriesToManga(db, c.get("userId"), summaries);
   return c.json(DiscoverMangaResponseSchema.parse({ results, page: parsed.data.page, hasMore }));
 });
 

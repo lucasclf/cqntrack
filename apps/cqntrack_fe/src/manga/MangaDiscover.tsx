@@ -1,4 +1,4 @@
-import type { DiscoverMangaResponse, MangaSummary } from "@cqntrack/shared";
+import type { DiscoverMangaResponse, MangaSummaryWithEntry } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { MediaSearchInput } from "../components/MediaSearchInput";
 import { apiClient } from "../lib/api-client";
@@ -13,7 +13,7 @@ type LoadStatus = "loading" | "idle" | "error";
 // ("carregar mais"). Diferente de livro, que não tem Discover (Google Books
 // não suporta popularidade).
 export function MangaDiscover() {
-  const [results, setResults] = useState<MangaSummary[]>([]);
+  const [results, setResults] = useState<MangaSummaryWithEntry[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [status, setStatus] = useState<LoadStatus>("loading");
@@ -61,7 +61,7 @@ export function MangaDiscover() {
 
       <div className={styles.grid}>
         {results.map((manga) => (
-          <MangaCard key={manga.mangadexId} manga={manga} />
+          <MangaCard key={manga.mangadexId} manga={manga} entry={manga.entry} interactive />
         ))}
       </div>
 

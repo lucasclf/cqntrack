@@ -66,7 +66,7 @@ export function MyMangaEntries() {
         <>
           <div className={styles.grid}>
             {data.items.map((item) => (
-              <MangaCard key={item.manga.mangadexId} manga={item.manga} entry={item} />
+              <MangaCard key={item.manga.mangadexId} manga={item.manga} entry={item} interactive />
             ))}
           </div>
           <div className={styles.pagination}>

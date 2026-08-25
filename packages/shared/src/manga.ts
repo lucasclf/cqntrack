@@ -56,42 +56,6 @@ export const MangaSummarySchema = z.object({
 
 export type MangaSummary = z.infer<typeof MangaSummarySchema>;
 
-export const SearchMangaQuerySchema = z.object({
-  q: z.string().min(1).max(100),
-  limit: z.coerce.number().int().min(1).max(40).default(20),
-});
-
-export type SearchMangaQuery = z.infer<typeof SearchMangaQuerySchema>;
-
-export const SearchMangaResponseSchema = z.object({
-  results: z.array(MangaSummarySchema),
-});
-
-export type SearchMangaResponse = z.infer<typeof SearchMangaResponseSchema>;
-
-// Mesmo espírito de DiscoverSeriesResponseSchema — populares de verdade via
-// GET /manga?order[followedCount]=desc (confirmado funcionando na API real).
-// Diferente de livro, que não tem Discover (Google Books não suporta).
-export const DiscoverMangaQuerySchema = z.object({
-  page: z.coerce.number().int().min(1).max(500).default(1),
-});
-
-export type DiscoverMangaQuery = z.infer<typeof DiscoverMangaQuerySchema>;
-
-export const DiscoverMangaResponseSchema = z.object({
-  results: z.array(MangaSummarySchema),
-  page: z.number().int(),
-  hasMore: z.boolean(),
-});
-
-export type DiscoverMangaResponse = z.infer<typeof DiscoverMangaResponseSchema>;
-
-export const MangaDetailSchema = MangaSummarySchema.extend({
-  description: z.string().nullable(),
-});
-
-export type MangaDetail = z.infer<typeof MangaDetailSchema>;
-
 // Marcação do usuário para um mangá específico — sem o `manga` embutido (quem
 // consome isso normalmente já sabe de qual mangá se trata pelo contexto da
 // chamada). Ver MangaEntryWithMangaSchema para o caso de listas/feeds.
@@ -117,6 +81,56 @@ export const MangaEntryWithMangaSchema = MangaEntrySchema.extend({
 });
 
 export type MangaEntryWithManga = z.infer<typeof MangaEntryWithMangaSchema>;
+
+// Mesmo MangaSummary, com a marcação do usuário logado embutida quando
+// existir (null quando o mangá nunca foi marcado) — usado em telas que
+// listam vários mangás de fontes externas (busca, descobrir, detalhe de
+// lista) e agora também precisam saber o que o usuário já marcou, pras
+// ações rápidas do Card. Apesar de mangá ter status (diferente de série),
+// "marcar" no Card dispara o endpoint bulk (read-all) com confirmação, não
+// um toggle de status — mesma decisão de produto de SeriesSummaryWithEntry,
+// pra "marcar lido" significar de fato "li os capítulos", não só rotular.
+export const MangaSummaryWithEntrySchema = MangaSummarySchema.extend({
+  entry: MangaEntrySchema.nullable(),
+});
+
+export type MangaSummaryWithEntry = z.infer<typeof MangaSummaryWithEntrySchema>;
+
+export const SearchMangaQuerySchema = z.object({
+  q: z.string().min(1).max(100),
+  limit: z.coerce.number().int().min(1).max(40).default(20),
+});
+
+export type SearchMangaQuery = z.infer<typeof SearchMangaQuerySchema>;
+
+export const SearchMangaResponseSchema = z.object({
+  results: z.array(MangaSummaryWithEntrySchema),
+});
+
+export type SearchMangaResponse = z.infer<typeof SearchMangaResponseSchema>;
+
+// Mesmo espírito de DiscoverSeriesResponseSchema — populares de verdade via
+// GET /manga?order[followedCount]=desc (confirmado funcionando na API real).
+// Diferente de livro, que não tem Discover (Google Books não suporta).
+export const DiscoverMangaQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).max(500).default(1),
+});
+
+export type DiscoverMangaQuery = z.infer<typeof DiscoverMangaQuerySchema>;
+
+export const DiscoverMangaResponseSchema = z.object({
+  results: z.array(MangaSummaryWithEntrySchema),
+  page: z.number().int(),
+  hasMore: z.boolean(),
+});
+
+export type DiscoverMangaResponse = z.infer<typeof DiscoverMangaResponseSchema>;
+
+export const MangaDetailSchema = MangaSummarySchema.extend({
+  description: z.string().nullable(),
+});
+
+export type MangaDetail = z.infer<typeof MangaDetailSchema>;
 
 export const MangaDetailResponseSchema = z.object({
   manga: MangaDetailSchema,
@@ -181,8 +195,11 @@ export const MangaListsResponseSchema = z.object({
 
 export type MangaListsResponse = z.infer<typeof MangaListsResponseSchema>;
 
+// items com entry embutida — mesmo racional de GameListDetailSchema
+// (reaproveitado tanto pela rota autenticada quanto pela de perfil público,
+// entry = de quem for dono da lista em cada caso).
 export const MangaListDetailSchema = MangaListSchema.extend({
-  items: z.array(MangaSummarySchema),
+  items: z.array(MangaSummaryWithEntrySchema),
 });
 
 export type MangaListDetail = z.infer<typeof MangaListDetailSchema>;

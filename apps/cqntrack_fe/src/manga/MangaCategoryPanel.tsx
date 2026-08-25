@@ -41,7 +41,7 @@ export function MangaCategoryPanel({ basePath }: MangaCategoryPanelProps) {
         emptyMessage="Nenhum mangá favoritado ainda."
         errorMessage="Falha ao carregar seus mangás favoritos."
         getKey={(item) => item.manga.mangadexId}
-        renderItem={(item) => <MangaCard manga={item.manga} entry={item} />}
+        renderItem={(item) => <MangaCard manga={item.manga} entry={item} interactive />}
       />
       <InfiniteMediaGrid
         hidden={subTab !== "recent"}
@@ -49,7 +49,7 @@ export function MangaCategoryPanel({ basePath }: MangaCategoryPanelProps) {
         emptyMessage="Nenhum mangá lido recentemente."
         errorMessage="Falha ao carregar seus mangás lidos recentemente."
         getKey={(item) => item.manga.mangadexId}
-        renderItem={(item) => <MangaCard manga={item.manga} entry={item} />}
+        renderItem={(item) => <MangaCard manga={item.manga} entry={item} interactive />}
       />
     </div>
   );

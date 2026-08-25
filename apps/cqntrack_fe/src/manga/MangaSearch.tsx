@@ -1,4 +1,4 @@
-import type { MangaSummary, SearchMangaResponse } from "@cqntrack/shared";
+import type { MangaSummaryWithEntry, SearchMangaResponse } from "@cqntrack/shared";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
 import { apiClient } from "../lib/api-client";
@@ -14,7 +14,7 @@ export function MangaSearch() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
   const debouncedQuery = useDebouncedValue(query, SEARCH_DEBOUNCE_MS).trim();
-  const [results, setResults] = useState<MangaSummary[]>([]);
+  const [results, setResults] = useState<MangaSummaryWithEntry[]>([]);
   const [status, setStatus] = useState<SearchStatus>("idle");
 
   // Ajusta o status assim que a query debounced muda — feito durante o
@@ -80,7 +80,7 @@ export function MangaSearch() {
       )}
       <div className={styles.grid}>
         {results.map((manga) => (
-          <MangaCard key={manga.mangadexId} manga={manga} />
+          <MangaCard key={manga.mangadexId} manga={manga} entry={manga.entry} interactive />
         ))}
       </div>
     </div>

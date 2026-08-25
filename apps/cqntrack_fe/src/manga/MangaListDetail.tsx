@@ -67,7 +67,11 @@ export function MangaListDetail() {
       await apiClient.put(`/api/manga-lists/${listId}/items/${manga.mangadexId}`);
       setDetail((current) =>
         current && !current.items.some((item) => item.mangadexId === manga.mangadexId)
-          ? { ...current, items: [manga, ...current.items], itemCount: current.itemCount + 1 }
+          ? {
+              ...current,
+              items: [{ ...manga, entry: null }, ...current.items],
+              itemCount: current.itemCount + 1,
+            }
           : current,
       );
     } catch {
@@ -128,7 +132,7 @@ export function MangaListDetail() {
         <div className={styles.grid}>
           {detail.items.map((manga) => (
             <div key={manga.mangadexId} className={styles.gridItem}>
-              <MangaCard manga={manga} />
+              <MangaCard manga={manga} entry={manga.entry} interactive />
               <button
                 type="button"
                 className={styles.removeItemBtn}

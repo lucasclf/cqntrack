@@ -140,6 +140,55 @@ describe("/api/manga-lists", () => {
     expect(afterRemove.itemCount).toBe(0);
   });
 
+  it("items vêm com a entry do usuário embutida (null quando nunca marcado)", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    const createRes = await app.request(
+      "/api/manga-lists",
+      {
+        method: "POST",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Ação rápida" }),
+      },
+      env,
+    );
+    const { id: listId } = (await createRes.json()) as MangaList;
+
+    stubMangadexFetchOnce({ data: mangadexManga("manga-803", "Parasita") });
+    await app.request(
+      `/api/manga-lists/${listId}/items/manga-803`,
+      { method: "PUT", headers: { cookie } },
+      env,
+    );
+    vi.unstubAllGlobals();
+    stubMangadexFetchOnce({ data: mangadexManga("manga-804", "Uísque") });
+    await app.request(
+      `/api/manga-lists/${listId}/items/manga-804`,
+      { method: "PUT", headers: { cookie } },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    stubMangadexFetchOnce({ data: mangadexManga("manga-803", "Parasita") });
+    await app.request(
+      "/api/manga/manga-803/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ favorited: true }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const detailRes = await app.request(`/api/manga-lists/${listId}`, { headers: { cookie } }, env);
+    const detail = (await detailRes.json()) as MangaListDetail;
+
+    const parasita = detail.items.find((item) => item.mangadexId === "manga-803");
+    const uisque = detail.items.find((item) => item.mangadexId === "manga-804");
+    expect(parasita?.entry?.favoritedAt).not.toBeNull();
+    expect(uisque?.entry).toBeNull();
+  });
+
   it("adicionar o mesmo mangá duas vezes não gera atividade duplicada", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
     const createRes = await app.request(

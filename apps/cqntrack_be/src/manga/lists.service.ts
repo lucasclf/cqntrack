@@ -9,6 +9,7 @@ import type { createDb } from "../db/client";
 import { activity, mangaList, mangaListItem } from "../db/schema";
 import { isUniqueConstraintError } from "../lib/is-unique-constraint-error";
 import { withoutUndefined } from "../lib/without-undefined";
+import { attachEntriesToManga } from "./entries.service";
 import { getOrCacheManga, mapCachedMangaToSummary, toActivitySnapshot } from "./manga.service";
 
 type Db = ReturnType<typeof createDb>;
@@ -147,9 +148,10 @@ export async function getMangaListDetail(
   });
 
   const [list] = await withItemCount(db, [row]);
+  const summaries = items.map((item) => mapCachedMangaToSummary(item.manga));
   return {
     ...list!,
-    items: items.map((item) => mapCachedMangaToSummary(item.manga)),
+    items: await attachEntriesToManga(db, userId, summaries),
   };
 }
 

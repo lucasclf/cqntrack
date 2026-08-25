@@ -2,6 +2,8 @@ import type {
   ListMangaEntriesQuery,
   MangaEntry,
   MangaEntryWithManga,
+  MangaSummary,
+  MangaSummaryWithEntry,
   UpsertMangaEntryRequest,
 } from "@cqntrack/shared";
 import { and, asc, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
@@ -133,6 +135,41 @@ export async function getMangaEntryForUser(
   if (!row) return null;
   const readChapterCount = await getReadChapterCount(db, userId, mangadexId);
   return toMangaEntry(row, readChapterCount);
+}
+
+// Lookup em lote — dado um conjunto de mangás já resolvidos (busca/descobrir
+// MangaDex, item de lista), busca de uma vez as entries do usuário pra
+// anexar a cada um (ações rápidas do Card, sem precisar entrar no
+// detalhe). Mesmo espírito de attachEntriesToGames.
+export async function attachEntriesToManga(
+  db: Db,
+  userId: string,
+  mangaList: MangaSummary[],
+): Promise<MangaSummaryWithEntry[]> {
+  if (mangaList.length === 0) return [];
+
+  const rows = await db.query.mangaEntry.findMany({
+    where: and(
+      eq(mangaEntry.userId, userId),
+      inArray(
+        mangaEntry.mangaId,
+        mangaList.map((item) => item.mangadexId),
+      ),
+    ),
+  });
+  const counts = await getReadChapterCounts(
+    db,
+    userId,
+    rows.map((row) => row.mangaId),
+  );
+  const entriesByMangaId = new Map(
+    rows.map((row) => [row.mangaId, toMangaEntry(row, counts.get(row.mangaId) ?? 0)]),
+  );
+
+  return mangaList.map((item) => ({
+    ...item,
+    entry: entriesByMangaId.get(item.mangadexId) ?? null,
+  }));
 }
 
 export async function upsertMangaEntry(
