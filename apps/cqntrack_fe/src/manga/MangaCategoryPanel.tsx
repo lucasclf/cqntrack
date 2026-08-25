@@ -1,5 +1,6 @@
 import type { MangaEntryWithManga } from "@cqntrack/shared";
 import { useState } from "react";
+import { useSearchParams } from "react-router";
 import { InfiniteMediaGrid } from "../components/InfiniteMediaGrid";
 import { SubTabs } from "../components/SubTabs";
 import { useInfiniteList } from "../lib/useInfiniteList";
@@ -27,7 +28,14 @@ const PAGE_SIZE = 12;
 // Descobrir, que embute MangaDiscover como estava (antes era a rota índice
 // da seção, ver router.tsx). Mesmo padrão de BookCategoryPanel.
 export function MangaCategoryPanel({ basePath }: MangaCategoryPanelProps) {
-  const [subTab, setSubTab] = useState<MangaSubTab>("favorites");
+  // Aba inicial é "discover" se a URL já chega com `?q=` — acontece ao
+  // voltar de um mangá aberto a partir de uma busca dentro do Descobrir
+  // (ver MangaDiscover.tsx, que espelha a busca em `?q=`): sem isso,
+  // voltar reabriria sempre em Favoritos, perdendo a busca de vista.
+  const [searchParams] = useSearchParams();
+  const [subTab, setSubTab] = useState<MangaSubTab>(() =>
+    searchParams.get("q") ? "discover" : "favorites",
+  );
 
   const favorites = useInfiniteList<MangaEntryWithManga>(
     (page) =>

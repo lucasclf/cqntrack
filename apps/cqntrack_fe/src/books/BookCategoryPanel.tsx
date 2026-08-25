@@ -1,5 +1,6 @@
 import type { BookEntryWithBook } from "@cqntrack/shared";
 import { useState } from "react";
+import { useSearchParams } from "react-router";
 import { InfiniteMediaGrid } from "../components/InfiniteMediaGrid";
 import { SubTabs } from "../components/SubTabs";
 import { useInfiniteList } from "../lib/useInfiniteList";
@@ -28,7 +29,14 @@ const PAGE_SIZE = 12;
 // oferece isso) — a aba Descobrir embute BookSearch diretamente (mesmo
 // componente que também serve a rota /livros/buscar sem mudança nenhuma).
 export function BookCategoryPanel({ basePath }: BookCategoryPanelProps) {
-  const [subTab, setSubTab] = useState<BookSubTab>("favorites");
+  // Aba inicial é "discover" se a URL já chega com `?q=` — acontece ao
+  // voltar de um livro aberto a partir de uma busca dentro do Descobrir
+  // (BookSearch já espelha a busca em `?q=` sozinho): sem isso, voltar
+  // reabriria sempre em Favoritos, perdendo a busca de vista.
+  const [searchParams] = useSearchParams();
+  const [subTab, setSubTab] = useState<BookSubTab>(() =>
+    searchParams.get("q") ? "discover" : "favorites",
+  );
 
   const favorites = useInfiniteList<BookEntryWithBook>(
     (page) =>

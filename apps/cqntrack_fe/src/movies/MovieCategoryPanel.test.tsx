@@ -54,9 +54,9 @@ function intersectLastSentinel() {
   instance?.callback([{ isIntersecting: true } as IntersectionObserverEntry], instance);
 }
 
-function renderPanel() {
+function renderPanel(initialEntry = "/filmes") {
   render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <MovieCategoryPanel basePath="/api" />
     </MemoryRouter>,
   );
@@ -167,5 +167,21 @@ describe("MovieCategoryPanel", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Descobrir" }));
 
     expect(await screen.findByText("Filme Popular")).toBeInTheDocument();
+  });
+
+  it("com ?q= na URL, já abre na aba Descobrir (voltar de um filme buscado restaura a busca)", async () => {
+    getMock.mockImplementation((path: string) => {
+      if (path === FAVORITES_PAGE1_URL) return Promise.resolve(paginated([], 1, 0));
+      if (path === RECENT_PAGE1_URL) return Promise.resolve(paginated([], 1, 0));
+      if (path === "/api/movies/search?q=tenet") {
+        return Promise.resolve({ results: [movieEntry(9, "Tenet").movie] });
+      }
+      return Promise.reject(new Error("rota inesperada: " + path));
+    });
+
+    renderPanel("/filmes?q=tenet");
+
+    expect(screen.getByRole("tab", { name: "Descobrir" })).toHaveAttribute("aria-selected", "true");
+    expect(await screen.findByText("Tenet")).toBeInTheDocument();
   });
 });

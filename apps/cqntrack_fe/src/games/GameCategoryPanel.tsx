@@ -1,5 +1,6 @@
 import type { GameEntryWithGame } from "@cqntrack/shared";
 import { useState } from "react";
+import { useSearchParams } from "react-router";
 import { InfiniteMediaGrid } from "../components/InfiniteMediaGrid";
 import { SubTabs } from "../components/SubTabs";
 import { useInfiniteList } from "../lib/useInfiniteList";
@@ -29,7 +30,14 @@ const PAGE_SIZE = 12;
 // (playing/dropped/completed/platinum, nunca not_started) — usa
 // excludeNotStarted=true em vez de status=X (ver ListGameEntriesQuerySchema).
 export function GameCategoryPanel({ basePath }: GameCategoryPanelProps) {
-  const [subTab, setSubTab] = useState<GameSubTab>("favorites");
+  // Aba inicial é "discover" se a URL já chega com `?q=` — acontece ao
+  // voltar de um jogo aberto a partir de uma busca dentro do Descobrir
+  // (ver GameDiscover.tsx, que espelha a busca em `?q=`): sem isso, voltar
+  // reabriria sempre em Favoritos, perdendo a busca de vista.
+  const [searchParams] = useSearchParams();
+  const [subTab, setSubTab] = useState<GameSubTab>(() =>
+    searchParams.get("q") ? "discover" : "favorites",
+  );
 
   const favorites = useInfiniteList<GameEntryWithGame>(
     (page) =>

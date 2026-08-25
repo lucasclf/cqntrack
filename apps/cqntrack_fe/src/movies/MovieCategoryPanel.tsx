@@ -1,5 +1,6 @@
 import type { MovieEntryWithMovie } from "@cqntrack/shared";
 import { useState } from "react";
+import { useSearchParams } from "react-router";
 import { InfiniteMediaGrid } from "../components/InfiniteMediaGrid";
 import { SubTabs } from "../components/SubTabs";
 import { useInfiniteList } from "../lib/useInfiniteList";
@@ -30,7 +31,14 @@ const PAGE_SIZE = 12;
 // favoritos, status=watched&sortBy=updatedAt pra recentes) — nenhuma rota
 // nova no backend.
 export function MovieCategoryPanel({ basePath }: MovieCategoryPanelProps) {
-  const [subTab, setSubTab] = useState<MovieSubTab>("favorites");
+  // Aba inicial é "discover" se a URL já chega com `?q=` — acontece ao
+  // voltar de um filme aberto a partir de uma busca dentro do Descobrir
+  // (ver MovieDiscover.tsx, que espelha a busca em `?q=`): sem isso,
+  // voltar reabriria sempre em Favoritos, perdendo a busca de vista.
+  const [searchParams] = useSearchParams();
+  const [subTab, setSubTab] = useState<MovieSubTab>(() =>
+    searchParams.get("q") ? "discover" : "favorites",
+  );
 
   const favorites = useInfiniteList<MovieEntryWithMovie>(
     (page) =>

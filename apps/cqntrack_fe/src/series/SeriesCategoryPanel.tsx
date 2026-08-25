@@ -1,5 +1,6 @@
 import type { RecentlyWatchedSeriesItem, SeriesEntryWithSeries } from "@cqntrack/shared";
 import { useState } from "react";
+import { useSearchParams } from "react-router";
 import { InfiniteMediaGrid } from "../components/InfiniteMediaGrid";
 import { SubTabs } from "../components/SubTabs";
 import { useInfiniteList } from "../lib/useInfiniteList";
@@ -30,7 +31,14 @@ const PAGE_SIZE = 12;
 // a rota dedicada /series/recently-watched (MAX(watchedAt) por série) em
 // vez de /series/entries?status=..., diferente de filmes/jogos/livros.
 export function SeriesCategoryPanel({ basePath }: SeriesCategoryPanelProps) {
-  const [subTab, setSubTab] = useState<SeriesSubTab>("favorites");
+  // Aba inicial é "discover" se a URL já chega com `?q=` — acontece ao
+  // voltar de uma série aberta a partir de uma busca dentro do Descobrir
+  // (ver SeriesDiscover.tsx, que espelha a busca em `?q=`): sem isso,
+  // voltar reabriria sempre em Favoritos, perdendo a busca de vista.
+  const [searchParams] = useSearchParams();
+  const [subTab, setSubTab] = useState<SeriesSubTab>(() =>
+    searchParams.get("q") ? "discover" : "favorites",
+  );
 
   const favorites = useInfiniteList<SeriesEntryWithSeries>(
     (page) =>
