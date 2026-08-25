@@ -1,10 +1,11 @@
 import { env } from "cloudflare:workers";
 import { eq, inArray } from "drizzle-orm";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createAuthenticatedUser } from "../../test/auth-helpers";
 import { app } from "../app";
 import { createDb } from "../db/client";
 import { activity, series, seriesEpisodeWatch, user } from "../db/schema";
+import { resetSeasonCache } from "./continue-watching.service";
 
 const TMDB_SEARCH_RESULT = {
   id: 1396,
@@ -967,6 +968,14 @@ describe("GET /api/series/favorites", () => {
 });
 
 describe("GET /api/series/continue-watching", () => {
+  // Cache em memória de nível de módulo (ver continue-watching.service.ts)
+  // — sem resetar, um teste anterior deixaria o lookup de temporada de uma
+  // série "quente" pro próximo teste que usar o mesmo tmdbId, mascarando o
+  // fetch mockado daquele teste específico.
+  beforeEach(() => {
+    resetSeasonCache();
+  });
+
   async function getUserId(email: string): Promise<string> {
     const [row] = await createDb(env)
       .select({ id: user.id })
@@ -1077,6 +1086,35 @@ describe("GET /api/series/continue-watching", () => {
     await expect(res.json()).resolves.toEqual({ items: [], nextCursor: null });
     expect(fetchSpy).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
+  });
+
+  it("cacheia a busca de temporada por alguns minutos — 2ª carga da Home não reconsulta a TMDB", async () => {
+    // Regressão de performance: sem esse cache curto (SEASON_CACHE_TTL_MS
+    // em continue-watching.service.ts), cada carga da Home refaz a mesma
+    // busca de temporada pra cada série com lacuna, mesmo que nada tenha
+    // mudado desde a última carga — medido ao vivo em ~1,2-1,9s pra só 6
+    // séries. getSeriesSeason em si continua sem cache (correto pra tela
+    // de episódio); o cache é só nesta rota.
+    const { cookie } = await createAuthenticatedUser(app, env);
+    await watchFirstEpisode(cookie, 730, "Série com cache de temporada");
+
+    const fetchSpy = vi.fn(async () => jsonResponse(tmdbSeasonDetail(1, 3)));
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const res1 = await app.request("/api/series/continue-watching", { headers: { cookie } }, env);
+    const body1 = (await res1.json()) as {
+      items: Array<{ nextEpisode: { episodeNumber: number } }>;
+    };
+    const res2 = await app.request("/api/series/continue-watching", { headers: { cookie } }, env);
+    const body2 = (await res2.json()) as {
+      items: Array<{ nextEpisode: { episodeNumber: number } }>;
+    };
+    vi.unstubAllGlobals();
+
+    expect(body1.items[0]?.nextEpisode.episodeNumber).toBe(2);
+    expect(body2.items[0]?.nextEpisode.episodeNumber).toBe(2);
+    // 1 chamada só pra temporada, reaproveitada na 2ª carga da Home.
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 
   it("desabandonar traz a série de volta (com lacuna real)", async () => {

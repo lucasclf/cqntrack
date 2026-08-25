@@ -32,6 +32,46 @@ const ENDED_STATUSES = new Set(["ended", "canceled"]);
 // consomem uma parte desse mesmo orçamento.
 const LIVE_TMDB_BUDGET = 12;
 
+// Cache curto (minutos, não 24h) só pra esta tela — getSeriesSeason em si
+// continua 100% sem cache (integrations/tmdb/series.ts), decisão correta
+// pra tela de episódio, onde o dado precisa estar sempre fresco. Aqui o
+// "próximo episódio pendente" é recalculado do zero toda vez que a Home
+// carrega; sem esse cache próprio, cada visita repetida paga de novo o
+// custo sequencial de N chamadas à TMDB (uma por série com lacuna) —
+// medido ao vivo: ~1,2-1,9s consistentes pra só 6 séries com lacuna, único
+// gargalo real (as queries D1 em lote já são baratas). 5min é curto o
+// bastante pra nunca mostrar um episódio errado por muito tempo, longo o
+// bastante pra cobrir o padrão comum de "usuário volta pra Home várias
+// vezes na mesma sessão". Só dura o isolate do Worker — reinicia sozinho a
+// cada cold start, sem staleness real acumulada.
+const SEASON_CACHE_TTL_MS = 5 * 60 * 1000;
+const seasonCache = new Map<
+  string,
+  { value: Awaited<ReturnType<typeof getSeriesSeason>>; expiresAt: number }
+>();
+
+// Exportado só pra teste — mesmo padrão de resetIgdbTokenMemoryCache/
+// resetRateLimiter (games): sem isso, o cache em memória (nível de módulo)
+// atravessaria casos de teste diferentes dentro do mesmo arquivo.
+export function resetSeasonCache(): void {
+  seasonCache.clear();
+}
+
+async function getCachedSeriesSeason(
+  env: Env,
+  tmdbId: number,
+  seasonNumber: number,
+): ReturnType<typeof getSeriesSeason> {
+  const key = `${tmdbId}-${seasonNumber}`;
+  const cached = seasonCache.get(key);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.value;
+  }
+  const value = await getSeriesSeason(env, tmdbId, seasonNumber);
+  seasonCache.set(key, { value, expiresAt: Date.now() + SEASON_CACHE_TTL_MS });
+  return value;
+}
+
 // D1 limita 100 parâmetros bindados por query (ver
 // developers.cloudflare.com/d1/platform/limits) — bem menos do que uma
 // conta com muitas séries acompanhadas precisa num "IN (...)" só (chegou a
@@ -101,7 +141,7 @@ async function findNextUnwatchedEpisode(
     }
     budget.remaining -= 1;
 
-    const seasonDetail = await getSeriesSeason(env, tmdbId, season.seasonNumber);
+    const seasonDetail = await getCachedSeriesSeason(env, tmdbId, season.seasonNumber);
     if (!seasonDetail) {
       continue; // temporada não encontrada na TMDB (raro) — tenta a próxima
     }
