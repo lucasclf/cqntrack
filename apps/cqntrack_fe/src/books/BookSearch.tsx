@@ -20,8 +20,6 @@ export function BookSearch() {
   // Ajusta o status assim que a query debounced muda — feito durante o
   // render (padrão recomendado pelo React pra "adjusting state when props
   // change"), não dentro do efeito, que fica só com a chamada assíncrona.
-  // Também espelha a query pra URL (?q=), pra sobreviver a navegação e dar
-  // ao botão "Voltar" um resultado pra restaurar (ver BackButton).
   const [trackedQuery, setTrackedQuery] = useState(debouncedQuery);
   if (debouncedQuery !== trackedQuery) {
     setTrackedQuery(debouncedQuery);
@@ -29,8 +27,18 @@ export function BookSearch() {
     if (!debouncedQuery) {
       setResults([]);
     }
-    setSearchParams(debouncedQuery ? { q: debouncedQuery } : {}, { replace: true });
   }
+
+  // Espelha a query pra URL (?q=), pra sobreviver a navegação e dar ao botão
+  // "Voltar" um resultado pra restaurar (ver BackButton). Precisa ser um
+  // efeito, não o bloco de ajuste acima: setSearchParams atualiza o estado
+  // do RouterProvider (um componente diferente), chamar isso durante o
+  // render do BookSearch dispara o aviso do React "Cannot update a
+  // component while rendering a different component" (bug real, achado
+  // testando ao vivo — ver skill browser-smoke-test).
+  useEffect(() => {
+    setSearchParams(debouncedQuery ? { q: debouncedQuery } : {}, { replace: true });
+  }, [debouncedQuery, setSearchParams]);
 
   useEffect(() => {
     if (!debouncedQuery) {
