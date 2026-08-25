@@ -106,11 +106,12 @@ async function logMangaEntryActivities(
 // capítulo sem nunca ter tocado no status/nota não deveria deixar o mangá
 // de fora de "Minhas marcações" (listMangaEntries lê da tabela mangaEntry).
 export async function ensureMangaEntry(
+  env: Env,
   db: Db,
   userId: string,
   mangadexId: string,
 ): Promise<{ cachedManga: CachedManga; row: MangaEntryRow }> {
-  const cachedManga = await getOrCacheManga(db, mangadexId);
+  const cachedManga = await getOrCacheManga(env, db, mangadexId);
   const existing = await db.query.mangaEntry.findFirst({
     where: and(eq(mangaEntry.userId, userId), eq(mangaEntry.mangaId, mangadexId)),
   });
@@ -173,12 +174,13 @@ export async function attachEntriesToManga(
 }
 
 export async function upsertMangaEntry(
+  env: Env,
   db: Db,
   userId: string,
   mangadexId: string,
   input: UpsertMangaEntryRequest,
 ): Promise<MangaEntry> {
-  const cachedManga = await getOrCacheManga(db, mangadexId); // garante que a FK mangaId existe
+  const cachedManga = await getOrCacheManga(env, db, mangadexId); // garante que a FK mangaId existe
 
   const existing = await db.query.mangaEntry.findFirst({
     where: and(eq(mangaEntry.userId, userId), eq(mangaEntry.mangaId, mangadexId)),

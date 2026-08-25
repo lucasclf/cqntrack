@@ -101,7 +101,13 @@ mangaListsRouter.delete("/:listId", async (c) => {
 mangaListsRouter.put("/:listId/items/:mangadexId", async (c) => {
   const db = createDb(c.env);
   try {
-    await addMangaToList(db, c.get("userId"), c.req.param("listId"), c.req.param("mangadexId"));
+    await addMangaToList(
+      c.env,
+      db,
+      c.get("userId"),
+      c.req.param("listId"),
+      c.req.param("mangadexId"),
+    );
     return c.body(null, 204);
   } catch (error) {
     if (error instanceof MangaListNotFoundError) {

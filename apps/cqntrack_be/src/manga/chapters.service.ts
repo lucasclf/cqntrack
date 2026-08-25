@@ -74,6 +74,7 @@ export async function getMangaVolumes(
 // o volume já carregou da MangaDex (sem validação extra de que o capítulo
 // existe de fato) — mesmo espírito de setEpisodeWatched (série).
 export async function setChapterRead(
+  env: Env,
   db: Db,
   userId: string,
   mangadexId: string,
@@ -81,7 +82,7 @@ export async function setChapterRead(
   chapterNumber: number,
   read: boolean,
 ): Promise<void> {
-  await ensureMangaEntry(db, userId, mangadexId);
+  await ensureMangaEntry(env, db, userId, mangadexId);
 
   if (read) {
     await db
@@ -108,13 +109,14 @@ export async function setChapterRead(
 // (série): devolve `false` quando o volume pedido não existe na MangaDex
 // (rota trata como 404).
 export async function setVolumeRead(
+  env: Env,
   db: Db,
   userId: string,
   mangadexId: string,
   volumeNumber: number,
   read: boolean,
 ): Promise<boolean> {
-  const { cachedManga } = await ensureMangaEntry(db, userId, mangadexId);
+  const { cachedManga } = await ensureMangaEntry(env, db, userId, mangadexId);
 
   if (!read) {
     await db
@@ -169,11 +171,12 @@ export async function setVolumeRead(
 // precisar de N requests. Uma atividade agregada em vez de uma por volume.
 // Só marca — sem versão "desmarcar tudo", não pedida.
 export async function setAllChaptersRead(
+  env: Env,
   db: Db,
   userId: string,
   mangadexId: string,
 ): Promise<void> {
-  const { cachedManga } = await ensureMangaEntry(db, userId, mangadexId);
+  const { cachedManga } = await ensureMangaEntry(env, db, userId, mangadexId);
 
   const raw = await getMangaAggregate(mangadexId);
   const rows = Object.values(raw.volumes).flatMap((volume) => {

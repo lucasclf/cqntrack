@@ -53,12 +53,16 @@ function isPublicationStatus(value: string): value is (typeof MANGA_PUBLICATION_
   return (MANGA_PUBLICATION_STATUSES as readonly string[]).includes(value);
 }
 
-const COVER_BASE_URL = "https://uploads.mangadex.org/covers";
-
-function coverUrlFromManga(raw: MangaDexManga): string | null {
+// Nunca aponta pra uploads.mangadex.org direto — a própria documentação da
+// MangaDex diz que servem uma imagem errada de propósito pra qualquer
+// hotlink vindo do navegador do usuário final (api.mangadex.org/docs/
+// 2-limitations/, seção de proxy obrigatório) — o request precisa vir do
+// nosso backend. Por isso a URL exposta sempre passa pelo nosso proxy (ver
+// manga/covers.routes.ts), com o mesmo path/filename que a MangaDex usa.
+function coverUrlFromManga(env: Env, raw: MangaDexManga): string | null {
   const coverArt = raw.relationships.find((r) => r.type === "cover_art");
   return coverArt?.attributes?.fileName
-    ? `${COVER_BASE_URL}/${raw.id}/${coverArt.attributes.fileName}.512.jpg`
+    ? `${env.BETTER_AUTH_URL}/api/manga/covers/${raw.id}/${coverArt.attributes.fileName}.512.jpg`
     : null;
 }
 
@@ -85,11 +89,11 @@ function tagsFromManga(raw: MangaDexManga): string[] {
 // detalhe usam a mesma forma de objeto (diferente da TMDB, que separa
 // "resultado de busca" de "detalhe"), então um único mapeador de resumo
 // serve pros três casos.
-export function mapMangaToSummary(raw: MangaDexManga): MangaSummary {
+export function mapMangaToSummary(env: Env, raw: MangaDexManga): MangaSummary {
   return {
     mangadexId: raw.id,
     title: pickTitle(raw),
-    coverUrl: coverUrlFromManga(raw),
+    coverUrl: coverUrlFromManga(env, raw),
     authors: authorsFromManga(raw),
     tags: tagsFromManga(raw),
     publicationStatus: isPublicationStatus(raw.attributes.status) ? raw.attributes.status : null,
@@ -112,19 +116,24 @@ export function mapCachedMangaToSummary(row: CachedManga): MangaSummary {
   };
 }
 
-export async function searchMangaForUser(query: string, limit: number): Promise<MangaSummary[]> {
+export async function searchMangaForUser(
+  env: Env,
+  query: string,
+  limit: number,
+): Promise<MangaSummary[]> {
   const results = await mangadexSearch(query, limit);
-  return results.map(mapMangaToSummary);
+  return results.map((raw) => mapMangaToSummary(env, raw));
 }
 
 const DISCOVER_PAGE_SIZE = 20;
 
 export async function discoverMangaForUser(
+  env: Env,
   page: number,
 ): Promise<{ results: MangaSummary[]; hasMore: boolean }> {
   const { results, total } = await mangadexDiscover(page, DISCOVER_PAGE_SIZE);
   return {
-    results: results.map(mapMangaToSummary),
+    results: results.map((raw) => mapMangaToSummary(env, raw)),
     hasMore: page * DISCOVER_PAGE_SIZE < total,
   };
 }
@@ -140,10 +149,10 @@ function isStale(row: CachedManga): boolean {
   return Date.now() - row.updatedAt.getTime() > CACHE_TTL_MS;
 }
 
-function mapMangaToRow(raw: MangaDexManga) {
+function mapMangaToRow(env: Env, raw: MangaDexManga) {
   return {
     title: pickTitle(raw),
-    coverUrl: coverUrlFromManga(raw),
+    coverUrl: coverUrlFromManga(env, raw),
     description: pickLocalized(raw.attributes.description),
     authors: authorsFromManga(raw),
     tags: tagsFromManga(raw),
@@ -159,7 +168,7 @@ function mapMangaToRow(raw: MangaDexManga) {
 // concorrentes cacheando o mesmo mangá pela primeira vez. Sem `env: Env`
 // (diferente de getOrCacheBook/getOrCacheMovie): a MangaDex é 100% pública,
 // não precisa de key.
-export async function getOrCacheManga(db: Db, mangadexId: string): Promise<CachedManga> {
+export async function getOrCacheManga(env: Env, db: Db, mangadexId: string): Promise<CachedManga> {
   const [cached] = await db.select().from(manga).where(eq(manga.mangadexId, mangadexId));
   if (cached && !isStale(cached)) {
     return cached;
@@ -176,7 +185,7 @@ export async function getOrCacheManga(db: Db, mangadexId: string): Promise<Cache
     throw new MangaNotFoundError(mangadexId);
   }
 
-  const values = mapMangaToRow(raw);
+  const values = mapMangaToRow(env, raw);
 
   if (cached) {
     await db.update(manga).set(values).where(eq(manga.mangadexId, mangadexId));

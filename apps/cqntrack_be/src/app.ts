@@ -10,6 +10,7 @@ import { bookListsRouter } from "./books/lists.routes";
 import { gamesRouter } from "./games/games.routes";
 import { listsRouter } from "./games/lists.routes";
 import { uploadAvatar } from "./integrations/cloudinary/client";
+import { mangaCoversRouter } from "./manga/covers.routes";
 import { mangaListsRouter } from "./manga/lists.routes";
 import { mangaRouter } from "./manga/manga.routes";
 import { movieListsRouter } from "./movies/lists.routes";
@@ -99,6 +100,10 @@ app.route("/api/books", booksRouter);
 app.route("/api/books-lists", bookListsRouter);
 app.route("/api/games", gamesRouter);
 app.route("/api/lists", listsRouter);
+// Mais específica que "/api/manga" — precisa vir antes pra não cair no
+// :mangadexId do mangaRouter. Sem requireSession de propósito, ver
+// covers.routes.ts.
+app.route("/api/manga/covers", mangaCoversRouter);
 app.route("/api/manga", mangaRouter);
 app.route("/api/manga-lists", mangaListsRouter);
 app.route("/api/series", seriesRouter);

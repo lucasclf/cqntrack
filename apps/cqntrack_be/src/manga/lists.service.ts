@@ -156,13 +156,14 @@ export async function getMangaListDetail(
 }
 
 export async function addMangaToList(
+  env: Env,
   db: Db,
   userId: string,
   listId: string,
   mangadexId: string,
 ): Promise<void> {
   const list = await getOwnedMangaList(db, userId, listId);
-  const cachedManga = await getOrCacheManga(db, mangadexId); // garante a FK mangaId
+  const cachedManga = await getOrCacheManga(env, db, mangadexId); // garante a FK mangaId
 
   const inserted = await db
     .insert(mangaListItem)

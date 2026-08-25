@@ -74,7 +74,7 @@ mangaRouter.get("/search", async (c) => {
   }
 
   const db = createDb(c.env);
-  const summaries = await searchMangaForUser(parsed.data.q, parsed.data.limit);
+  const summaries = await searchMangaForUser(c.env, parsed.data.q, parsed.data.limit);
   const results = await attachEntriesToManga(db, c.get("userId"), summaries);
   return c.json(SearchMangaResponseSchema.parse({ results }));
 });
@@ -86,7 +86,7 @@ mangaRouter.get("/discover", async (c) => {
   }
 
   const db = createDb(c.env);
-  const { results: summaries, hasMore } = await discoverMangaForUser(parsed.data.page);
+  const { results: summaries, hasMore } = await discoverMangaForUser(c.env, parsed.data.page);
   const results = await attachEntriesToManga(db, c.get("userId"), summaries);
   return c.json(DiscoverMangaResponseSchema.parse({ results, page: parsed.data.page, hasMore }));
 });
@@ -121,7 +121,7 @@ mangaRouter.get("/authors/:authorId", async (c) => {
     return c.json({ error: "invalid_id" }, 400);
   }
 
-  const result = await getAuthorManga(authorId);
+  const result = await getAuthorManga(c.env, authorId);
   if (!result) {
     return c.json({ error: "author_not_found" }, 404);
   }
@@ -136,7 +136,7 @@ mangaRouter.get("/:mangadexId", async (c) => {
 
   const db = createDb(c.env);
   try {
-    const cachedManga = await getOrCacheManga(db, mangadexId);
+    const cachedManga = await getOrCacheManga(c.env, db, mangadexId);
     const entry = await getMangaEntryForUser(db, c.get("userId"), mangadexId);
 
     const body = MangaDetailResponseSchema.parse({
@@ -166,7 +166,7 @@ mangaRouter.put("/:mangadexId/entry", async (c) => {
 
   const db = createDb(c.env);
   try {
-    const entry = await upsertMangaEntry(db, c.get("userId"), mangadexId, parsed.data);
+    const entry = await upsertMangaEntry(c.env, db, c.get("userId"), mangadexId, parsed.data);
     return c.json(MangaEntrySchema.parse(entry));
   } catch (error) {
     if (error instanceof MangaNotFoundError) {
@@ -214,6 +214,7 @@ mangaRouter.put("/:mangadexId/chapters/:volumeNumber/:chapterNumber", async (c) 
 
   const db = createDb(c.env);
   await setChapterRead(
+    c.env,
     db,
     c.get("userId"),
     mangadexId,
@@ -239,6 +240,7 @@ mangaRouter.put("/:mangadexId/volumes/:volumeNumber", async (c) => {
 
   const db = createDb(c.env);
   const found = await setVolumeRead(
+    c.env,
     db,
     c.get("userId"),
     mangadexId,
@@ -258,6 +260,6 @@ mangaRouter.put("/:mangadexId/read-all", async (c) => {
   }
 
   const db = createDb(c.env);
-  await setAllChaptersRead(db, c.get("userId"), mangadexId);
+  await setAllChaptersRead(c.env, db, c.get("userId"), mangadexId);
   return c.body(null, 204);
 });

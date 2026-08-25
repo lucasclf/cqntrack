@@ -80,7 +80,7 @@ describe("GET /api/manga/search", () => {
         {
           mangadexId: "manga-1",
           title: "Death Note",
-          coverUrl: "https://uploads.mangadex.org/covers/manga-1/capa.jpg.512.jpg",
+          coverUrl: "http://localhost:8787/api/manga/covers/manga-1/capa.jpg.512.jpg",
           authors: [{ id: "autor-1", name: "Autor de Teste" }],
           tags: ["Ação"],
           publicationStatus: "ongoing",
