@@ -339,3 +339,17 @@ export async function getOrCacheSeries(
   }
   return row;
 }
+
+// Update enxuto pro cron (ver refresh-episodes.job.ts) — 2 subrequests por
+// série (TMDB + D1 UPDATE) em vez dos ~4 de getOrCacheSeries: sem o SELECT
+// inicial de "já existe cache?" (a série já vem garantidamente cacheada, é
+// filtrada pela própria query do cron) nem o SELECT final de devolver a
+// linha (o cron não usa o retorno) nem elenco/direção (fica pra
+// getOrCacheSeries de verdade quando alguém abrir o detalhe). Necessário
+// pra caber várias séries no teto de 50 subrequests/invocação do plano
+// Free — com 4 ops/série só daria pra atualizar ~12 séries por execução.
+export async function refreshSeriesForCron(env: Env, db: Db, tmdbId: number): Promise<void> {
+  const detail = await getSeriesById(env, tmdbId, { fetchOverviewFallback: false });
+  if (!detail) return;
+  await db.update(series).set(mapSeriesDetailToRow(detail)).where(eq(series.tmdbId, tmdbId));
+}

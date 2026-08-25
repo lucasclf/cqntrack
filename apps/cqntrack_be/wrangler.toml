@@ -18,12 +18,14 @@ EMAIL_FROM = "cqntrack <noreply@mail.cqn.xyz.br>"
 [observability]
 enabled = true
 
-# 1x/dia, 6h UTC (~3h em Brasília) — atualiza o cache de próximo episódio/
-# último lançado das séries acompanhadas (ver src/series/refresh-episodes.job.ts
-# e scheduled() em src/index.ts). Séries não lançam episódio com frequência
-# maior que isso; 1x/dia já cobre sem gastar requests da TMDB à toa.
+# De hora em hora — atualiza o cache de próximo episódio/último lançado das
+# séries acompanhadas não finalizadas (ver src/series/refresh-episodes.job.ts
+# e scheduled() em src/index.ts). Cada execução processa só as ~20 mais
+# desatualizadas (teto de subrequests/invocação do Free); com ~50 séries
+# não-finalizadas na base hoje, isso já é suficiente pra manter todo mundo
+# em dia. 1 único slot dos 5 Cron Triggers/conta do Free.
 [triggers]
-crons = ["0 6 * * *"]
+crons = ["0 * * * *"]
 
 # Contadores de verdade compartilhados pela conta (não por isolate) — ao
 # contrário de um rate limit em memória de aplicação, que não é confiável em

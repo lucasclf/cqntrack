@@ -97,11 +97,8 @@ describe("refreshTrackedSeriesEpisodes", () => {
       vi.fn(async (url: string) => {
         const match = /\/tv\/(\d+)/.exec(url);
         const id = Number(match?.[1]);
-        // getOrCacheSeries (fetchCredits: true por padrão) sempre faz 2
-        // requests por série: detalhe, depois aggregate_credits.
-        if (url.includes("/aggregate_credits")) {
-          return jsonResponse({ cast: [], crew: [] });
-        }
+        // refreshSeriesForCron nunca busca aggregate_credits — só 1
+        // request por série (o teto de subrequests/invocação depende disso).
         requestedIds.push(id);
         return jsonResponse(tmdbSeriesDetail(id, "2026-06-01"));
       }),
@@ -135,9 +132,6 @@ describe("refreshTrackedSeriesEpisodes", () => {
       vi.fn(async (url: string) => {
         const match = /\/tv\/(\d+)/.exec(url);
         const id = Number(match?.[1]);
-        if (url.includes("/aggregate_credits")) {
-          return jsonResponse({ cast: [], crew: [] });
-        }
         if (id === 803) {
           return new Response("upstream error", { status: 500 });
         }
@@ -155,5 +149,58 @@ describe("refreshTrackedSeriesEpisodes", () => {
       name: "Final",
       airDate: "2026-06-01",
     });
+  });
+
+  it("não atualiza séries finalizadas (ended/canceled) mesmo desatualizadas", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    const db = createDb(env);
+
+    await markEpisodeWatched(cookie, 805);
+    await ageSeriesCache(db, 805);
+    await db.update(series).set({ status: "Ended" }).where(eq(series.tmdbId, 805));
+
+    // Mock genérico (não fixo em 805): outras séries stale deixadas por
+    // testes anteriores no mesmo arquivo (D1 não reseta entre it() — ver
+    // ageSeriesCache) também podem entrar na leva; só 805 é o que este
+    // teste verifica.
+    const requestedIds: number[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        const match = /\/tv\/(\d+)/.exec(url);
+        const id = Number(match?.[1]);
+        requestedIds.push(id);
+        return jsonResponse(tmdbSeriesDetail(id, "2026-06-01"));
+      }),
+    );
+
+    await refreshTrackedSeriesEpisodes(env, db);
+    vi.unstubAllGlobals();
+
+    expect(requestedIds).not.toContain(805);
+  });
+
+  it("não atualiza séries que ainda não passaram do TTL de 24h", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    const db = createDb(env);
+
+    // Sem ageSeriesCache: cache foi escrito agora mesmo (dentro do TTL).
+    await markEpisodeWatched(cookie, 806);
+
+    const requestedIds: number[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        const match = /\/tv\/(\d+)/.exec(url);
+        const id = Number(match?.[1]);
+        requestedIds.push(id);
+        return jsonResponse(tmdbSeriesDetail(id, "2026-06-01"));
+      }),
+    );
+
+    await refreshTrackedSeriesEpisodes(env, db);
+    vi.unstubAllGlobals();
+
+    expect(requestedIds).not.toContain(806);
   });
 });
