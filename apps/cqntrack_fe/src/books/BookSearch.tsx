@@ -70,7 +70,6 @@ export function BookSearch() {
 
   return (
     <div className={styles.page}>
-      <h1>Buscar livros</h1>
       <input
         type="search"
         className={styles.input}

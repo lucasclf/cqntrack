@@ -2,7 +2,6 @@ import { createBrowserRouter, Navigate, type RouteObject } from "react-router";
 import { AppShell } from "./layouts/AppShell";
 import { Account } from "./Account";
 import { ForgotPassword } from "./ForgotPassword";
-import { Home } from "./Home";
 import { Login } from "./Login";
 import { RedirectToJogosListDetail } from "./routes/RedirectToJogosListDetail";
 import { RequireAuth } from "./routes/RequireAuth";
@@ -14,28 +13,35 @@ import { Signup } from "./Signup";
 // do aviso de bundle >500KB do Vite no build. `lazy` é a API nativa do
 // react-router (não React.lazy/Suspense manual): o router já lida com a
 // transição sozinho, sem precisar de um fallback de loading por rota.
+//
+// *Discover.tsx (jogos/séries/filmes/mangás) e BookSearch.tsx não têm mais
+// entrada aqui como rota índice própria — viraram a 3ª aba "Descobrir" de
+// cada *CategoryPanel.tsx, importados direto por eles (ver
+// games/GameCategoryPanel.tsx e afins), carregando junto do chunk da
+// *CategoryPage correspondente.
 const routeModules = {
   authorDetail: () => import("./books/AuthorDetail"),
+  bookCategoryPage: () => import("./books/BookCategoryPage"),
   bookDetail: () => import("./books/BookDetail"),
   bookListDetail: () => import("./books/BookListDetail"),
   bookSearch: () => import("./books/BookSearch"),
   myBookEntries: () => import("./books/MyBookEntries"),
   myBookLists: () => import("./books/MyBookLists"),
+  gameCategoryPage: () => import("./games/GameCategoryPage"),
   gameDetail: () => import("./games/GameDetail"),
-  gameDiscover: () => import("./games/GameDiscover"),
   gameSearch: () => import("./games/GameSearch"),
   listDetail: () => import("./games/ListDetail"),
   myEntries: () => import("./games/MyEntries"),
   myLists: () => import("./games/MyLists"),
   mangaAuthorDetail: () => import("./manga/AuthorDetail"),
+  mangaCategoryPage: () => import("./manga/MangaCategoryPage"),
   mangaDetail: () => import("./manga/MangaDetail"),
-  mangaDiscover: () => import("./manga/MangaDiscover"),
   mangaListDetail: () => import("./manga/MangaListDetail"),
   mangaSearch: () => import("./manga/MangaSearch"),
   myMangaEntries: () => import("./manga/MyMangaEntries"),
   myMangaLists: () => import("./manga/MyMangaLists"),
+  movieCategoryPage: () => import("./movies/MovieCategoryPage"),
   movieDetail: () => import("./movies/MovieDetail"),
-  movieDiscover: () => import("./movies/MovieDiscover"),
   movieListDetail: () => import("./movies/MovieListDetail"),
   movieSearch: () => import("./movies/MovieSearch"),
   myMovieEntries: () => import("./movies/MyMovieEntries"),
@@ -48,11 +54,13 @@ const routeModules = {
   publicListDetail: () => import("./profile/PublicListDetail"),
   publicProfile: () => import("./profile/PublicProfile"),
   seriesTabPanel: () => import("./profile/SeriesTabPanel"),
+  activityTab: () => import("./ActivityTab"),
+  continueWatching: () => import("./series/ContinueWatching"),
   episodeDetail: () => import("./series/EpisodeDetail"),
   mySeriesEntries: () => import("./series/MySeriesEntries"),
   mySeriesLists: () => import("./series/MySeriesLists"),
+  seriesCategoryPage: () => import("./series/SeriesCategoryPage"),
   seriesDetail: () => import("./series/SeriesDetail"),
-  seriesDiscover: () => import("./series/SeriesDiscover"),
   seriesListDetail: () => import("./series/SeriesListDetail"),
   seriesSearch: () => import("./series/SeriesSearch"),
   friendsPage: () => import("./social/FriendsPage"),
@@ -111,10 +119,19 @@ export const routes: RouteObject[] = [
       {
         element: <AppShell />,
         children: [
-          { index: true, element: <Home /> },
+          {
+            index: true,
+            lazy: async () => ({
+              Component: (await routeModules.continueWatching()).ContinueWatching,
+            }),
+          },
           { path: "conta", element: <Account /> },
           {
-            path: "amigos",
+            path: "atividades",
+            lazy: async () => ({ Component: (await routeModules.activityTab()).ActivityTab }),
+          },
+          {
+            path: "social",
             lazy: async () => ({ Component: (await routeModules.friendsPage()).FriendsPage }),
           },
           {
@@ -122,7 +139,9 @@ export const routes: RouteObject[] = [
             children: [
               {
                 index: true,
-                lazy: async () => ({ Component: (await routeModules.gameDiscover()).GameDiscover }),
+                lazy: async () => ({
+                  Component: (await routeModules.gameCategoryPage()).GameCategoryPage,
+                }),
               },
               {
                 path: "buscar",
@@ -152,7 +171,7 @@ export const routes: RouteObject[] = [
               {
                 index: true,
                 lazy: async () => ({
-                  Component: (await routeModules.seriesDiscover()).SeriesDiscover,
+                  Component: (await routeModules.seriesCategoryPage()).SeriesCategoryPage,
                 }),
               },
               {
@@ -195,7 +214,7 @@ export const routes: RouteObject[] = [
               {
                 index: true,
                 lazy: async () => ({
-                  Component: (await routeModules.movieDiscover()).MovieDiscover,
+                  Component: (await routeModules.movieCategoryPage()).MovieCategoryPage,
                 }),
               },
               {
@@ -227,6 +246,12 @@ export const routes: RouteObject[] = [
           {
             path: "livros",
             children: [
+              {
+                index: true,
+                lazy: async () => ({
+                  Component: (await routeModules.bookCategoryPage()).BookCategoryPage,
+                }),
+              },
               {
                 path: "buscar",
                 lazy: async () => ({ Component: (await routeModules.bookSearch()).BookSearch }),
@@ -263,7 +288,7 @@ export const routes: RouteObject[] = [
               {
                 index: true,
                 lazy: async () => ({
-                  Component: (await routeModules.mangaDiscover()).MangaDiscover,
+                  Component: (await routeModules.mangaCategoryPage()).MangaCategoryPage,
                 }),
               },
               {

@@ -1,5 +1,5 @@
 import type { ActivityItem, ListActivityQuery } from "@cqntrack/shared";
-import { and, desc, eq, inArray, lt } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, lt, ne, or, sql } from "drizzle-orm";
 import type { createDb } from "../db/client";
 import { activity, follow, user } from "../db/schema";
 import { resolveUserIdByUsername } from "../users/users.service";
@@ -144,5 +144,57 @@ export async function listFriendActivity(
   return {
     items: page.map(toFriendActivityItem),
     nextCursor: hasMore && last ? last.createdAt.toISOString() : null,
+  };
+}
+
+// Aba "Procurar" da Social — diretório de outros usuários (nunca o próprio
+// viewer, nunca alguém sem username/perfil público). `q` vazio devolve
+// todo mundo, ordenado por username, paginado como ListGameEntriesQuery e
+// afins ({items,page,pageSize,total}, ver entries.service.ts). Sem índice
+// dedicado pro LIKE — tabela `user` é pequena (app pessoal), full scan é
+// aceitável. Nunca seleciona `email` (mesmo invariante da feature de
+// follow — ver listFollowing acima e o teste dedicado em
+// social.routes.test.ts).
+export async function searchUsers(
+  db: Db,
+  viewerId: string,
+  q: string | undefined,
+  page: number,
+  pageSize: number,
+): Promise<{ items: FollowedUser[]; total: number }> {
+  const conditions = [ne(user.id, viewerId), isNotNull(user.username)];
+  const trimmed = q?.trim().toLowerCase();
+  if (trimmed) {
+    const pattern = `%${trimmed}%`;
+    conditions.push(
+      or(
+        sql`lower(${user.username}) like ${pattern}`,
+        sql`lower(${user.displayUsername}) like ${pattern}`,
+      )!,
+    );
+  }
+  const where = and(...conditions);
+
+  const [rows, countResult] = await Promise.all([
+    db
+      .select({ username: user.username, displayUsername: user.displayUsername, image: user.image })
+      .from(user)
+      .where(where)
+      .orderBy(asc(user.username))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(user)
+      .where(where),
+  ]);
+
+  return {
+    items: rows.map((row) => ({
+      username: row.username ?? "",
+      displayUsername: row.displayUsername ?? row.username ?? "",
+      image: row.image ?? null,
+    })),
+    total: countResult[0]?.count ?? 0,
   };
 }

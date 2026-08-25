@@ -90,29 +90,6 @@
   color: var(--accent);
 }
 
-.iconBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 1px solid var(--card-border);
-  background: var(--input-bg);
-  color: var(--text-secondary);
-  text-decoration: none;
-  flex-shrink: 0;
-}
-
-.iconBtn:hover {
-  color: var(--text-primary);
-}
-
-.navIcon {
-  width: 18px;
-  height: 18px;
-}
-
 @media (max-width: 860px) {
   .topbar {
     /* Sem flex-wrap: wrap de propósito — quando .left não cabe ao lado de

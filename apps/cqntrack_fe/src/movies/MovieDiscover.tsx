@@ -7,9 +7,11 @@ import styles from "./MovieDiscover.module.css";
 
 type LoadStatus = "loading" | "idle" | "error";
 
-// Índice da seção de filmes no menu superior — populares da própria TMDB
-// (GET /movie/popular), "carregar mais" em vez de paginação com número de
+// Aba "Descobrir" de MovieCategoryPanel — populares da própria TMDB (GET
+// /movie/popular), "carregar mais" em vez de paginação com número de
 // página (a TMDB não devolve um total útil pra mostrar "página X de Y").
+// Sem <h1> próprio: sempre embutido dentro da seção, nunca mais uma rota
+// própria.
 export function MovieDiscover() {
   const [results, setResults] = useState<MovieSummaryWithEntry[]>([]);
   const [page, setPage] = useState(1);
@@ -47,7 +49,6 @@ export function MovieDiscover() {
 
   return (
     <div className={styles.page}>
-      <h1>Descobrir filmes</h1>
       <MediaSearchInput
         sectionPath="/filmes"
         placeholder="Nome do filme..."

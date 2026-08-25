@@ -3,6 +3,8 @@ import {
   FollowStatusResponseSchema,
   FriendActivityFeedResponseSchema,
   ListActivityQuerySchema,
+  PaginatedUsersResponseSchema,
+  SearchUsersQuerySchema,
 } from "@cqntrack/shared";
 import { Hono } from "hono";
 import { type AuthedEnv, requireSession } from "../auth/require-session";
@@ -13,6 +15,7 @@ import {
   getFollowStatus,
   listFollowing,
   listFriendActivity,
+  searchUsers,
   SelfFollowError,
   unfollowUser,
 } from "./social.service";
@@ -80,4 +83,31 @@ socialRouter.get("/feed", async (c) => {
   const { items, nextCursor } = await listFriendActivity(db, c.get("userId"), parsed.data);
 
   return c.json(FriendActivityFeedResponseSchema.parse({ items, nextCursor }));
+});
+
+// Aba "Procurar" da Social — diretório de outros usuários (ver searchUsers
+// em social.service.ts), nunca inclui o próprio viewer.
+socialRouter.get("/search", async (c) => {
+  const parsed = SearchUsersQuerySchema.safeParse(c.req.query());
+  if (!parsed.success) {
+    return c.json({ error: "invalid_query" }, 400);
+  }
+
+  const db = createDb(c.env);
+  const { items, total } = await searchUsers(
+    db,
+    c.get("userId"),
+    parsed.data.q,
+    parsed.data.page,
+    parsed.data.pageSize,
+  );
+
+  return c.json(
+    PaginatedUsersResponseSchema.parse({
+      items,
+      page: parsed.data.page,
+      pageSize: parsed.data.pageSize,
+      total,
+    }),
+  );
 });

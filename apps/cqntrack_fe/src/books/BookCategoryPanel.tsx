@@ -1,9 +1,18 @@
 import type { BookEntryWithBook } from "@cqntrack/shared";
 import { useState } from "react";
 import { InfiniteMediaGrid } from "../components/InfiniteMediaGrid";
-import { MediaSubTabs, type MediaSubTab } from "../components/MediaSubTabs";
+import { SubTabs } from "../components/SubTabs";
 import { useInfiniteList } from "../lib/useInfiniteList";
 import { BookCard } from "./BookCard";
+import { BookSearch } from "./BookSearch";
+
+type BookSubTab = "favorites" | "recent" | "discover";
+
+const TABS = [
+  { key: "favorites" as const, label: "Favoritos" },
+  { key: "recent" as const, label: "Lido recentemente" },
+  { key: "discover" as const, label: "Descobrir" },
+];
 
 interface BookCategoryPanelProps {
   // "/api/users/:username" (perfil público) ou "/api" (home, dados
@@ -13,11 +22,13 @@ interface BookCategoryPanelProps {
 
 const PAGE_SIZE = 12;
 
-// Aba "Livros" da Home — favoritos e lido recentemente como 2 sub-abas
-// independentes (ver MediaSubTabs), cada uma com sua própria rolagem
-// infinita vertical (ver InfiniteMediaGrid).
+// Painel da seção "Livros" (rota /livros) — 3 sub-abas: favoritos e lido
+// recentemente com rolagem infinita própria (ver InfiniteMediaGrid), mais
+// Descobrir. Livros não tem endpoint de "populares" (Google Books não
+// oferece isso) — a aba Descobrir embute BookSearch diretamente (mesmo
+// componente que também serve a rota /livros/buscar sem mudança nenhuma).
 export function BookCategoryPanel({ basePath }: BookCategoryPanelProps) {
-  const [subTab, setSubTab] = useState<MediaSubTab>("favorites");
+  const [subTab, setSubTab] = useState<BookSubTab>("favorites");
 
   const favorites = useInfiniteList<BookEntryWithBook>(
     (page) =>
@@ -32,7 +43,7 @@ export function BookCategoryPanel({ basePath }: BookCategoryPanelProps) {
 
   return (
     <div>
-      <MediaSubTabs active={subTab} onChange={setSubTab} recentLabel="Lido recentemente" />
+      <SubTabs tabs={TABS} active={subTab} onChange={setSubTab} />
 
       <InfiniteMediaGrid
         hidden={subTab !== "favorites"}
@@ -50,6 +61,7 @@ export function BookCategoryPanel({ basePath }: BookCategoryPanelProps) {
         getKey={(item) => item.book.googleBooksId}
         renderItem={(item) => <BookCard book={item.book} entry={item} interactive />}
       />
+      {subTab === "discover" && <BookSearch />}
     </div>
   );
 }

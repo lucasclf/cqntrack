@@ -39,3 +39,24 @@ export const FriendActivityFeedResponseSchema = z.object({
 });
 
 export type FriendActivityFeedResponse = z.infer<typeof FriendActivityFeedResponseSchema>;
+
+// Aba "Procurar" da Social — diretório de outros usuários do app (nunca
+// inclui o próprio viewer, resolvido no backend). `q` vazio devolve todo
+// mundo, paginado — mesmo shape {items,page,pageSize,total} já usado nas
+// listagens de entries por seção (ver ListGameEntriesQuerySchema e afins).
+export const SearchUsersQuerySchema = z.object({
+  q: z.string().max(100).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(50).default(20),
+});
+
+export type SearchUsersQuery = z.infer<typeof SearchUsersQuerySchema>;
+
+export const PaginatedUsersResponseSchema = z.object({
+  items: z.array(FollowedUserSchema),
+  page: z.number().int(),
+  pageSize: z.number().int(),
+  total: z.number().int(),
+});
+
+export type PaginatedUsersResponse = z.infer<typeof PaginatedUsersResponseSchema>;

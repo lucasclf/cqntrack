@@ -1,9 +1,18 @@
 import type { RecentlyWatchedSeriesItem, SeriesEntryWithSeries } from "@cqntrack/shared";
 import { useState } from "react";
 import { InfiniteMediaGrid } from "../components/InfiniteMediaGrid";
-import { MediaSubTabs, type MediaSubTab } from "../components/MediaSubTabs";
+import { SubTabs } from "../components/SubTabs";
 import { useInfiniteList } from "../lib/useInfiniteList";
 import { SeriesCard } from "./SeriesCard";
+import { SeriesDiscover } from "./SeriesDiscover";
+
+type SeriesSubTab = "favorites" | "recent" | "discover";
+
+const TABS = [
+  { key: "favorites" as const, label: "Favoritos" },
+  { key: "recent" as const, label: "Assistido recentemente" },
+  { key: "discover" as const, label: "Descobrir" },
+];
 
 interface SeriesCategoryPanelProps {
   // "/api/users/:username" (perfil público) ou "/api" (home, dados
@@ -13,14 +22,15 @@ interface SeriesCategoryPanelProps {
 
 const PAGE_SIZE = 12;
 
-// Aba "Séries" da Home — favoritos e assistido recentemente como 2
-// sub-abas independentes (ver MediaSubTabs), cada uma com sua própria
-// rolagem infinita vertical (ver InfiniteMediaGrid). Série não tem status
-// (ver ListSeriesEntriesQuerySchema) — "assistido recentemente" usa a rota
-// dedicada /series/recently-watched (MAX(watchedAt) por série) em vez de
-// /series/entries?status=..., diferente de filmes/jogos/livros.
+// Painel da seção "Séries" (rota /series) — 3 sub-abas: favoritos e
+// assistido recentemente com rolagem infinita própria (ver
+// InfiniteMediaGrid), mais Descobrir, que embute SeriesDiscover como
+// estava (antes era a rota índice da seção, ver router.tsx). Série não tem
+// status (ver ListSeriesEntriesQuerySchema) — "assistido recentemente" usa
+// a rota dedicada /series/recently-watched (MAX(watchedAt) por série) em
+// vez de /series/entries?status=..., diferente de filmes/jogos/livros.
 export function SeriesCategoryPanel({ basePath }: SeriesCategoryPanelProps) {
-  const [subTab, setSubTab] = useState<MediaSubTab>("favorites");
+  const [subTab, setSubTab] = useState<SeriesSubTab>("favorites");
 
   const favorites = useInfiniteList<SeriesEntryWithSeries>(
     (page) =>
@@ -34,7 +44,7 @@ export function SeriesCategoryPanel({ basePath }: SeriesCategoryPanelProps) {
 
   return (
     <div>
-      <MediaSubTabs active={subTab} onChange={setSubTab} recentLabel="Assistido recentemente" />
+      <SubTabs tabs={TABS} active={subTab} onChange={setSubTab} />
 
       <InfiniteMediaGrid
         hidden={subTab !== "favorites"}
@@ -52,6 +62,7 @@ export function SeriesCategoryPanel({ basePath }: SeriesCategoryPanelProps) {
         getKey={(item) => item.series.tmdbId}
         renderItem={(item) => <SeriesCard series={item.series} />}
       />
+      {subTab === "discover" && <SeriesDiscover />}
     </div>
   );
 }

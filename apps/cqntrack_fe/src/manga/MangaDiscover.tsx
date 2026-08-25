@@ -7,11 +7,13 @@ import { MangaCard } from "./MangaCard";
 
 type LoadStatus = "loading" | "idle" | "error";
 
-// Índice da seção de mangás no menu superior — populares de verdade via
+// Aba "Descobrir" de MangaCategoryPanel — populares de verdade via
 // order[followedCount] da MangaDex (confirmado funcionando durante o
 // planejamento), mesmo espírito de MovieDiscover/SeriesDiscover/GameDiscover
 // ("carregar mais"). Diferente de livro, que não tem Discover (Google Books
-// não suporta popularidade).
+// não suporta popularidade) — a aba equivalente de livros embute BookSearch
+// direto. Sem <h1> próprio: sempre embutido dentro da seção, nunca mais uma
+// rota própria.
 export function MangaDiscover() {
   const [results, setResults] = useState<MangaSummaryWithEntry[]>([]);
   const [page, setPage] = useState(1);
@@ -49,7 +51,6 @@ export function MangaDiscover() {
 
   return (
     <div className={styles.page}>
-      <h1>Descobrir mangás</h1>
       <MediaSearchInput
         sectionPath="/mangas"
         placeholder="Título do mangá..."

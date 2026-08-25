@@ -59,9 +59,6 @@ export function AccountMenu({ sectionPrefix }: AccountMenuProps) {
         <Link to={`${sectionPrefix}/listas`} role="menuitem" className={styles.item}>
           Minhas listas
         </Link>
-        <Link to="/amigos" role="menuitem" className={styles.item}>
-          Amigos
-        </Link>
         <Link to="/conta" role="menuitem" className={styles.item}>
           Conta
         </Link>

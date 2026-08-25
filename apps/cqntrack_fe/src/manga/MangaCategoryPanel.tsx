@@ -1,9 +1,18 @@
 import type { MangaEntryWithManga } from "@cqntrack/shared";
 import { useState } from "react";
 import { InfiniteMediaGrid } from "../components/InfiniteMediaGrid";
-import { MediaSubTabs, type MediaSubTab } from "../components/MediaSubTabs";
+import { SubTabs } from "../components/SubTabs";
 import { useInfiniteList } from "../lib/useInfiniteList";
 import { MangaCard } from "./MangaCard";
+import { MangaDiscover } from "./MangaDiscover";
+
+type MangaSubTab = "favorites" | "recent" | "discover";
+
+const TABS = [
+  { key: "favorites" as const, label: "Favoritos" },
+  { key: "recent" as const, label: "Lido recentemente" },
+  { key: "discover" as const, label: "Descobrir" },
+];
 
 interface MangaCategoryPanelProps {
   // "/api/users/:username" (perfil público) ou "/api" (home, dados
@@ -13,12 +22,12 @@ interface MangaCategoryPanelProps {
 
 const PAGE_SIZE = 12;
 
-// Aba "Mangás" da Home — favoritos e lido recentemente como 2 sub-abas
-// independentes (ver MediaSubTabs), cada uma com sua própria rolagem
-// infinita vertical (ver InfiniteMediaGrid). Mesmo padrão de
-// BookCategoryPanel.
+// Painel da seção "Mangás" (rota /mangas) — 3 sub-abas: favoritos e lido
+// recentemente com rolagem infinita própria (ver InfiniteMediaGrid), mais
+// Descobrir, que embute MangaDiscover como estava (antes era a rota índice
+// da seção, ver router.tsx). Mesmo padrão de BookCategoryPanel.
 export function MangaCategoryPanel({ basePath }: MangaCategoryPanelProps) {
-  const [subTab, setSubTab] = useState<MediaSubTab>("favorites");
+  const [subTab, setSubTab] = useState<MangaSubTab>("favorites");
 
   const favorites = useInfiniteList<MangaEntryWithManga>(
     (page) =>
@@ -33,7 +42,7 @@ export function MangaCategoryPanel({ basePath }: MangaCategoryPanelProps) {
 
   return (
     <div>
-      <MediaSubTabs active={subTab} onChange={setSubTab} recentLabel="Lido recentemente" />
+      <SubTabs tabs={TABS} active={subTab} onChange={setSubTab} />
 
       <InfiniteMediaGrid
         hidden={subTab !== "favorites"}
@@ -51,6 +60,7 @@ export function MangaCategoryPanel({ basePath }: MangaCategoryPanelProps) {
         getKey={(item) => item.manga.mangadexId}
         renderItem={(item) => <MangaCard manga={item.manga} entry={item} interactive />}
       />
+      {subTab === "discover" && <MangaDiscover />}
     </div>
   );
 }

@@ -13,8 +13,9 @@ import { GameCard } from "./GameCard";
 
 type LoadStatus = "loading" | "idle" | "error";
 
-// Índice da seção de jogos no menu superior — aclamados da própria IGDB
-// (mesmo espírito de MovieDiscover/SeriesDiscover, "carregar mais").
+// Aba "Descobrir" de GameCategoryPanel — aclamados da própria IGDB (mesmo
+// espírito de MovieDiscover/SeriesDiscover, "carregar mais"). Sem <h1>
+// próprio: sempre embutido dentro da seção, nunca mais uma rota própria.
 export function GameDiscover() {
   const [results, setResults] = useState<GameSummaryWithEntry[]>([]);
   const [page, setPage] = useState(1);
@@ -62,7 +63,6 @@ export function GameDiscover() {
 
   return (
     <div className={styles.page}>
-      <h1>Descobrir jogos</h1>
       <MediaSearchInput
         sectionPath="/jogos"
         placeholder="Nome do jogo..."

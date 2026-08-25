@@ -21,9 +21,11 @@ function renderShell(initialEntry: string) {
       <Routes>
         <Route element={<AppShell />}>
           <Route index element={<p>conteúdo da home</p>} />
-          <Route path="jogos" element={<p>descobrir jogos</p>} />
-          <Route path="series" element={<p>descobrir séries</p>} />
+          <Route path="jogos" element={<p>conteúdo de jogos</p>} />
+          <Route path="series" element={<p>conteúdo de séries</p>} />
           <Route path="series/buscar" element={<p>conteúdo de busca de séries</p>} />
+          <Route path="atividades" element={<p>conteúdo de atividades</p>} />
+          <Route path="social" element={<p>conteúdo social</p>} />
         </Route>
       </Routes>
     </MemoryRouter>,
@@ -44,43 +46,49 @@ describe("AppShell", () => {
     });
   });
 
-  it("renderiza a navegação de mídias e o conteúdo da rota ativa", () => {
+  it("renderiza as 8 opções do header e o conteúdo da rota ativa", () => {
     renderShell("/");
 
     expect(screen.getByRole("navigation", { name: "Seções" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Jogos" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Séries" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Filmes" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Livros" })).toBeInTheDocument();
+    for (const label of [
+      "Continuar",
+      "Séries",
+      "Filmes",
+      "Jogos",
+      "Livros",
+      "Mangás",
+      "Atividades",
+      "Social",
+    ]) {
+      expect(screen.getByRole("link", { name: label })).toBeInTheDocument();
+    }
     expect(screen.getByText("conteúdo da home")).toBeInTheDocument();
   });
 
-  it("aponta cada link de mídia pra sua seção (Descobrir, exceto livros que vai pra busca)", () => {
+  it("cada opção do header aponta pra sua própria rota (sem duplicar Descobrir/busca)", () => {
     renderShell("/");
 
-    expect(screen.getByRole("link", { name: "Jogos" })).toHaveAttribute("href", "/jogos");
+    expect(screen.getByRole("link", { name: "Continuar" })).toHaveAttribute("href", "/");
     expect(screen.getByRole("link", { name: "Séries" })).toHaveAttribute("href", "/series");
     expect(screen.getByRole("link", { name: "Filmes" })).toHaveAttribute("href", "/filmes");
-    expect(screen.getByRole("link", { name: "Livros" })).toHaveAttribute("href", "/livros/buscar");
+    expect(screen.getByRole("link", { name: "Jogos" })).toHaveAttribute("href", "/jogos");
+    expect(screen.getByRole("link", { name: "Livros" })).toHaveAttribute("href", "/livros");
+    expect(screen.getByRole("link", { name: "Mangás" })).toHaveAttribute("href", "/mangas");
+    expect(screen.getByRole("link", { name: "Atividades" })).toHaveAttribute("href", "/atividades");
+    expect(screen.getByRole("link", { name: "Social" })).toHaveAttribute("href", "/social");
   });
 
-  it("marca o link de mídia ativo com aria-current quando a rota corresponde", () => {
+  it("marca a opção ativa com aria-current quando a rota corresponde", () => {
     renderShell("/series");
 
     expect(screen.getByRole("link", { name: "Séries" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: "Jogos" })).not.toHaveAttribute("aria-current");
   });
 
-  it("fora de uma seção, não mostra o ícone de busca", () => {
-    renderShell("/");
-
-    expect(screen.queryByRole("link", { name: "Buscar" })).not.toBeInTheDocument();
-  });
-
-  it("dentro de uma seção, o ícone de busca aponta pra busca daquela seção", () => {
+  it("não mostra ícone de busca no header (removido — busca vive dentro da aba Descobrir de cada seção)", () => {
     renderShell("/series/buscar");
 
-    expect(screen.getByRole("link", { name: "Buscar" })).toHaveAttribute("href", "/series/buscar");
+    expect(screen.queryByRole("link", { name: "Buscar" })).not.toBeInTheDocument();
     expect(screen.getByText("conteúdo de busca de séries")).toBeInTheDocument();
   });
 
@@ -130,13 +138,13 @@ describe("AppShell", () => {
     expect(screen.queryByRole("menuitem", { name: "Ver meu perfil" })).not.toBeInTheDocument();
   });
 
-  it("menu de conta tem 'Amigos', 'Conta' e 'Sair'", () => {
+  it("menu de conta tem 'Conta' e 'Sair' (sem 'Amigos' — Social já é opção do header)", () => {
     renderShell("/");
     openAccountMenu();
 
-    expect(screen.getByRole("menuitem", { name: "Amigos" })).toHaveAttribute("href", "/amigos");
     expect(screen.getByRole("menuitem", { name: "Conta" })).toHaveAttribute("href", "/conta");
     expect(screen.getByRole("menuitem", { name: "Sair" })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "Amigos" })).not.toBeInTheDocument();
   });
 
   it("clicar em 'Sair' desconecta a sessão", () => {

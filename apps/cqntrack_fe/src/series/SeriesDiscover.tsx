@@ -7,8 +7,9 @@ import { SeriesCard } from "./SeriesCard";
 
 type LoadStatus = "loading" | "idle" | "error";
 
-// Índice da seção de séries no menu superior — mesmo espírito de
-// MovieDiscover (populares da própria TMDB, "carregar mais").
+// Aba "Descobrir" de SeriesCategoryPanel — mesmo espírito de MovieDiscover
+// (populares da própria TMDB, "carregar mais"). Sem <h1> próprio: sempre
+// embutido dentro da seção, nunca mais uma rota própria.
 export function SeriesDiscover() {
   const [results, setResults] = useState<SeriesSummaryWithEntry[]>([]);
   const [page, setPage] = useState(1);
@@ -46,7 +47,6 @@ export function SeriesDiscover() {
 
   return (
     <div className={styles.page}>
-      <h1>Descobrir séries</h1>
       <MediaSearchInput
         sectionPath="/series"
         placeholder="Nome da série..."

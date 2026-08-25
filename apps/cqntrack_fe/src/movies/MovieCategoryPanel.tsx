@@ -1,9 +1,18 @@
 import type { MovieEntryWithMovie } from "@cqntrack/shared";
 import { useState } from "react";
 import { InfiniteMediaGrid } from "../components/InfiniteMediaGrid";
-import { MediaSubTabs, type MediaSubTab } from "../components/MediaSubTabs";
+import { SubTabs } from "../components/SubTabs";
 import { useInfiniteList } from "../lib/useInfiniteList";
 import { MovieCard } from "./MovieCard";
+import { MovieDiscover } from "./MovieDiscover";
+
+type MovieSubTab = "favorites" | "recent" | "discover";
+
+const TABS = [
+  { key: "favorites" as const, label: "Favoritos" },
+  { key: "recent" as const, label: "Assistido recentemente" },
+  { key: "discover" as const, label: "Descobrir" },
+];
 
 interface MovieCategoryPanelProps {
   // "/api/users/:username" (perfil público) ou "/api" (home, dados
@@ -13,14 +22,15 @@ interface MovieCategoryPanelProps {
 
 const PAGE_SIZE = 12;
 
-// Aba "Filmes" da Home — favoritos e assistido recentemente como 2
-// sub-abas independentes (ver MediaSubTabs), cada uma com sua própria
-// rolagem infinita vertical (ver InfiniteMediaGrid). Reaproveita a rota
+// Painel da seção "Filmes" (rota /filmes) — 3 sub-abas: favoritos e
+// assistido recentemente com rolagem infinita própria (ver
+// InfiniteMediaGrid), mais Descobrir, que embute MovieDiscover como estava
+// (antes era a rota índice da seção, ver router.tsx). Reaproveita a rota
 // paginada que "Meus filmes" já usa (favorite=true&sortBy=favorite pra
 // favoritos, status=watched&sortBy=updatedAt pra recentes) — nenhuma rota
 // nova no backend.
 export function MovieCategoryPanel({ basePath }: MovieCategoryPanelProps) {
-  const [subTab, setSubTab] = useState<MediaSubTab>("favorites");
+  const [subTab, setSubTab] = useState<MovieSubTab>("favorites");
 
   const favorites = useInfiniteList<MovieEntryWithMovie>(
     (page) =>
@@ -35,7 +45,7 @@ export function MovieCategoryPanel({ basePath }: MovieCategoryPanelProps) {
 
   return (
     <div>
-      <MediaSubTabs active={subTab} onChange={setSubTab} recentLabel="Assistido recentemente" />
+      <SubTabs tabs={TABS} active={subTab} onChange={setSubTab} />
 
       <InfiniteMediaGrid
         hidden={subTab !== "favorites"}
@@ -53,6 +63,7 @@ export function MovieCategoryPanel({ basePath }: MovieCategoryPanelProps) {
         getKey={(item) => item.movie.tmdbId}
         renderItem={(item) => <MovieCard movie={item.movie} entry={item} interactive />}
       />
+      {subTab === "discover" && <MovieDiscover />}
     </div>
   );
 }

@@ -146,4 +146,26 @@ describe("MovieCategoryPanel", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Assistido recentemente" }));
     expect(await screen.findByText("Nenhum filme assistido recentemente.")).toBeVisible();
   });
+
+  it("aba Descobrir embute MovieDiscover, sem buscar antes de entrar nela", async () => {
+    getMock.mockImplementation((path: string) => {
+      if (path === FAVORITES_PAGE1_URL) return Promise.resolve(paginated([], 1, 0));
+      if (path === RECENT_PAGE1_URL) return Promise.resolve(paginated([], 1, 0));
+      if (path === "/api/movies/discover?page=1") {
+        return Promise.resolve({
+          results: [movieEntry(9, "Filme Popular").movie],
+          hasMore: false,
+        });
+      }
+      return Promise.reject(new Error("rota inesperada: " + path));
+    });
+
+    renderPanel();
+    await screen.findByText("Nenhum filme favoritado ainda.");
+    expect(getMock.mock.calls.some(([path]) => path === "/api/movies/discover?page=1")).toBe(false);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Descobrir" }));
+
+    expect(await screen.findByText("Filme Popular")).toBeInTheDocument();
+  });
 });
