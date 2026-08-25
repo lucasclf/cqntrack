@@ -162,6 +162,13 @@
       "when": 1787257486459,
       "tag": "0022_daily_quasimodo",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "6",
+      "when": 1787670594589,
+      "tag": "0023_spicy_amphibian",
+      "breakpoints": true
     }
   ]
 }

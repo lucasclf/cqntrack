@@ -9,3 +9,4 @@ export * from "./media-type";
 export * from "./movies";
 export * from "./people";
 export * from "./series";
+export * from "./social";

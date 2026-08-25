@@ -18,6 +18,7 @@ import { moviesRouter } from "./movies/movies.routes";
 import { peopleRouter } from "./people/people.routes";
 import { seriesListsRouter } from "./series/lists.routes";
 import { seriesRouter } from "./series/series.routes";
+import { socialRouter } from "./social/social.routes";
 import { usersRouter } from "./users/users.routes";
 
 const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -112,6 +113,7 @@ app.route("/api/movies", moviesRouter);
 app.route("/api/movies-lists", movieListsRouter);
 app.route("/api/people", peopleRouter);
 app.route("/api/activity", activityRouter);
+app.route("/api/social", socialRouter);
 app.route("/api/users", usersRouter);
 
 // Handler central pra qualquer exceção não tratada por uma rota (bug de

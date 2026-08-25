@@ -130,10 +130,11 @@ describe("AppShell", () => {
     expect(screen.queryByRole("menuitem", { name: "Ver meu perfil" })).not.toBeInTheDocument();
   });
 
-  it("menu de conta tem 'Conta' e 'Sair'", () => {
+  it("menu de conta tem 'Amigos', 'Conta' e 'Sair'", () => {
     renderShell("/");
     openAccountMenu();
 
+    expect(screen.getByRole("menuitem", { name: "Amigos" })).toHaveAttribute("href", "/amigos");
     expect(screen.getByRole("menuitem", { name: "Conta" })).toHaveAttribute("href", "/conta");
     expect(screen.getByRole("menuitem", { name: "Sair" })).toBeInTheDocument();
   });

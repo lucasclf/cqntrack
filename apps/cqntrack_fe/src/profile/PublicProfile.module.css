@@ -61,6 +61,7 @@
 
 .headerInfo {
   min-width: 0;
+  flex: 1;
 }
 
 .headerInfo h1 {

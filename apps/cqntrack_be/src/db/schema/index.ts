@@ -6,3 +6,4 @@ export * from "./igdb.schema";
 export * from "./manga.schema";
 export * from "./movies.schema";
 export * from "./series.schema";
+export * from "./social.schema";

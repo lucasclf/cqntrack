@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Outlet, useLocation, useParams } from "react-router";
 import { PublicLayout } from "../layouts/PublicLayout";
 import { ApiError, apiClient } from "../lib/api-client";
+import { FollowButton } from "../social/FollowButton";
 import { BookStats } from "./BookStats";
 import { GameStats } from "./GameStats";
 import { MangaStats } from "./MangaStats";
@@ -124,6 +125,7 @@ export function PublicProfile() {
             <p className={styles.handle}>@{profile.username}</p>
             <p className={styles.memberSince}>Membro desde {memberSince}</p>
           </div>
+          <FollowButton username={username} />
         </header>
 
         <ProfileTabs sectionPrefix={`/@${username}`} />

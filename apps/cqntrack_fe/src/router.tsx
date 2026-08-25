@@ -55,6 +55,7 @@ const routeModules = {
   seriesDiscover: () => import("./series/SeriesDiscover"),
   seriesListDetail: () => import("./series/SeriesListDetail"),
   seriesSearch: () => import("./series/SeriesSearch"),
+  friendsPage: () => import("./social/FriendsPage"),
 };
 
 export const routes: RouteObject[] = [
@@ -112,6 +113,10 @@ export const routes: RouteObject[] = [
         children: [
           { index: true, element: <Home /> },
           { path: "conta", element: <Account /> },
+          {
+            path: "amigos",
+            lazy: async () => ({ Component: (await routeModules.friendsPage()).FriendsPage }),
+          },
           {
             path: "jogos",
             children: [
