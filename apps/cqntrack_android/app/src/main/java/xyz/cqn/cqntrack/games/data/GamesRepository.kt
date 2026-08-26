@@ -20,8 +20,8 @@ class GamesRepository @Inject constructor(
     suspend fun getDetail(igdbId: Int): GameDetailResponseDto =
         runApiCall { gamesApi.getDetail(igdbId) }
 
-    suspend fun discover(page: Int): DiscoverGamesResponseDto =
-        runApiCall { gamesApi.discover(page) }
+    suspend fun discover(page: Int, platform: GameDiscoverPlatform?): DiscoverGamesResponseDto =
+        runApiCall { gamesApi.discover(page, platform?.apiValue) }
 
     suspend fun upsertEntry(igdbId: Int, body: UpsertGameEntryRequestDto): GameEntryDto =
         runApiCall { gamesApi.upsertEntry(igdbId, body) }

@@ -26,11 +26,14 @@ import androidx.compose.ui.unit.dp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
+    onOpenContinueWatching: () -> Unit,
     onOpenBooks: () -> Unit,
     onOpenMovies: () -> Unit,
     onOpenGames: () -> Unit,
     onOpenSeries: () -> Unit,
     onOpenManga: () -> Unit,
+    onOpenActivity: () -> Unit,
+    onOpenSocial: () -> Unit,
     onOpenAccount: () -> Unit,
 ) {
     Scaffold(
@@ -46,11 +49,14 @@ fun HomeScreen(
         },
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
+            SectionButton("Continuar assistindo", onOpenContinueWatching)
             SectionButton("Livros", onOpenBooks)
             SectionButton("Filmes", onOpenMovies)
             SectionButton("Jogos", onOpenGames)
             SectionButton("Séries", onOpenSeries)
             SectionButton("Mangás", onOpenManga)
+            SectionButton("Atividades", onOpenActivity)
+            SectionButton("Social", onOpenSocial)
         }
     }
 }

@@ -1,6 +1,7 @@
 package xyz.cqn.cqntrack.games.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,6 +13,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.List
@@ -19,6 +21,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -33,6 +36,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
+import xyz.cqn.cqntrack.games.data.GameDiscoverPlatform
 import xyz.cqn.cqntrack.games.data.GameSummaryDto
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -80,6 +84,29 @@ fun GameDiscoverScreen(
                 columns = GridCells.Fixed(3),
                 modifier = Modifier.fillMaxSize().padding(padding).padding(8.dp),
             ) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Row(
+                        modifier = Modifier
+                            .horizontalScroll(rememberScrollState())
+                            .padding(bottom = 8.dp),
+                    ) {
+                        FilterChip(
+                            selected = uiState.platform == null,
+                            onClick = { viewModel.selectPlatform(null) },
+                            label = { Text("Todas") },
+                            modifier = Modifier.padding(end = 8.dp),
+                        )
+                        GameDiscoverPlatform.entries.forEach { platform ->
+                            FilterChip(
+                                selected = uiState.platform == platform,
+                                onClick = { viewModel.selectPlatform(platform) },
+                                label = { Text(platform.label) },
+                                modifier = Modifier.padding(end = 8.dp),
+                            )
+                        }
+                    }
+                }
+
                 items(uiState.results, key = { it.igdbId }) { game ->
                     GameDiscoverCard(game = game, onClick = { onGameClick(game) })
                 }

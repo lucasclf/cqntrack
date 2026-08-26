@@ -4,7 +4,14 @@ import android.net.Uri
 
 object NavRoutes {
     const val LOGIN = "login"
+    const val SIGNUP = "signup"
     const val HOME = "home"
+
+    const val CONTINUE_WATCHING = "continue_watching"
+    const val ACTIVITY = "activity"
+    const val SOCIAL = "social"
+    const val SOCIAL_ACTIVITY = "social_activity"
+    const val SOCIAL_SEARCH = "social_search"
 
     const val BOOK_SEARCH = "book_search"
     const val BOOK_DETAIL = "book_detail/{googleBooksId}"

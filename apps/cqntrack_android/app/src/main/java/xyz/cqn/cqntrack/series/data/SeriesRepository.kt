@@ -50,6 +50,9 @@ class SeriesRepository @Inject constructor(
         page: Int,
     ): PaginatedSeriesEntriesResponseDto = runApiCall { seriesApi.getEntries(favorite, sortBy, order, page) }
 
+    suspend fun getContinueWatching(cursor: Int): ContinueWatchingResponseDto =
+        runApiCall { seriesApi.getContinueWatching(cursor) }
+
     private suspend fun <T> runApiCall(block: suspend () -> T): T =
         try {
             block()

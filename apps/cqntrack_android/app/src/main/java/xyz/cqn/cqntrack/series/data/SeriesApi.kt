@@ -68,4 +68,11 @@ interface SeriesApi {
         @Query("order") order: String = "desc",
         @Query("page") page: Int = 1,
     ): PaginatedSeriesEntriesResponseDto
+
+    /** "Continuar assistindo" da Home — calculado ao vivo, paginado por cursor (índice, não datetime). */
+    @GET("api/series/continue-watching")
+    suspend fun getContinueWatching(
+        @Query("cursor") cursor: Int = 0,
+        @Query("pageSize") pageSize: Int = 12,
+    ): ContinueWatchingResponseDto
 }

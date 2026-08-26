@@ -10,6 +10,8 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import xyz.cqn.cqntrack.activity.data.MediaType
+import xyz.cqn.cqntrack.activity.ui.ActivityScreen
 import xyz.cqn.cqntrack.books.ui.AuthorDetailScreen as BookAuthorDetailScreen
 import xyz.cqn.cqntrack.books.ui.BookDetailScreen
 import xyz.cqn.cqntrack.books.ui.BookEntriesScreen
@@ -40,6 +42,7 @@ import xyz.cqn.cqntrack.people.ui.PersonDetailScreen
 import xyz.cqn.cqntrack.profile.data.FavoriteMediaType
 import xyz.cqn.cqntrack.profile.ui.AccountScreen
 import xyz.cqn.cqntrack.profile.ui.PublicProfileScreen
+import xyz.cqn.cqntrack.series.ui.ContinueWatchingScreen
 import xyz.cqn.cqntrack.series.ui.EpisodeDetailScreen
 import xyz.cqn.cqntrack.series.ui.SeriesDetailScreen
 import xyz.cqn.cqntrack.series.ui.SeriesDiscoverScreen
@@ -47,7 +50,11 @@ import xyz.cqn.cqntrack.series.ui.SeriesEntriesScreen
 import xyz.cqn.cqntrack.series.ui.SeriesListDetailScreen
 import xyz.cqn.cqntrack.series.ui.SeriesListsScreen
 import xyz.cqn.cqntrack.series.ui.SeriesSearchScreen
+import xyz.cqn.cqntrack.social.ui.SocialActivityScreen
+import xyz.cqn.cqntrack.social.ui.SocialFollowingScreen
+import xyz.cqn.cqntrack.social.ui.SocialSearchScreen
 import xyz.cqn.cqntrack.ui.auth.LoginScreen
+import xyz.cqn.cqntrack.ui.auth.SignupScreen
 import xyz.cqn.cqntrack.ui.home.HomeScreen
 
 /**
@@ -77,18 +84,59 @@ fun CqntrackNavHost() {
 
     NavHost(navController = navController, startDestination = startDestination) {
         composable(NavRoutes.LOGIN) {
-            LoginScreen()
+            LoginScreen(onSignupClick = { navController.navigate(NavRoutes.SIGNUP) })
+        }
+        composable(NavRoutes.SIGNUP) {
+            SignupScreen(onBackToLogin = { navController.popBackStack() })
         }
 
         composable(NavRoutes.HOME) {
             HomeScreen(
+                onOpenContinueWatching = { navController.navigate(NavRoutes.CONTINUE_WATCHING) },
                 onOpenBooks = { navController.navigate(NavRoutes.BOOK_SEARCH) },
                 onOpenMovies = { navController.navigate(NavRoutes.MOVIE_DISCOVER) },
                 onOpenGames = { navController.navigate(NavRoutes.GAME_DISCOVER) },
                 onOpenSeries = { navController.navigate(NavRoutes.SERIES_DISCOVER) },
                 onOpenManga = { navController.navigate(NavRoutes.MANGA_DISCOVER) },
+                onOpenActivity = { navController.navigate(NavRoutes.ACTIVITY) },
+                onOpenSocial = { navController.navigate(NavRoutes.SOCIAL) },
                 onOpenAccount = { navController.navigate(NavRoutes.ACCOUNT) },
             )
+        }
+
+        composable(NavRoutes.CONTINUE_WATCHING) {
+            ContinueWatchingScreen(onItemClick = { item ->
+                navController.navigate(
+                    NavRoutes.seriesEpisodeDetail(
+                        item.series.tmdbId,
+                        item.nextEpisode.seasonNumber,
+                        item.nextEpisode.episodeNumber,
+                    ),
+                )
+            })
+        }
+
+        composable(NavRoutes.ACTIVITY) {
+            ActivityScreen(onItemClick = { item ->
+                navController.navigate(activityItemRoute(item.mediaType, item.itemId))
+            })
+        }
+
+        composable(NavRoutes.SOCIAL) {
+            SocialFollowingScreen(
+                onUserClick = { username -> navController.navigate(NavRoutes.publicProfile(username)) },
+                onActivityClick = { navController.navigate(NavRoutes.SOCIAL_ACTIVITY) },
+                onSearchClick = { navController.navigate(NavRoutes.SOCIAL_SEARCH) },
+            )
+        }
+        composable(NavRoutes.SOCIAL_ACTIVITY) {
+            SocialActivityScreen(
+                onItemClick = { item -> navController.navigate(activityItemRoute(item.mediaType, item.itemId)) },
+                onAuthorClick = { username -> navController.navigate(NavRoutes.publicProfile(username)) },
+            )
+        }
+        composable(NavRoutes.SOCIAL_SEARCH) {
+            SocialSearchScreen(onUserClick = { username -> navController.navigate(NavRoutes.publicProfile(username)) })
         }
 
         composable(NavRoutes.PERSON_DETAIL) {
@@ -313,4 +361,13 @@ private fun NavHostController.navigateAndClearBackStack(route: String) {
         popUpTo(0) { inclusive = true }
         launchSingleTop = true
     }
+}
+
+/** Mesmo dispatcher de FavoriteMediaType acima, reaproveitado por Atividades e Social > Atividades. */
+private fun activityItemRoute(mediaType: MediaType, itemId: String): String = when (mediaType) {
+    MediaType.Books -> NavRoutes.bookDetail(itemId)
+    MediaType.Movies -> NavRoutes.movieDetail(itemId.toInt())
+    MediaType.Games -> NavRoutes.gameDetail(itemId.toInt())
+    MediaType.Series -> NavRoutes.seriesDetail(itemId.toInt())
+    MediaType.Manga -> NavRoutes.mangaDetail(itemId)
 }

@@ -43,6 +43,8 @@ data class PublicProfileUiState(
     val gameEntries: PaginatedGameEntriesResponseDto? = null,
     val seriesEntries: PaginatedSeriesEntriesResponseDto? = null,
     val mangaEntries: PaginatedMangaEntriesResponseDto? = null,
+    /** Pro FollowButton saber se deve se esconder (próprio perfil) — ver FollowButton.kt. */
+    val viewerUsername: String? = null,
 )
 
 @HiltViewModel
@@ -73,6 +75,13 @@ class PublicProfileViewModel @Inject constructor(
             _uiState.update { it.copy(favoritesLoading = true) }
             val favorites = profileRepository.getFavorites(username)
             _uiState.update { it.copy(favoritesLoading = false, favorites = favorites) }
+        }
+
+        // Pro FollowButton saber se deve se esconder (é o próprio perfil) — falha
+        // silenciosa (fica null), o botão simplesmente não aparece nesse caso.
+        viewModelScope.launch {
+            val me = runCatching { profileRepository.getMe() }.getOrNull()
+            _uiState.update { it.copy(viewerUsername = me?.username) }
         }
 
         loadEntries()

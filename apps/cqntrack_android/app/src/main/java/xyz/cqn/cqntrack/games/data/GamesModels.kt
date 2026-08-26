@@ -63,6 +63,24 @@ data class DiscoverGamesResponseDto(
     val hasMore: Boolean,
 )
 
+/**
+ * Espelha GAME_DISCOVER_PLATFORMS em packages/shared/src/games.ts — conjunto fixo e curto de
+ * plataformas populares (não a lista completa da IGDB), só o contrato slug/label entre o app e o
+ * backend. Diferente de GameEntryDto.platforms (plataformas que o usuário jogou) — este filtra o
+ * catálogo de aclamados em si (GET /api/games/discover?platform=...).
+ */
+@Serializable
+enum class GameDiscoverPlatform(val apiValue: String, val label: String) {
+    @SerialName("ps5") Ps5("ps5", "PS5"),
+    @SerialName("ps4") Ps4("ps4", "PS4"),
+    @SerialName("xbox-series") XboxSeries("xbox-series", "Xbox Series"),
+    @SerialName("xbox-one") XboxOne("xbox-one", "Xbox One"),
+    @SerialName("switch2") Switch2("switch2", "Switch 2"),
+    @SerialName("switch") Switch("switch", "Switch"),
+    @SerialName("pc") Pc("pc", "PC"),
+    @SerialName("mobile") Mobile("mobile", "Mobile"),
+}
+
 @Serializable
 data class GameDetailResponseDto(
     val game: GameDetailDto,

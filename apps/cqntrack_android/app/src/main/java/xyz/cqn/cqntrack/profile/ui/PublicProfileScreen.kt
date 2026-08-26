@@ -38,6 +38,7 @@ import xyz.cqn.cqntrack.manga.data.MangaStatus
 import xyz.cqn.cqntrack.movies.data.MovieStatus
 import xyz.cqn.cqntrack.profile.data.FavoriteItem
 import xyz.cqn.cqntrack.profile.data.FavoriteMediaType
+import xyz.cqn.cqntrack.social.ui.FollowButton
 
 private val BOOK_STATUS_LABELS = mapOf(
     BookStatus.WantToRead to "Quero ler",
@@ -123,6 +124,10 @@ fun PublicProfileScreen(
                                 "Membro desde ${profile.memberSince.take(10)}",
                                 style = MaterialTheme.typography.bodyMedium,
                                 modifier = Modifier.padding(top = 4.dp),
+                            )
+                            FollowButton(
+                                username = profile.username,
+                                viewerUsername = uiState.viewerUsername,
                             )
                         }
                     }

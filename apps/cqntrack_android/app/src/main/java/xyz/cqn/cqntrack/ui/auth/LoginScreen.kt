@@ -13,6 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -24,7 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 
 @Composable
-fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
+fun LoginScreen(onSignupClick: () -> Unit = {}, viewModel: LoginViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold { padding ->
@@ -81,6 +82,15 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
                 } else {
                     Text("Entrar")
                 }
+            }
+
+            TextButton(
+                onClick = onSignupClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+            ) {
+                Text("Não tem conta? Criar conta")
             }
         }
     }

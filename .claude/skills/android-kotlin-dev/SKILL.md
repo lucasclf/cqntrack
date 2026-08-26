@@ -39,6 +39,41 @@ JUnit5 (Jupiter) + MockK + Turbine — ver `core/auth/src/test/.../AuthRepositor
 referência de padrão (mock de `Retrofit.Response` com header customizado via `okhttp3.Response.Builder`
 pra testar leitura de `set-auth-token`).
 
+## Testar contra produção com dado real (recomendado)
+
+Todas as rotas de mídia exigem sessão — testar sem login só cobre telas de auth/navegação, não pega
+bug de UI com dado real (2 bugs reais só apareceram assim: contador que não atualizava na primeira
+marcação, tela que travava sem scroll com sinopse longa). Existe uma conta de teste reutilizável em
+produção, confirmada pelo usuário — **não apagar, usar sempre que precisar**:
+
+```
+email: android-smoketest-1787319523@cqntrack.dev
+senha: SenhaTeste12345!
+```
+
+Login de verdade pela UI do app (não bypass de estado) é o jeito preferido de validar. Via
+`adb shell input`:
+
+```bash
+ADB="/c/Users/lucas/AppData/Local/Android/Sdk/platform-tools/adb.exe"
+"$ADB" shell input tap <x> <y>              # tap no campo e-mail
+"$ADB" shell input text 'android-smoketest-1787319523@cqntrack.dev'
+"$ADB" shell input tap <x> <y>              # tap no campo senha
+"$ADB" shell input text 'SenhaTeste12345!'
+"$ADB" shell input keyevent 4               # fecha o teclado antes de tocar em "Entrar" (o teclado cobre o botão)
+"$ADB" shell input tap <x> <y>              # tap em "Entrar"
+```
+
+**Gotchas do `adb shell input text`:**
+
+- `%s` vira espaço — não usar `%s` achando que escapa outro caractere (gerou senha errada com
+  espaço extra numa sessão real: `'Senha%s!'` virou `"Senha !"`, não `"Senha!"`).
+- Espaço literal na string às vezes corta o texto no meio (`'Breaking Bad'` só digitou "Breaking").
+  Mais confiável: `input text 'Breaking'` seguido de `input keyevent 62` (space) seguido de
+  `input text 'Bad'`.
+- Depois de logar uma vez, o token fica salvo (`EncryptedSharedPreferences`) e sobrevive a
+  `adb install -r` — não precisa logar de novo a cada rebuild, só reabrir o app.
+
 ## Rodar no emulador
 
 **AVD correto é `Pixel_8`** — não `Galaxy_S24` (nome antigo, referenciado em

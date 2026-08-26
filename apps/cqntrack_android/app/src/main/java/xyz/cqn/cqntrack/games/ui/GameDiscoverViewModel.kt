@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import xyz.cqn.cqntrack.games.data.GameDiscoverPlatform
 import xyz.cqn.cqntrack.games.data.GameSummaryDto
 import xyz.cqn.cqntrack.games.data.GamesRepository
 import javax.inject.Inject
@@ -18,6 +19,7 @@ data class GameDiscoverUiState(
     val page: Int = 1,
     val hasMore: Boolean = false,
     val loadingMore: Boolean = false,
+    val platform: GameDiscoverPlatform? = null,
     val errorMessage: String? = null,
 )
 
@@ -34,6 +36,12 @@ class GameDiscoverViewModel @Inject constructor(
         load(page = 1)
     }
 
+    fun selectPlatform(platform: GameDiscoverPlatform?) {
+        if (_uiState.value.platform == platform) return
+        _uiState.update { it.copy(platform = platform) }
+        load(page = 1)
+    }
+
     fun loadMore() {
         if (_uiState.value.loadingMore || !_uiState.value.hasMore) return
         load(page = _uiState.value.page + 1, appending = true)
@@ -43,7 +51,7 @@ class GameDiscoverViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = !appending, loadingMore = appending, errorMessage = null) }
             try {
-                val response = gamesRepository.discover(page)
+                val response = gamesRepository.discover(page, _uiState.value.platform)
                 _uiState.update {
                     it.copy(
                         isLoading = false,
