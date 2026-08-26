@@ -24,7 +24,7 @@ cqntrack/
       src/
         integrations/     # 1 client isolado por API externa (ex: igdb/)
     cqntrack_fe/           # React app
-    cqntrack_mobile/        # Empacota o cqntrack_fe via Capacitor (app Android)
+    cqntrack_android/       # App Android nativo (Kotlin/Compose), consome a mesma API REST
   packages/
     shared/                # Schemas Zod e tipos compartilhados entre BE e FE
   pnpm-workspace.yaml
@@ -54,9 +54,9 @@ cqntrack/
 
 ## App mobile (Android)
 
-- `apps/cqntrack_mobile` empacota o `apps/cqntrack_fe` via Capacitor — mesmo código-fonte, um segundo alvo de build (`vite build --mode mobile`, ver `vite.config.ts` do FE). Não é um app nativo/React Native separado.
-- **Ordem expressa: toda alteração feita no frontend web deve ser refletida no app mobile.** Como os dois builds compartilham os mesmos componentes React, a maior parte das mudanças já chega ao mobile automaticamente — a obrigação aqui é de vigilância, não de reimplementação: ao terminar uma tarefa no FE, conferir se ela também se aplica ao build mobile (rebuildar `dist-mobile` e checar) antes de considerar a tarefa concluída. Não deixar o mobile ficar defasado silenciosamente.
-- **Exceção deliberada:** funcionalidades de importação de dados de outras redes sociais/apps (hoje: Filmow, tvtime via CSV, Cinopsys via JSON) ficam de fora do build mobile de propósito (`import.meta.env.VITE_TARGET !== "mobile"`, ver `Account.tsx`). Não é uma lacuna a corrigir — é o único tipo de funcionalidade que pode divergir entre web e mobile sem ser considerado um bug.
+- `apps/cqntrack_android` é um app Android nativo (Kotlin/Compose/Hilt/Retrofit), **não** um wrapper do `cqntrack_fe` — código-fonte separado, consumindo a mesma API REST do backend. Substituiu o antigo wrapper Capacitor (`apps/cqntrack_mobile`, removido em 2026-08-26).
+- **Ordem expressa: toda alteração feita no frontend web deve ser avaliada quanto à paridade com o app Android.** Como são duas bases de código independentes (React vs Kotlin/Compose), nada chega automaticamente — ao terminar uma tarefa no FE, replicar manualmente a mudança em `apps/cqntrack_android` (mesmo padrão de pacote por seção: `<seção>/data/` + `<seção>/ui/`, ver skill `android-kotlin-dev`) antes de considerar a tarefa concluída. Não deixar o Android ficar defasado silenciosamente.
+- **Exceção deliberada:** funcionalidades de importação de dados de outras redes sociais/apps (hoje: Filmow, tvtime via CSV, Cinopsys via JSON) ficam de fora do Android nativo de propósito — mesma exceção que já existia pro build mobile antigo (`import.meta.env.VITE_TARGET !== "mobile"` no FE, ver `Account.tsx`). Não é uma lacuna a corrigir.
 
 ## Testes
 
