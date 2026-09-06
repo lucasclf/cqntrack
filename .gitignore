@@ -28,6 +28,10 @@ coverage
 credentials.json
 service-account*.json
 
+# Config local do Claude Code (allowlist de comandos aprovados na sessão —
+# pode acabar guardando comandos com credenciais em texto claro)
+.claude/settings.json
+
 # Bancos de dados locais (ex.: D1 local, sqlite de dev)
 *.sqlite
 *.sqlite3
