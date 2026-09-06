@@ -12,6 +12,9 @@ val OnBackground = Color(0xFF1D1730) // --text-primary (light)
 val Surface = Color(0xFFF3F0FC) // --panel-bg (light)
 val OnSurface = Color(0xFF1D1730) // --text-primary (light)
 val Error = Color(0xFFDC2626) // --error (light)
+// Segundo tom do gradiente dos tiles da Home (ver HomeScreen.kt) — não é um slot do
+// Material ColorScheme padrão, por isso fica solto aqui em vez de dentro do lightColorScheme.
+val AccentStrong = Color(0xFF6D28D9) // violet-700 (light)
 
 val PrimaryDark = Color(0xFFA78BFA) // --accent (dark) / violet-400
 val OnPrimaryDark = Color(0xFF140B29) // --on-accent (dark)
@@ -21,3 +24,4 @@ val OnBackgroundDark = Color(0xFFF5F2FF) // --text-primary (dark)
 val SurfaceDark = Color(0xFF120C1E) // --panel-bg (dark)
 val OnSurfaceDark = Color(0xFFF5F2FF) // --text-primary (dark)
 val ErrorDark = Color(0xFFF87171) // --error (dark)
+val AccentStrongDark = Color(0xFF8B5CF6) // violet-500 (dark)
