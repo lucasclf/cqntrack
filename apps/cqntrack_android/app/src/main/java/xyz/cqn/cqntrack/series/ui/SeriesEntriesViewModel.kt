@@ -12,9 +12,13 @@ import xyz.cqn.cqntrack.series.data.SeriesEntryWithSeriesDto
 import xyz.cqn.cqntrack.series.data.SeriesRepository
 import javax.inject.Inject
 
-/** Sem "status" — série não tem status próprio (ver SeriesEntrySchema). */
+/**
+ * Sem "status" — série não tem status próprio (ver SeriesEntrySchema). O sort "updatedAt" não é
+ * só nota/favorito: o backend também considera o último episódio assistido (ver comentário em
+ * listSeriesEntries, apps/cqntrack_be/src/series/entries.service.ts) — daí o rótulo.
+ */
 enum class SeriesEntrySortField(val apiValue: String, val label: String) {
-    UpdatedAt("updatedAt", "Atualizado"),
+    UpdatedAt("updatedAt", "Assistido recentemente"),
     Rating("rating", "Nota"),
     Favorite("favorite", "Favorito"),
 }

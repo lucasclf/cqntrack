@@ -256,6 +256,18 @@ export async function ensureSeriesEntry(
   return { cachedSeries, row };
 }
 
+// Assistir um episódio não passa por upsertSeriesEntry (não altera rating/review/favorito/
+// abandono), então sem isso seriesEntry.updatedAt nunca refletiria progresso de assistir —
+// só interações de metadado. Chamado pelos 3 pontos de "marcar assistido" em
+// episodes.service.ts (não ao desmarcar — mesmo espírito de "desfavoritar não gera
+// atividade": só a ação positiva de assistir sinaliza "mexi nessa série agora").
+export async function touchSeriesEntry(db: Db, userId: string, tmdbId: number): Promise<void> {
+  await db
+    .update(seriesEntry)
+    .set({ updatedAt: new Date() })
+    .where(and(eq(seriesEntry.userId, userId), eq(seriesEntry.seriesId, tmdbId)));
+}
+
 export async function upsertSeriesEntry(
   env: Env,
   db: Db,

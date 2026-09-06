@@ -6,7 +6,9 @@ export type SeriesEntrySortField = (typeof SERIES_ENTRY_SORT_FIELDS)[number];
 const SORT_FIELD_LABELS: Record<SeriesEntrySortField, string> = {
   rating: "Nota",
   favorite: "Favorito",
-  updatedAt: "Atualizado em",
+  // Não é só "atualizado" no sentido estrito (nota/favorito) — assistir um
+  // episódio novo também conta (ver comentário em listSeriesEntries no BE).
+  updatedAt: "Assistido recentemente",
 };
 
 interface SeriesEntryFiltersProps {

@@ -8,7 +8,7 @@ import type { createDb } from "../db/client";
 import { activity, seriesEpisodeWatch } from "../db/schema";
 import { getSeriesEpisode, getSeriesSeason } from "../integrations/tmdb/series";
 import { buildPosterUrl, type TmdbCrewMember } from "../integrations/tmdb/types";
-import { ensureSeriesEntry } from "./entries.service";
+import { ensureSeriesEntry, touchSeriesEntry } from "./entries.service";
 import { toActivitySnapshot } from "./series.service";
 
 type Db = ReturnType<typeof createDb>;
@@ -72,6 +72,7 @@ export async function setEpisodeWatched(
       .insert(seriesEpisodeWatch)
       .values({ userId, seriesId: tmdbId, seasonNumber, episodeNumber })
       .onConflictDoNothing();
+    await touchSeriesEntry(db, userId, tmdbId);
   } else {
     await db
       .delete(seriesEpisodeWatch)
@@ -131,6 +132,8 @@ export async function setSeasonWatched(
       .onConflictDoNothing();
   }
 
+  await touchSeriesEntry(db, userId, tmdbId);
+
   await db.insert(activity).values({
     userId,
     ...toActivitySnapshot(cachedSeries),
@@ -180,6 +183,8 @@ export async function setAllSeasonsWatched(
   if (rows.length > 0) {
     await db.insert(seriesEpisodeWatch).values(rows).onConflictDoNothing();
   }
+
+  await touchSeriesEntry(db, userId, tmdbId);
 
   await db.insert(activity).values({
     userId,

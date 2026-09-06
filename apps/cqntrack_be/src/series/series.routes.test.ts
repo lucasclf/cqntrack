@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createAuthenticatedUser } from "../../test/auth-helpers";
 import { app } from "../app";
 import { createDb } from "../db/client";
-import { activity, series, seriesEpisodeWatch, user } from "../db/schema";
+import { activity, series, seriesEntry, seriesEpisodeWatch, user } from "../db/schema";
 import { resetSeasonCache } from "./continue-watching.service";
 
 const TMDB_SEARCH_RESULT = {
@@ -745,6 +745,69 @@ describe("GET /api/series/entries", () => {
     const res = await app.request("/api/series/entries", undefined, env);
 
     expect(res.status).toBe(401);
+  });
+
+  it("ordena por 'updatedAt' considerando o episódio assistido mais recentemente, não só a entry", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    const db = createDb(env);
+
+    stubSeriesCacheFetch(710, "Série Antiga");
+    await app.request(
+      "/api/series/710/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ rating: 4 }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    stubSeriesCacheFetch(711, "Série Recente");
+    await app.request(
+      "/api/series/711/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ rating: 3 }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    // As duas entries ficam "no passado" — sem isso, a diferença de updatedAt
+    // entre as duas (criadas em sequência, dentro do mesmo teste) já bastaria
+    // pra 711 vir primeiro mesmo sem o bug (falso positivo).
+    await db
+      .update(seriesEntry)
+      .set({ updatedAt: new Date(Date.now() - 48 * 60 * 60 * 1000) })
+      .where(eq(seriesEntry.seriesId, 710));
+    await db
+      .update(seriesEntry)
+      .set({ updatedAt: new Date(Date.now() - 24 * 60 * 60 * 1000) })
+      .where(eq(seriesEntry.seriesId, 711));
+
+    // Assiste um episódio de 710 (a mais antiga) agora — não toca
+    // seriesEntry.updatedAt, só series_episode_watch.
+    await app.request(
+      "/api/series/710/episodes/1/1",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ watched: true }),
+      },
+      env,
+    );
+
+    const res = await app.request(
+      "/api/series/entries?sortBy=updatedAt&order=desc",
+      { headers: { cookie } },
+      env,
+    );
+    const body = (await res.json()) as { items: Array<{ series: { tmdbId: number } }> };
+
+    expect(body.items[0]?.series.tmdbId).toBe(710);
+    expect(body.items[1]?.series.tmdbId).toBe(711);
   });
 
   it("availableEpisode vem preenchido quando o último episódio lançado ainda não foi assistido", async () => {
