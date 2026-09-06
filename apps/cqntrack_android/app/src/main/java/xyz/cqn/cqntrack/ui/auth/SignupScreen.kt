@@ -19,10 +19,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import xyz.cqn.cqntrack.core.designsystem.PasswordOutlinedTextField
 
 /**
  * Mesmo molde de LoginScreen.kt, com os campos extras de cadastro
@@ -81,13 +81,10 @@ fun SignupScreen(onBackToLogin: () -> Unit, viewModel: SignupViewModel = hiltVie
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             )
-            OutlinedTextField(
+            PasswordOutlinedTextField(
                 value = uiState.password,
                 onValueChange = viewModel::onPasswordChange,
-                label = { Text("Senha") },
-                singleLine = true,
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                label = "Senha",
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             )
 

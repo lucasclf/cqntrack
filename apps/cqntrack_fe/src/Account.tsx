@@ -5,6 +5,7 @@ import { AvatarUpload } from "./AvatarUpload";
 import { ImportCinopsysJson } from "./ImportCinopsysJson";
 import { ImportFilmowCsv } from "./ImportFilmowCsv";
 import { ImportTvTimeCsv } from "./ImportTvTimeCsv";
+import { PasswordField } from "./components/PasswordField";
 import { APK_DOWNLOAD_URL } from "./lib/apk-download-url";
 import { authClient } from "./lib/auth-client";
 
@@ -94,27 +95,18 @@ export function Account() {
       <section className={styles.section}>
         <h2>Alterar senha</h2>
         <form onSubmit={handlePasswordSubmit} className={styles.form}>
-          <label className={styles.field}>
-            <span>Senha atual</span>
-            <input
-              type="password"
-              autoComplete="current-password"
-              required
-              value={currentPassword}
-              onChange={(event) => setCurrentPassword(event.target.value)}
-            />
-          </label>
-          <label className={styles.field}>
-            <span>Nova senha</span>
-            <input
-              type="password"
-              autoComplete="new-password"
-              minLength={8}
-              required
-              value={newPassword}
-              onChange={(event) => setNewPassword(event.target.value)}
-            />
-          </label>
+          <PasswordField
+            label="Senha atual"
+            autoComplete="current-password"
+            value={currentPassword}
+            onChange={setCurrentPassword}
+          />
+          <PasswordField
+            label="Nova senha"
+            autoComplete="new-password"
+            value={newPassword}
+            onChange={setNewPassword}
+          />
           {passwordStatus === "error" && (
             <p role="alert">Senha atual incorreta ou nova senha inválida.</p>
           )}

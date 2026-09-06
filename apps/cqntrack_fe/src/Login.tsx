@@ -3,6 +3,7 @@ import { type FormEvent, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import layoutStyles from "./AuthLayout.module.css";
 import { AuthLayout } from "./AuthLayout";
+import { PasswordField } from "./components/PasswordField";
 import { authClient } from "./lib/auth-client";
 import styles from "./Login.module.css";
 
@@ -82,17 +83,12 @@ export function Login() {
             onChange={(event) => setEmail(event.target.value)}
           />
         </label>
-        <label className={styles.field}>
-          <span>Senha</span>
-          <input
-            type="password"
-            placeholder="••••••••"
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
-        </label>
+        <PasswordField
+          label="Senha"
+          autoComplete="current-password"
+          value={password}
+          onChange={setPassword}
+        />
         <div className={styles.formRow}>
           <label className={styles.checkbox}>
             <input

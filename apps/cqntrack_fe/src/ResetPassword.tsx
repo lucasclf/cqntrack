@@ -3,6 +3,7 @@ import { type FormEvent, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import layoutStyles from "./AuthLayout.module.css";
 import { AuthLayout } from "./AuthLayout";
+import { PasswordField } from "./components/PasswordField";
 import { authClient } from "./lib/auth-client";
 import styles from "./ResetPassword.module.css";
 
@@ -68,17 +69,12 @@ export function ResetPassword() {
       <h1>Escolher nova senha</h1>
       <p className={layoutStyles.subtitle}>Defina a nova senha da sua conta.</p>
       <form onSubmit={handleSubmit}>
-        <label className={styles.field}>
-          <span>Nova senha</span>
-          <input
-            type="password"
-            placeholder="••••••••"
-            autoComplete="new-password"
-            required
-            value={newPassword}
-            onChange={(event) => setNewPassword(event.target.value)}
-          />
-        </label>
+        <PasswordField
+          label="Nova senha"
+          autoComplete="new-password"
+          value={newPassword}
+          onChange={setNewPassword}
+        />
         {error && (
           <p className={layoutStyles.error} role="alert">
             {error}

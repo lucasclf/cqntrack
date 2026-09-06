@@ -36,7 +36,10 @@ private val DarkColors = darkColorScheme(
 @Composable
 fun CqntrackTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    // Falso por padrão: a paleta roxa acima é a identidade visual da marca (mesma do web) —
+    // Material You dinâmico (Android 12+) a substituiria pelas cores do papel de parede do
+    // usuário, o que foi justamente o motivo do app aparecer "muito azul" antes desta mudança.
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val colorScheme = when {

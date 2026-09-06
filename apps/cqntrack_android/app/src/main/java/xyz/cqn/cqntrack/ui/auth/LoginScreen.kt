@@ -20,9 +20,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import xyz.cqn.cqntrack.core.designsystem.PasswordOutlinedTextField
 
 @Composable
 fun LoginScreen(onSignupClick: () -> Unit = {}, viewModel: LoginViewModel = hiltViewModel()) {
@@ -50,13 +50,10 @@ fun LoginScreen(onSignupClick: () -> Unit = {}, viewModel: LoginViewModel = hilt
                     .padding(top = 16.dp),
             )
 
-            OutlinedTextField(
+            PasswordOutlinedTextField(
                 value = uiState.password,
                 onValueChange = viewModel::onPasswordChange,
-                label = { Text("Senha") },
-                singleLine = true,
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                label = "Senha",
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 8.dp),

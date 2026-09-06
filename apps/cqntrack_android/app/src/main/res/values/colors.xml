@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Mesmo roxo do favicon web (apps/cqntrack_fe/public/favicon.svg) -->
+    <color name="ic_launcher_background">#A78BFA</color>
+</resources>
