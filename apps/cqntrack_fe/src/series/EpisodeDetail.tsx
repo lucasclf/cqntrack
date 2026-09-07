@@ -84,7 +84,7 @@ export function EpisodeDetail() {
   return (
     <div className={styles.page}>
       <Link to={`/series/${tmdbId}`} className={styles.backLink}>
-        ← Voltar pra série
+        ← {episode.seriesName}
       </Link>
 
       <div className={styles.header}>

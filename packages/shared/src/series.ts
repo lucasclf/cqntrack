@@ -222,6 +222,16 @@ export const ContinueWatchingResponseSchema = z.object({
   nextCursor: z.number().int().nullable(),
 });
 
+// Recalcula o item de "Continuar assistindo" de 1 série só — usado depois de marcar um
+// episódio como assistido, pra atualizar só aquela linha na lista sem recarregar a Home
+// inteira (ver GET /:tmdbId/continue-watching e getContinueWatchingItemForSeries no BE).
+// `item: null` = a série não tem mais episódio pendente, deve sumir da lista no cliente.
+export const ContinueWatchingItemResponseSchema = z.object({
+  item: ContinueWatchingItemSchema.nullable(),
+});
+
+export type ContinueWatchingItemResponse = z.infer<typeof ContinueWatchingItemResponseSchema>;
+
 export type ContinueWatchingResponse = z.infer<typeof ContinueWatchingResponseSchema>;
 
 export const SeriesListSchema = z.object({
@@ -295,6 +305,7 @@ export type SetWatchedRequest = z.infer<typeof SetWatchedRequestSchema>;
 // os diretores mais frequentes da série inteira (ver SeriesDirectorSchema,
 // usado em SeriesDetailSchema).
 export const SeriesEpisodeDetailSchema = z.object({
+  seriesName: z.string(),
   seasonNumber: z.number().int(),
   episodeNumber: z.number().int(),
   name: z.string(),

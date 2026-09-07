@@ -176,6 +176,61 @@ export interface ContinueWatchingPage {
   nextCursor: number | null;
 }
 
+// Casos A/B/C do comentário de getContinueWatching, isolados pra reuso: tanto o
+// carregamento em lote (Home) quanto getContinueWatchingItemForSeries (recalcular 1
+// série só depois de marcar um episódio, ver series.routes.ts) resolvem exatamente a
+// mesma coisa — só muda quantas séries são processadas de uma vez. `cachedSeries` pode
+// voltar diferente do que entrou (getOrCacheSeries revalida o cache quando stale).
+async function resolveNextEpisodeForSeries(
+  env: Env,
+  db: Db,
+  seriesId: number,
+  cachedSeries: CachedSeries,
+  watchedCountBySeason: Map<number, number>,
+  watchedKeys: Set<string>,
+  budget: { remaining: number },
+): Promise<{ cachedSeries: CachedSeries; nextEpisode: NextEpisode | null }> {
+  let seasons = sortedSeasons(cachedSeries);
+
+  if (hasKnownGap(seasons, watchedCountBySeason)) {
+    // Caso A.
+    const nextEpisode = await findNextUnwatchedEpisode(
+      env,
+      seriesId,
+      seasons,
+      watchedCountBySeason,
+      watchedKeys,
+      budget,
+    );
+    return { cachedSeries, nextEpisode };
+  }
+
+  const status = cachedSeries.status?.toLowerCase() ?? null;
+  const isEndedOrCanceled = status !== null && ENDED_STATUSES.has(status);
+
+  // Caso B: ended/canceled e em dia — nunca mais reconsulta.
+  // Caso C: ainda ativa e em dia — só reconsulta se estiver stale.
+  if (!isEndedOrCanceled && isSeriesCacheStale(cachedSeries) && budget.remaining > 0) {
+    budget.remaining -= 2; // getOrCacheSeries faz até 2 requests (detalhe + créditos)
+    cachedSeries = await getOrCacheSeries(env, db, seriesId);
+    seasons = sortedSeasons(cachedSeries);
+
+    if (hasKnownGap(seasons, watchedCountBySeason)) {
+      const nextEpisode = await findNextUnwatchedEpisode(
+        env,
+        seriesId,
+        seasons,
+        watchedCountBySeason,
+        watchedKeys,
+        budget,
+      );
+      return { cachedSeries, nextEpisode };
+    }
+  }
+
+  return { cachedSeries, nextEpisode: null };
+}
+
 // Lista pronta pra Home ("Continuar assistindo"), calculada ao vivo a cada
 // carregamento — sem tabela de progresso pré-computada por cron (ver
 // histórico: processar todas as séries acompanhadas numa invocação só
@@ -330,43 +385,18 @@ export async function getContinueWatching(
 
     const watchedCountBySeason = watchedCountBySeries.get(seriesId) ?? new Map<number, number>();
     const watchedKeys = watchedKeysBySeries.get(seriesId) ?? new Set<string>();
-    let seasons = sortedSeasons(cachedSeries);
 
-    let nextEpisode: NextEpisode | null = null;
-
-    if (hasKnownGap(seasons, watchedCountBySeason)) {
-      // Caso A.
-      nextEpisode = await findNextUnwatchedEpisode(
-        env,
-        seriesId,
-        seasons,
-        watchedCountBySeason,
-        watchedKeys,
-        budget,
-      );
-    } else {
-      const status = cachedSeries.status?.toLowerCase() ?? null;
-      const isEndedOrCanceled = status !== null && ENDED_STATUSES.has(status);
-
-      // Caso B: ended/canceled e em dia — nunca mais reconsulta.
-      // Caso C: ainda ativa e em dia — só reconsulta se estiver stale.
-      if (!isEndedOrCanceled && isSeriesCacheStale(cachedSeries) && budget.remaining > 0) {
-        budget.remaining -= 2; // getOrCacheSeries faz até 2 requests (detalhe + créditos)
-        cachedSeries = await getOrCacheSeries(env, db, seriesId);
-        seasons = sortedSeasons(cachedSeries);
-
-        if (hasKnownGap(seasons, watchedCountBySeason)) {
-          nextEpisode = await findNextUnwatchedEpisode(
-            env,
-            seriesId,
-            seasons,
-            watchedCountBySeason,
-            watchedKeys,
-            budget,
-          );
-        }
-      }
-    }
+    const resolved = await resolveNextEpisodeForSeries(
+      env,
+      db,
+      seriesId,
+      cachedSeries,
+      watchedCountBySeason,
+      watchedKeys,
+      budget,
+    );
+    cachedSeries = resolved.cachedSeries;
+    const nextEpisode = resolved.nextEpisode;
 
     if (!nextEpisode) {
       continue;
@@ -386,5 +416,75 @@ export async function getContinueWatching(
   return {
     items,
     nextCursor: index < sortedCandidates.length ? index : null,
+  };
+}
+
+// Orçamento bem menor que LIVE_TMDB_BUDGET (12) porque aqui só há 1 série pra resolver,
+// não um lote inteiro — cobre getOrCacheSeries (2) + algumas temporadas de
+// findNextUnwatchedEpisode sem se aproximar do teto de subrequests por invocação.
+const SINGLE_SERIES_TMDB_BUDGET = 6;
+
+// Recalcula o item de "Continuar assistindo" de UMA série específica — usado depois de
+// marcar um episódio como assistido (ver series.routes.ts), pra atualizar só aquela
+// linha na lista sem recarregar a Home inteira. Mesma resolução de casos A/B/C de
+// getContinueWatching, só que sem paginação/cursor (não faz sentido pra 1 item só).
+// `null` = a série não tem mais episódio pendente (some da lista no cliente) ou não é
+// mais candidata (abandonada, ou nunca foi assistida por este usuário).
+export async function getContinueWatchingItemForSeries(
+  env: Env,
+  db: Db,
+  userId: string,
+  tmdbId: number,
+): Promise<ContinueWatchingItem | null> {
+  const [cachedSeries, entryRow, watchedRows] = await Promise.all([
+    db.query.series.findFirst({ where: eq(series.tmdbId, tmdbId) }),
+    db.query.seriesEntry.findFirst({
+      where: and(eq(seriesEntry.userId, userId), eq(seriesEntry.seriesId, tmdbId)),
+    }),
+    db
+      .select({
+        seasonNumber: seriesEpisodeWatch.seasonNumber,
+        episodeNumber: seriesEpisodeWatch.episodeNumber,
+        watchedAt: seriesEpisodeWatch.watchedAt,
+      })
+      .from(seriesEpisodeWatch)
+      .where(and(eq(seriesEpisodeWatch.userId, userId), eq(seriesEpisodeWatch.seriesId, tmdbId))),
+  ]);
+
+  if (!cachedSeries || entryRow?.abandonedAt || watchedRows.length === 0) {
+    return null;
+  }
+
+  const watchedCountBySeason = new Map<number, number>();
+  const watchedKeys = new Set<string>();
+  let lastWatchedAt = 0;
+  for (const row of watchedRows) {
+    watchedCountBySeason.set(
+      row.seasonNumber,
+      (watchedCountBySeason.get(row.seasonNumber) ?? 0) + 1,
+    );
+    watchedKeys.add(`${row.seasonNumber}-${row.episodeNumber}`);
+    lastWatchedAt = Math.max(lastWatchedAt, row.watchedAt.getTime());
+  }
+
+  const budget = { remaining: SINGLE_SERIES_TMDB_BUDGET };
+  const { cachedSeries: resolvedSeries, nextEpisode } = await resolveNextEpisodeForSeries(
+    env,
+    db,
+    tmdbId,
+    cachedSeries,
+    watchedCountBySeason,
+    watchedKeys,
+    budget,
+  );
+
+  if (!nextEpisode) {
+    return null;
+  }
+
+  return {
+    series: mapCachedSeriesToSummary(resolvedSeries),
+    nextEpisode,
+    recentlyActive: Date.now() - lastWatchedAt <= RECENT_ACTIVITY_WINDOW_MS,
   };
 }

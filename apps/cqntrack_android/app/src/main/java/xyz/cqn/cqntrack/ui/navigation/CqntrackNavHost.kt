@@ -298,8 +298,12 @@ fun CqntrackNavHost() {
                 onPersonClick = { personId -> navController.navigate(NavRoutes.personDetail(personId)) },
             )
         }
-        composable(NavRoutes.SERIES_EPISODE_DETAIL) {
-            EpisodeDetailScreen(onBack = { navController.popBackStack() })
+        composable(NavRoutes.SERIES_EPISODE_DETAIL) { backStackEntry ->
+            val tmdbId = checkNotNull(backStackEntry.arguments?.getString("tmdbId")).toInt()
+            EpisodeDetailScreen(
+                onBack = { navController.popBackStack() },
+                onSeriesClick = { navController.navigate(NavRoutes.seriesDetail(tmdbId)) },
+            )
         }
         composable(NavRoutes.SERIES_LISTS) {
             SeriesListsScreen(

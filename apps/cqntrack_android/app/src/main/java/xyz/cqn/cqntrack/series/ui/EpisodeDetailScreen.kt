@@ -1,5 +1,6 @@
 package xyz.cqn.cqntrack.series.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,6 +20,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
@@ -34,6 +37,7 @@ private fun formatRuntime(minutes: Int): String {
 @Composable
 fun EpisodeDetailScreen(
     onBack: () -> Unit,
+    onSeriesClick: () -> Unit,
     viewModel: EpisodeDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -61,10 +65,19 @@ fun EpisodeDetailScreen(
                         .verticalScroll(rememberScrollState())
                         .padding(16.dp),
                 ) {
+                    Text(
+                        episode.seriesName,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        textDecoration = TextDecoration.Underline,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable(onClick = onSeriesClick),
+                    )
+
                     AsyncImage(
                         model = episode.stillUrl,
                         contentDescription = null,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                     )
 
                     Text(

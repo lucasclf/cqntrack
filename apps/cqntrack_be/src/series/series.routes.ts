@@ -1,4 +1,5 @@
 import {
+  ContinueWatchingItemResponseSchema,
   ContinueWatchingQuerySchema,
   ContinueWatchingResponseSchema,
   DiscoverSeriesQuerySchema,
@@ -25,7 +26,7 @@ import {
 } from "@cqntrack/shared";
 import { Hono } from "hono";
 import { type AuthedEnv, requireSession } from "../auth/require-session";
-import { getContinueWatching } from "./continue-watching.service";
+import { getContinueWatching, getContinueWatchingItemForSeries } from "./continue-watching.service";
 import { createDb } from "../db/client";
 import {
   attachEntriesToSeries,
@@ -241,6 +242,21 @@ seriesRouter.get("/continue-watching", async (c) => {
     parsed.data.pageSize,
   );
   return c.json(ContinueWatchingResponseSchema.parse({ items, nextCursor }));
+});
+
+// Recalcula o item de "Continuar assistindo" de 1 série só — chamado pelo cliente logo
+// depois de marcar um episódio como assistido nesta lista (ver
+// getContinueWatchingItemForSeries), pra atualizar só aquela linha sem recarregar a
+// Home inteira. `item: null` = a série não tem mais episódio pendente.
+seriesRouter.get("/:tmdbId/continue-watching", async (c) => {
+  const tmdbId = parseTmdbId(c);
+  if (tmdbId === null) {
+    return c.json({ error: "invalid_id" }, 400);
+  }
+
+  const db = createDb(c.env);
+  const item = await getContinueWatchingItemForSeries(c.env, db, c.get("userId"), tmdbId);
+  return c.json(ContinueWatchingItemResponseSchema.parse({ item }));
 });
 
 seriesRouter.get("/discover", async (c) => {

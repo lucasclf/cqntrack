@@ -53,6 +53,9 @@ class SeriesRepository @Inject constructor(
     suspend fun getContinueWatching(cursor: Int): ContinueWatchingResponseDto =
         runApiCall { seriesApi.getContinueWatching(cursor) }
 
+    suspend fun getContinueWatchingForSeries(tmdbId: Int): ContinueWatchingItemResponseDto =
+        runApiCall { seriesApi.getContinueWatchingForSeries(tmdbId) }
+
     private suspend fun <T> runApiCall(block: suspend () -> T): T =
         try {
             block()

@@ -1501,6 +1501,104 @@ describe("GET /api/series/continue-watching", () => {
   });
 });
 
+describe("GET /api/series/:tmdbId/continue-watching", () => {
+  beforeEach(() => {
+    resetSeasonCache();
+  });
+
+  it("sem sessão retorna 401", async () => {
+    const res = await app.request("/api/series/960/continue-watching", undefined, env);
+    expect(res.status).toBe(401);
+  });
+
+  it("id inválido retorna 400", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    const res = await app.request(
+      "/api/series/nao-e-um-id/continue-watching",
+      { headers: { cookie } },
+      env,
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("série sem nenhum episódio assistido devolve item: null", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubSeriesCacheFetch(960, "Série sem progresso");
+    await app.request(
+      "/api/series/960/entry",
+      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: "{}" },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    const res = await app.request(
+      "/api/series/960/continue-watching",
+      { headers: { cookie } },
+      env,
+    );
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({ item: null });
+  });
+
+  it("recalcula o próximo episódio certo depois de marcar o anterior como assistido (caso A)", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    // Cacheia a série (temporada 1 com 3 episódios) e marca o 1x1 assistido.
+    stubSeriesCacheFetch(961, "Série com lacuna");
+    await app.request(
+      "/api/series/961/episodes/1/1",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ watched: true }),
+      },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    stubTmdbFetchOnce(tmdbSeasonDetail(1, 3));
+    const res = await app.request(
+      "/api/series/961/continue-watching",
+      { headers: { cookie } },
+      env,
+    );
+    vi.unstubAllGlobals();
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      item: { series: { tmdbId: number }; nextEpisode: { episodeNumber: number } } | null;
+    };
+    expect(body.item?.series.tmdbId).toBe(961);
+    expect(body.item?.nextEpisode.episodeNumber).toBe(2);
+  });
+
+  it("série sem mais nada pendente devolve item: null", async () => {
+    const { cookie } = await createAuthenticatedUser(app, env);
+    // Marca os 3 episódios da única temporada (série com status "Ended", ver
+    // tmdbSeriesDetail) — sem lacuna, não deveria sobrar nada pendente.
+    stubSeriesCacheFetch(962, "Série completa");
+    for (const episodeNumber of [1, 2, 3]) {
+      await app.request(
+        `/api/series/962/episodes/1/${episodeNumber}`,
+        {
+          method: "PUT",
+          headers: { cookie, "Content-Type": "application/json" },
+          body: JSON.stringify({ watched: true }),
+        },
+        env,
+      );
+    }
+    vi.unstubAllGlobals();
+
+    const res = await app.request(
+      "/api/series/962/continue-watching",
+      { headers: { cookie } },
+      env,
+    );
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({ item: null });
+  });
+});
+
 describe("GET /api/series/:tmdbId/seasons/:seasonNumber", () => {
   it("retorna os episódios da temporada, todos não assistidos", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
@@ -1627,12 +1725,23 @@ describe("GET /api/series/:tmdbId/episodes/:seasonNumber/:episodeNumber", () => 
 
   it("devolve nome, sinopse, still, direção (deduplicada) e watched: false quando não marcado", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
+    // Cacheia a série antes — seriesName vem de lá (ver comentário em
+    // getEpisodeDetail: a rota só é alcançada a partir da tela da série).
+    stubSeriesCacheFetch(950, "Série Teste");
+    await app.request(
+      "/api/series/950/entry",
+      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: "{}" },
+      env,
+    );
+    vi.unstubAllGlobals();
+
     vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(jsonResponse(tmdbEpisodeDetail(1, 1))));
 
-    const res = await app.request("/api/series/905/episodes/1/1", { headers: { cookie } }, env);
+    const res = await app.request("/api/series/950/episodes/1/1", { headers: { cookie } }, env);
 
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({
+      seriesName: "Série Teste",
       seasonNumber: 1,
       episodeNumber: 1,
       name: "Episódio 1",

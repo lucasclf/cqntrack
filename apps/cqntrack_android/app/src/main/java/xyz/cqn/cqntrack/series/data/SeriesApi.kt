@@ -75,4 +75,8 @@ interface SeriesApi {
         @Query("cursor") cursor: Int = 0,
         @Query("pageSize") pageSize: Int = 12,
     ): ContinueWatchingResponseDto
+
+    /** Recalcula o item de "Continuar assistindo" de 1 série só — ver ContinueWatchingViewModel.markEpisodeWatched. */
+    @GET("api/series/{tmdbId}/continue-watching")
+    suspend fun getContinueWatchingForSeries(@Path("tmdbId") tmdbId: Int): ContinueWatchingItemResponseDto
 }

@@ -29,3 +29,14 @@ data class ContinueWatchingResponseDto(
     val items: List<ContinueWatchingItemDto>,
     val nextCursor: Int? = null,
 )
+
+/**
+ * Espelha ContinueWatchingItemResponseSchema — resposta de GET .../{tmdbId}/continue-watching,
+ * usada pra recalcular só 1 linha da lista depois de marcar um episódio como assistido (ver
+ * ContinueWatchingViewModel.markEpisodeWatched). `item: null` = a série não tem mais episódio
+ * pendente, some da lista.
+ */
+@Serializable
+data class ContinueWatchingItemResponseDto(
+    val item: ContinueWatchingItemDto? = null,
+)

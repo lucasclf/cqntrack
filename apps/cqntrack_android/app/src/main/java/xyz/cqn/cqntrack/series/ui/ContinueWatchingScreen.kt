@@ -1,7 +1,9 @@
 package xyz.cqn.cqntrack.series.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -9,18 +11,27 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
@@ -56,24 +67,60 @@ fun ContinueWatchingScreen(
 
             else -> LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
                 items(uiState.items, key = { it.series.tmdbId }) { item ->
-                    ListItem(
-                        headlineContent = { Text(item.series.name) },
-                        supportingContent = {
-                            Text(
-                                "Temporada ${item.nextEpisode.seasonNumber} · " +
-                                    "Episódio ${item.nextEpisode.episodeNumber} — ${item.nextEpisode.name}\n" +
-                                    "Lançado em ${formatFullDate(item.nextEpisode.airDate)}",
+                    val updating = item.series.tmdbId in uiState.updatingSeriesIds
+                    // key() força recriar o estado do swipe quando o item é substituído pelo
+                    // próximo episódio (mesmo tmdbId, dado novo) — sem isso o SwipeToDismissBox
+                    // ficaria "preso" na posição arrastada do episódio anterior.
+                    key(item.nextEpisode.seasonNumber, item.nextEpisode.episodeNumber) {
+                        val dismissState = rememberSwipeToDismissBoxState(
+                            confirmValueChange = { value ->
+                                if (value == SwipeToDismissBoxValue.EndToStart && !updating) {
+                                    viewModel.markEpisodeWatched(item)
+                                }
+                                false // nunca sai de tela sozinho — a lista muda quando o servidor responde
+                            },
+                        )
+                        SwipeToDismissBox(
+                            state = dismissState,
+                            enableDismissFromStartToEnd = false,
+                            enableDismissFromEndToStart = !updating,
+                            backgroundContent = {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(Color(0xFF16A34A))
+                                        .padding(horizontal = 20.dp),
+                                    contentAlignment = Alignment.CenterEnd,
+                                ) {
+                                    Icon(Icons.Filled.Check, contentDescription = "Marcar como assistido", tint = Color.White)
+                                }
+                            },
+                        ) {
+                            ListItem(
+                                headlineContent = { Text(item.series.name) },
+                                supportingContent = {
+                                    Text(
+                                        "Temporada ${item.nextEpisode.seasonNumber} · " +
+                                            "Episódio ${item.nextEpisode.episodeNumber} — ${item.nextEpisode.name}\n" +
+                                            "Lançado em ${formatFullDate(item.nextEpisode.airDate)}",
+                                    )
+                                },
+                                leadingContent = {
+                                    AsyncImage(
+                                        model = item.series.posterUrl,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(48.dp, 64.dp),
+                                    )
+                                },
+                                trailingContent = if (updating) {
+                                    { CircularProgressIndicator(modifier = Modifier.size(20.dp)) }
+                                } else {
+                                    null
+                                },
+                                modifier = Modifier.fillMaxWidth().clickable { onItemClick(item) },
                             )
-                        },
-                        leadingContent = {
-                            AsyncImage(
-                                model = item.series.posterUrl,
-                                contentDescription = null,
-                                modifier = Modifier.size(48.dp, 64.dp),
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth().clickable { onItemClick(item) },
-                    )
+                        }
+                    }
                 }
 
                 if (uiState.nextCursor != null) {

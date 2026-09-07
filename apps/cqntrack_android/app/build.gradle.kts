@@ -33,8 +33,8 @@ android {
         targetSdk = 37
         // versionCode 3 > 2 (última versão do Capacitor, v0.2.0) — mantém a semântica de upgrade
         // do Android mesmo em instalação lado a lado/sideload.
-        versionCode = 7
-        versionName = "1.2.0"
+        versionCode = 8
+        versionName = "1.3.0"
     }
 
     signingConfigs {

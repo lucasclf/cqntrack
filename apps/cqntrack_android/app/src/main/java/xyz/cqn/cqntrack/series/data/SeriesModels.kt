@@ -127,6 +127,7 @@ data class SetWatchedRequestDto(
  */
 @Serializable
 data class SeriesEpisodeDetailDto(
+    val seriesName: String,
     val seasonNumber: Int,
     val episodeNumber: Int,
     val name: String,

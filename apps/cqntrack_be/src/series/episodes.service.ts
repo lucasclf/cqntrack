@@ -5,7 +5,7 @@ import type {
 } from "@cqntrack/shared";
 import { and, eq } from "drizzle-orm";
 import type { createDb } from "../db/client";
-import { activity, seriesEpisodeWatch } from "../db/schema";
+import { activity, series, seriesEpisodeWatch } from "../db/schema";
 import { getSeriesEpisode, getSeriesSeason } from "../integrations/tmdb/series";
 import { buildPosterUrl, type TmdbCrewMember } from "../integrations/tmdb/types";
 import { ensureSeriesEntry, touchSeriesEntry } from "./entries.service";
@@ -225,24 +225,31 @@ export async function getEpisodeDetail(
   seasonNumber: number,
   episodeNumber: number,
 ): Promise<SeriesEpisodeDetail | null> {
-  const episode = await getSeriesEpisode(env, tmdbId, seasonNumber, episodeNumber);
+  const [episode, seriesRow, watchedRow] = await Promise.all([
+    getSeriesEpisode(env, tmdbId, seasonNumber, episodeNumber),
+    db.query.series.findFirst({ where: eq(series.tmdbId, tmdbId), columns: { name: true } }),
+    db
+      .select()
+      .from(seriesEpisodeWatch)
+      .where(
+        and(
+          eq(seriesEpisodeWatch.userId, userId),
+          eq(seriesEpisodeWatch.seriesId, tmdbId),
+          eq(seriesEpisodeWatch.seasonNumber, seasonNumber),
+          eq(seriesEpisodeWatch.episodeNumber, episodeNumber),
+        ),
+      )
+      .then((rows) => rows[0]),
+  ]);
   if (!episode) {
     return null;
   }
 
-  const [watchedRow] = await db
-    .select()
-    .from(seriesEpisodeWatch)
-    .where(
-      and(
-        eq(seriesEpisodeWatch.userId, userId),
-        eq(seriesEpisodeWatch.seriesId, tmdbId),
-        eq(seriesEpisodeWatch.seasonNumber, seasonNumber),
-        eq(seriesEpisodeWatch.episodeNumber, episodeNumber),
-      ),
-    );
-
   return {
+    // A série sempre está cacheada quando essa rota é alcançada (só se chega
+    // aqui a partir da tela de detalhe da série, que já cacheia) — string
+    // vazia aqui seria um bug em outro lugar, não um caso a tratar bonito.
+    seriesName: seriesRow?.name ?? "",
     seasonNumber,
     episodeNumber,
     name: episode.name,

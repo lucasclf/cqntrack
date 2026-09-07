@@ -15,6 +15,7 @@ vi.mock("../lib/api-client", async () => {
 });
 
 const EPISODE = {
+  seriesName: "Breaking Bad",
   seasonNumber: 1,
   episodeNumber: 1,
   name: "Pilot",
@@ -64,7 +65,7 @@ describe("EpisodeDetail", () => {
       "href",
       "/pessoas/66633",
     );
-    expect(screen.getByRole("link", { name: "← Voltar pra série" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "← Breaking Bad" })).toHaveAttribute(
       "href",
       "/series/1396",
     );
