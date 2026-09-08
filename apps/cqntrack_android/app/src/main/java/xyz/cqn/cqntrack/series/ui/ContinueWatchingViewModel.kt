@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import xyz.cqn.cqntrack.series.data.ContinueWatchingItemDto
 import xyz.cqn.cqntrack.series.data.SeriesRepository
+import xyz.cqn.cqntrack.series.data.UpsertSeriesEntryRequestDto
 import javax.inject.Inject
 
 data class ContinueWatchingUiState(
@@ -18,10 +19,13 @@ data class ContinueWatchingUiState(
     val nextCursor: Int? = 0,
     val loadingMore: Boolean = false,
     val errorMessage: String? = null,
-    // tmdbId das séries com o swipe em andamento (ver markEpisodeWatched) — usado só pra
-    // desabilitar o swipe de novo naquela linha enquanto a chamada não volta, não afeta
+    // tmdbId das séries com o swipe em andamento (ver markEpisodeWatched/abandonSeries) — usado só
+    // pra desabilitar o swipe de novo naquela linha enquanto a chamada não volta, não afeta
     // isLoading/errorMessage (é uma ação pontual numa linha, não um estado de tela).
     val updatingSeriesIds: Set<Int> = emptySet(),
+    // Item aguardando confirmação do usuário (diálogo "abandonar X?") — swipe pro lado de
+    // abandonar nunca executa direto, ver requestAbandon/confirmAbandon.
+    val pendingAbandon: ContinueWatchingItemDto? = null,
 )
 
 /** Espelha ContinueWatching.tsx no web — calculado ao vivo pelo backend, paginado por cursor (índice). */
@@ -101,6 +105,46 @@ class ContinueWatchingViewModel @Inject constructor(
                     it.copy(
                         updatingSeriesIds = it.updatingSeriesIds - tmdbId,
                         errorMessage = "Falha ao marcar como assistido. Tente de novo.",
+                    )
+                }
+            }
+        }
+    }
+
+    /** Swipe pro lado oposto — só abre o diálogo de confirmação, não abandona direto. */
+    fun requestAbandon(item: ContinueWatchingItemDto) {
+        if (item.series.tmdbId in _uiState.value.updatingSeriesIds) return
+        _uiState.update { it.copy(pendingAbandon = item) }
+    }
+
+    fun cancelAbandon() {
+        _uiState.update { it.copy(pendingAbandon = null) }
+    }
+
+    /**
+     * Confirmado no diálogo: marca abandoned=true (PUT .../entry) e já tira a linha da lista —
+     * sem precisar recalcular via GET .../continue-watching, porque uma série abandonada nunca
+     * volta desse endpoint (ver continue-watching.service.ts), diferente de markEpisodeWatched
+     * onde o próximo episódio pendente é desconhecido até o servidor responder.
+     */
+    fun confirmAbandon() {
+        val item = _uiState.value.pendingAbandon ?: return
+        val tmdbId = item.series.tmdbId
+        _uiState.update { it.copy(pendingAbandon = null, updatingSeriesIds = it.updatingSeriesIds + tmdbId) }
+        viewModelScope.launch {
+            try {
+                seriesRepository.upsertEntry(tmdbId, UpsertSeriesEntryRequestDto(abandoned = true))
+                _uiState.update { state ->
+                    state.copy(
+                        updatingSeriesIds = state.updatingSeriesIds - tmdbId,
+                        items = state.items.filterNot { it.series.tmdbId == tmdbId },
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        updatingSeriesIds = it.updatingSeriesIds - tmdbId,
+                        errorMessage = "Falha ao abandonar a série. Tente de novo.",
                     )
                 }
             }

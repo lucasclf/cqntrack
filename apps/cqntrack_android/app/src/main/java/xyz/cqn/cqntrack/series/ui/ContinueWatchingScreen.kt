@@ -13,6 +13,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -74,25 +76,36 @@ fun ContinueWatchingScreen(
                     key(item.nextEpisode.seasonNumber, item.nextEpisode.episodeNumber) {
                         val dismissState = rememberSwipeToDismissBoxState(
                             confirmValueChange = { value ->
-                                if (value == SwipeToDismissBoxValue.EndToStart && !updating) {
-                                    viewModel.markEpisodeWatched(item)
+                                if (!updating) {
+                                    when (value) {
+                                        SwipeToDismissBoxValue.EndToStart -> viewModel.markEpisodeWatched(item)
+                                        // Só abre o diálogo de confirmação — abandonar de verdade só
+                                        // acontece se o usuário confirmar (ver AlertDialog abaixo).
+                                        SwipeToDismissBoxValue.StartToEnd -> viewModel.requestAbandon(item)
+                                        SwipeToDismissBoxValue.Settled -> {}
+                                    }
                                 }
                                 false // nunca sai de tela sozinho — a lista muda quando o servidor responde
                             },
                         )
                         SwipeToDismissBox(
                             state = dismissState,
-                            enableDismissFromStartToEnd = false,
+                            enableDismissFromStartToEnd = !updating,
                             enableDismissFromEndToStart = !updating,
                             backgroundContent = {
+                                val abandoning = dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .background(Color(0xFF16A34A))
+                                        .background(if (abandoning) Color(0xFFDC2626) else Color(0xFF16A34A))
                                         .padding(horizontal = 20.dp),
-                                    contentAlignment = Alignment.CenterEnd,
+                                    contentAlignment = if (abandoning) Alignment.CenterStart else Alignment.CenterEnd,
                                 ) {
-                                    Icon(Icons.Filled.Check, contentDescription = "Marcar como assistido", tint = Color.White)
+                                    Icon(
+                                        if (abandoning) Icons.Filled.Delete else Icons.Filled.Check,
+                                        contentDescription = if (abandoning) "Abandonar série" else "Marcar como assistido",
+                                        tint = Color.White,
+                                    )
                                 }
                             },
                         ) {
@@ -138,6 +151,17 @@ fun ContinueWatchingScreen(
                     }
                 }
             }
+        }
+
+        val pendingAbandon = uiState.pendingAbandon
+        if (pendingAbandon != null) {
+            AlertDialog(
+                onDismissRequest = viewModel::cancelAbandon,
+                title = { Text("Abandonar série?") },
+                text = { Text("Tem certeza que quer marcar \"${pendingAbandon.series.name}\" como abandonada? Ela vai sair de \"Continuar assistindo\".") },
+                confirmButton = { TextButton(onClick = viewModel::confirmAbandon) { Text("Abandonar") } },
+                dismissButton = { TextButton(onClick = viewModel::cancelAbandon) { Text("Cancelar") } },
+            )
         }
     }
 }

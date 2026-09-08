@@ -33,8 +33,8 @@ android {
         targetSdk = 37
         // versionCode 3 > 2 (última versão do Capacitor, v0.2.0) — mantém a semântica de upgrade
         // do Android mesmo em instalação lado a lado/sideload.
-        versionCode = 8
-        versionName = "1.3.0"
+        versionCode = 9
+        versionName = "1.4.0"
     }
 
     signingConfigs {
@@ -61,6 +61,9 @@ android {
 
     buildFeatures {
         compose = true
+        // Expõe BuildConfig.VERSION_NAME — usado pra comparar com o release mais recente do
+        // GitHub (ver update/data/UpdateRepository.kt).
+        buildConfig = true
     }
 
     compileOptions {
