@@ -26,7 +26,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -116,7 +115,6 @@ fun HomeScreen(
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     UpdateBanner(
                         version = updateVersion,
-                        onDownload = viewModel::downloadUpdate,
                         onDismiss = viewModel::dismissUpdate,
                     )
                 }
@@ -129,12 +127,12 @@ fun HomeScreen(
 }
 
 /**
- * Aviso não agressivo (dispensável, some sozinho ao tocar em "Baixar") — só dispara o download do
- * APK (DownloadManager, notificação nativa do Android); instalar continua manual, ver
- * UpdateRepository.enqueueApkDownload.
+ * Aviso não agressivo (dispensável) — só informa, não baixa nem instala nada: quem quiser
+ * atualizar precisa visitar o site (tracker.cqn.xyz.br), onde já existe o link "Baixar APK"
+ * (ver Account.tsx no frontend web).
  */
 @Composable
-private fun UpdateBanner(version: String, onDownload: () -> Unit, onDismiss: () -> Unit) {
+private fun UpdateBanner(version: String, onDismiss: () -> Unit) {
     Surface(
         color = MaterialTheme.colorScheme.secondaryContainer,
         shape = RoundedCornerShape(12.dp),
@@ -146,18 +144,17 @@ private fun UpdateBanner(version: String, onDownload: () -> Unit, onDismiss: () 
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Nova versão disponível",
+                    text = "Nova versão disponível — cqntrack $version",
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSecondaryContainer,
                 )
                 Text(
-                    text = "cqntrack $version",
+                    text = "Para atualizar, acesse tracker.cqn.xyz.br e baixe por lá.",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSecondaryContainer,
                 )
             }
-            TextButton(onClick = onDownload) { Text("Baixar") }
             IconButton(onClick = onDismiss) {
                 Icon(
                     Icons.Filled.Close,

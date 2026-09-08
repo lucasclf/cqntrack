@@ -1,10 +1,8 @@
 package xyz.cqn.cqntrack.ui.home
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,7 +20,6 @@ data class HomeUiState(
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val updateRepository: UpdateRepository,
-    @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -36,12 +33,6 @@ class HomeViewModel @Inject constructor(
     }
 
     fun dismissUpdate() {
-        _uiState.update { it.copy(updateVersion = null) }
-    }
-
-    fun downloadUpdate() {
-        val version = _uiState.value.updateVersion ?: return
-        updateRepository.enqueueApkDownload(context, version)
         _uiState.update { it.copy(updateVersion = null) }
     }
 }
