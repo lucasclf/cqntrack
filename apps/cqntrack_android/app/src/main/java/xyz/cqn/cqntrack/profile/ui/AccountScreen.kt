@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -32,9 +34,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
+import xyz.cqn.cqntrack.BuildConfig
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,7 +68,13 @@ fun AccountScreen(
                     contract = ActivityResultContracts.PickVisualMedia(),
                 ) { uri -> uri?.let(viewModel::uploadAvatar) }
 
-                Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(padding)
+                        .padding(16.dp),
+                ) {
                     Row {
                         AsyncImage(
                             model = uiState.avatarUrl,
@@ -192,6 +202,14 @@ fun AccountScreen(
                     ) {
                         Text("Sair")
                     }
+
+                    Text(
+                        text = "Versão ${BuildConfig.VERSION_NAME}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                    )
                 }
             }
         }
