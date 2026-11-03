@@ -14,6 +14,12 @@ import javax.inject.Inject
  * `runBlocking` é aceitável aqui: interceptors OkHttp rodam numa thread de
  * dispatcher dedicada (não a main thread), e a leitura do token
  * (EncryptedSharedPreferences) é rápida e local — não bloqueia UI.
+ *
+ * 401 numa requisição que levou token significa sessão expirada/revogada (o
+ * backend só devolve 401 em requireSession; senha atual errada é 400). Sem
+ * descartar o token, o app continuaria "logado" com todas as telas falhando —
+ * descartado, isLoggedIn vira false e o CqntrackNavHost volta pro login sozinho.
+ * Requisição sem token (login com senha errada) nunca passa por esse descarte.
  */
 class AuthInterceptor @Inject constructor(
     private val tokenProvider: TokenProvider,
@@ -29,6 +35,10 @@ class AuthInterceptor @Inject constructor(
                     .build()
             }
         }
-        return chain.proceed(request)
+        val response = chain.proceed(request)
+        if (response.code == 401 && !token.isNullOrEmpty()) {
+            runBlocking { tokenProvider.clearTokenIfCurrent(token) }
+        }
+        return response
     }
 }

@@ -8,4 +8,10 @@ package xyz.cqn.cqntrack.core.network
  */
 interface TokenProvider {
     suspend fun currentToken(): String?
+
+    /**
+     * Descarta [token] só se ele ainda for o token guardado — uma resposta 401
+     * atrasada de um token antigo não pode derrubar um login feito nesse meio-tempo.
+     */
+    suspend fun clearTokenIfCurrent(token: String)
 }

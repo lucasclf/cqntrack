@@ -57,10 +57,17 @@ fun AccountScreen(
                 horizontalArrangement = Arrangement.Center,
             ) { CircularProgressIndicator() }
 
-            uiState.user == null -> Text(
-                text = uiState.errorMessage ?: "Falha ao carregar.",
-                modifier = Modifier.padding(padding).padding(16.dp),
-            )
+            uiState.user == null -> Column(modifier = Modifier.padding(padding).padding(16.dp)) {
+                Text(text = uiState.errorMessage ?: "Falha ao carregar.")
+                // Mantém uma saída mesmo sem conseguir carregar a conta — sem isso, uma falha
+                // aqui deixa o usuário sem nenhum jeito de deslogar pelo app.
+                Button(
+                    onClick = viewModel::signOut,
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                ) {
+                    Text("Sair")
+                }
+            }
 
             else -> {
                 val user = uiState.user!!

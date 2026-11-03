@@ -49,6 +49,10 @@ class EncryptedTokenStorage @Inject constructor(
 
     override suspend fun currentToken(): String? = getToken()
 
+    override suspend fun clearTokenIfCurrent(token: String) {
+        if (getToken() == token) clearToken()
+    }
+
     override suspend fun saveToken(token: String) {
         prefs.edit().putString(KEY_TOKEN, token).apply()
         _isLoggedIn.value = true
