@@ -30,3 +30,25 @@
   color: var(--accent);
   background: var(--panel-bg);
 }
+
+/* Uma cor por status (tokens em theme.css) */
+.badge[data-status="not_started"] {
+  background: var(--status-planned-bg);
+  color: var(--status-planned);
+}
+.badge[data-status="playing"] {
+  background: var(--status-playing-bg);
+  color: var(--status-playing);
+}
+.badge[data-status="completed"] {
+  background: var(--status-completed-bg);
+  color: var(--status-completed);
+}
+.badge[data-status="platinum"] {
+  background: var(--status-platinum-bg);
+  color: var(--status-platinum);
+}
+.badge[data-status="dropped"] {
+  background: var(--status-dropped-bg);
+  color: var(--status-dropped);
+}

@@ -21,7 +21,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import xyz.cqn.cqntrack.core.designsystem.BrandLockup
 import xyz.cqn.cqntrack.core.designsystem.PasswordOutlinedTextField
 
 /**
@@ -41,7 +43,7 @@ fun SignupScreen(onBackToLogin: () -> Unit, viewModel: SignupViewModel = hiltVie
                 .padding(24.dp),
             verticalArrangement = Arrangement.Center,
         ) {
-            Text(text = "cqntrack", style = MaterialTheme.typography.headlineMedium)
+            BrandLockup(markSize = 44.dp, fontSize = 30.sp, modifier = Modifier.padding(bottom = 16.dp))
             Text(text = "Criar conta", style = MaterialTheme.typography.titleMedium)
 
             if (uiState.signupSucceeded) {

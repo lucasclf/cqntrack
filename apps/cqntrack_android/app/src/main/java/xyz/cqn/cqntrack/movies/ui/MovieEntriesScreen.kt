@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
+import xyz.cqn.cqntrack.core.designsystem.CqnColors
 import xyz.cqn.cqntrack.movies.data.MovieEntryWithMovieDto
 import xyz.cqn.cqntrack.movies.data.MovieStatus
 
@@ -181,7 +182,7 @@ private fun MovieEntryRow(entry: MovieEntryWithMovieDto, onClick: () -> Unit) {
             )
         },
         trailingContent = if (entry.favoritedAt != null) {
-            { Icon(Icons.Filled.Favorite, contentDescription = "Favorito") }
+            { Icon(Icons.Filled.Favorite, contentDescription = "Favorito", tint = CqnColors.favorite) }
         } else {
             null
         },

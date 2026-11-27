@@ -44,7 +44,9 @@ export function AuthLayout({ children }: AuthLayoutProps) {
             <span className={styles.brandMark}>
               <CatMark className={styles.brandMarkIcon} />
             </span>
-            <span className={styles.brandWord}>cqntrack</span>
+            <span className={styles.brandWord}>
+              cqn<span className={styles.brandWordAccent}>track</span>
+            </span>
           </div>
         </div>
       </aside>
@@ -55,7 +57,9 @@ export function AuthLayout({ children }: AuthLayoutProps) {
             <span className={styles.brandMark}>
               <CatMark className={styles.brandMarkIcon} />
             </span>
-            <span className={styles.brandWord}>cqntrack</span>
+            <span className={styles.brandWord}>
+              cqn<span className={styles.brandWordAccent}>track</span>
+            </span>
           </div>
           {children}
           {/* Sem sentido dentro do próprio app mobile — só faz sentido pra

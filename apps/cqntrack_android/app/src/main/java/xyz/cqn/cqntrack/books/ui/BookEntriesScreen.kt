@@ -36,6 +36,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import xyz.cqn.cqntrack.books.data.BookEntryWithBookDto
 import xyz.cqn.cqntrack.books.data.BookStatus
+import xyz.cqn.cqntrack.core.designsystem.CqnColors
 
 private val ENTRY_STATUS_LABELS = mapOf(
     BookStatus.WantToRead to "Quero ler",
@@ -183,7 +184,7 @@ private fun BookEntryRow(entry: BookEntryWithBookDto, onClick: () -> Unit) {
             )
         },
         trailingContent = if (entry.favoritedAt != null) {
-            { Icon(Icons.Filled.Favorite, contentDescription = "Favorito") }
+            { Icon(Icons.Filled.Favorite, contentDescription = "Favorito", tint = CqnColors.favorite) }
         } else {
             null
         },

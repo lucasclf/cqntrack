@@ -64,7 +64,7 @@
   top: 8px;
   left: 8px;
   background: var(--form-bg);
-  color: var(--error);
+  color: var(--favorite);
   border-radius: var(--radius);
   padding: 2px 6px;
   font-size: 12px;
@@ -76,7 +76,7 @@
   top: 8px;
   left: 8px;
   background: var(--form-bg);
-  color: var(--error);
+  color: var(--favorite);
   border: none;
   border-radius: var(--radius);
   padding: 4px 7px;

@@ -35,7 +35,9 @@ export function PublicLayout({ children }: PublicLayoutProps) {
           <span className={styles.brandMark}>
             <CatMark className={styles.brandMarkIcon} />
           </span>
-          <span className={styles.brandWord}>cqntrack</span>
+          <span className={styles.brandWord}>
+            cqn<span className={styles.brandWordAccent}>track</span>
+          </span>
         </Link>
       </header>
       <main className={styles.content}>{children}</main>

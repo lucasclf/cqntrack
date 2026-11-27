@@ -2,7 +2,6 @@ package xyz.cqn.cqntrack.ui.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -33,21 +32,27 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import xyz.cqn.cqntrack.core.designsystem.AccentStrong
-import xyz.cqn.cqntrack.core.designsystem.AccentStrongDark
 import xyz.cqn.cqntrack.core.designsystem.AtividadesIcon
+import xyz.cqn.cqntrack.core.designsystem.BrandLockup
 import xyz.cqn.cqntrack.core.designsystem.ContinuarIcon
 import xyz.cqn.cqntrack.core.designsystem.FilmesIcon
 import xyz.cqn.cqntrack.core.designsystem.JogosIcon
 import xyz.cqn.cqntrack.core.designsystem.LivrosIcon
 import xyz.cqn.cqntrack.core.designsystem.MangasIcon
+import xyz.cqn.cqntrack.core.designsystem.MarkFur
+import xyz.cqn.cqntrack.core.designsystem.MarkNose
+import xyz.cqn.cqntrack.core.designsystem.MediaActivity
+import xyz.cqn.cqntrack.core.designsystem.MediaBooks
+import xyz.cqn.cqntrack.core.designsystem.MediaGames
+import xyz.cqn.cqntrack.core.designsystem.MediaManga
+import xyz.cqn.cqntrack.core.designsystem.MediaMovies
+import xyz.cqn.cqntrack.core.designsystem.MediaSeries
 import xyz.cqn.cqntrack.core.designsystem.SeriesIcon
 import xyz.cqn.cqntrack.core.designsystem.SocialIcon
 
@@ -62,6 +67,7 @@ import xyz.cqn.cqntrack.core.designsystem.SocialIcon
  */
 private data class HomeCategory(
     val label: String,
+    val color: Color,
     val icon: @Composable (tint: Color, cut: Color, modifier: Modifier) -> Unit,
     val onClick: () -> Unit,
 )
@@ -82,20 +88,20 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val categories = listOf(
-        HomeCategory("Continuar", { tint, cut, mod -> ContinuarIcon(tint, cut, mod) }, onOpenContinueWatching),
-        HomeCategory("Livros", { tint, cut, mod -> LivrosIcon(tint, cut, mod) }, onOpenBooks),
-        HomeCategory("Filmes", { tint, cut, mod -> FilmesIcon(tint, cut, mod) }, onOpenMovies),
-        HomeCategory("Jogos", { tint, cut, mod -> JogosIcon(tint, cut, mod) }, onOpenGames),
-        HomeCategory("Séries", { tint, cut, mod -> SeriesIcon(tint, cut, mod) }, onOpenSeries),
-        HomeCategory("Mangás", { tint, cut, mod -> MangasIcon(tint, cut, mod) }, onOpenManga),
-        HomeCategory("Atividades", { tint, cut, mod -> AtividadesIcon(tint, cut, mod) }, onOpenActivity),
-        HomeCategory("Social", { tint, cut, mod -> SocialIcon(tint, cut, mod) }, onOpenSocial),
+        HomeCategory("Continuar", MediaGames, { tint, cut, mod -> ContinuarIcon(tint, cut, mod) }, onOpenContinueWatching),
+        HomeCategory("Livros", MediaBooks, { tint, cut, mod -> LivrosIcon(tint, cut, mod) }, onOpenBooks),
+        HomeCategory("Filmes", MediaMovies, { tint, cut, mod -> FilmesIcon(tint, cut, mod) }, onOpenMovies),
+        HomeCategory("Jogos", MediaGames, { tint, cut, mod -> JogosIcon(tint, cut, mod) }, onOpenGames),
+        HomeCategory("Séries", MediaSeries, { tint, cut, mod -> SeriesIcon(tint, cut, mod) }, onOpenSeries),
+        HomeCategory("Mangás", MediaManga, { tint, cut, mod -> MangasIcon(tint, cut, mod) }, onOpenManga),
+        HomeCategory("Atividades", MediaActivity, { tint, cut, mod -> AtividadesIcon(tint, cut, mod) }, onOpenActivity),
+        HomeCategory("Social", MarkNose, { tint, cut, mod -> SocialIcon(tint, cut, mod) }, onOpenSocial),
     )
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("cqntrack") },
+                title = { BrandLockup() },
                 actions = {
                     IconButton(onClick = onOpenAccount) {
                         Icon(Icons.Filled.AccountCircle, contentDescription = "Minha conta")
@@ -168,21 +174,22 @@ private fun UpdateBanner(version: String, onDismiss: () -> Unit) {
 
 @Composable
 private fun CategoryTile(category: HomeCategory) {
-    val tileStart = MaterialTheme.colorScheme.primary
-    val tileEnd = if (isSystemInDarkTheme()) AccentStrongDark else AccentStrong
-    val onTile = MaterialTheme.colorScheme.onPrimary
+    // Fundo sólido na cor da seção (nova identidade), ícone e texto no "pelo" da marca —
+    // substitui o gradiente violeta igual pra todos os tiles.
+    val tileColor = category.color
+    val onTile = MarkFur
 
     Column(
         modifier = Modifier
             .aspectRatio(1f)
             .clip(RoundedCornerShape(20.dp))
-            .background(Brush.linearGradient(listOf(tileStart, tileEnd)))
+            .background(tileColor)
             .clickable(onClick = category.onClick)
             .padding(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        category.icon(onTile, tileStart, Modifier.size(40.dp))
+        category.icon(onTile, tileColor, Modifier.size(40.dp))
         Text(
             text = category.label,
             color = onTile,

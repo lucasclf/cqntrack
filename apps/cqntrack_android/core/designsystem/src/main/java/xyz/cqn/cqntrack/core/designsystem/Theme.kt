@@ -9,6 +9,9 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 private val LightColors = lightColorScheme(
@@ -33,6 +36,19 @@ private val DarkColors = darkColorScheme(
     error = ErrorDark,
 )
 
+/**
+ * Cores da identidade que não têm slot no ColorScheme do Material (hoje: favorito). Acesso
+ * via [CqnColors] dentro de um [CqntrackTheme].
+ */
+data class CqnExtraColors(val favorite: Color)
+
+private val LocalCqnExtraColors = staticCompositionLocalOf { CqnExtraColors(favorite = Favorite) }
+
+object CqnColors {
+    val favorite: Color
+        @Composable get() = LocalCqnExtraColors.current.favorite
+}
+
 @Composable
 fun CqntrackTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -51,9 +67,13 @@ fun CqntrackTheme(
         else -> LightColors
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography(),
-        content = content,
-    )
+    val extraColors = CqnExtraColors(favorite = if (darkTheme) FavoriteDark else Favorite)
+
+    CompositionLocalProvider(LocalCqnExtraColors provides extraColors) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography(),
+            content = content,
+        )
+    }
 }

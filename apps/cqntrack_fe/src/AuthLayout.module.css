@@ -33,7 +33,9 @@
 }
 
 .collage div {
-  border-radius: 12px;
+  border-radius: 14px;
+  /* Moldura clara de "foto revelada" — vem da nova identidade visual. */
+  border: 3px solid var(--mark-chest);
   aspect-ratio: 2 / 3;
   background-size: cover;
   background-position: center;
@@ -87,7 +89,7 @@
   height: 34px;
   border-radius: 9px;
   background: var(--accent);
-  color: var(--on-accent);
+  color: var(--mark-fur);
   --mark-bg: var(--accent);
   display: flex;
   align-items: center;
@@ -100,11 +102,15 @@
   height: 22px;
 }
 
+.brandWordAccent {
+  color: var(--accent);
+}
+
 .brandWord {
-  font-family: "Space Grotesk", sans-serif;
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-weight: 700;
   font-size: 18px;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   color: var(--text-primary);
 }
 

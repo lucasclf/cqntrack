@@ -30,7 +30,7 @@
   height: 32px;
   border-radius: var(--radius);
   background: var(--accent);
-  color: var(--on-accent);
+  color: var(--mark-fur);
   --mark-bg: var(--accent);
   flex-shrink: 0;
 }
@@ -40,9 +40,14 @@
   height: 21px;
 }
 
+.brandWordAccent {
+  color: var(--accent);
+}
+
 .brandWord {
-  font-family: "Space Grotesk", sans-serif;
-  font-weight: 600;
+  letter-spacing: -0.03em;
+  font-family: var(--font-display);
+  font-weight: 700;
   font-size: 18px;
 }
 

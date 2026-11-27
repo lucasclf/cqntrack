@@ -25,6 +25,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -38,12 +39,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
+import xyz.cqn.cqntrack.core.designsystem.CqnColors
 import xyz.cqn.cqntrack.core.designsystem.StarRating
 import xyz.cqn.cqntrack.movies.data.MovieListDto
 import xyz.cqn.cqntrack.movies.data.MovieStatus
@@ -116,6 +118,7 @@ fun MovieDetailScreen(
                                     Icons.Filled.FavoriteBorder
                                 },
                                 contentDescription = "Favoritar",
+                                tint = if (uiState.entry?.favoritedAt != null) CqnColors.favorite else LocalContentColor.current,
                             )
                         }
                     }

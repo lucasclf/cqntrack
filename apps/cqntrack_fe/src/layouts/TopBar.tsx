@@ -13,11 +13,11 @@ import styles from "./TopBar.module.css";
 // aqui.
 const NAV_ITEMS = [
   { label: "Continuar", to: "/" },
-  { label: "Séries", to: "/series" },
-  { label: "Filmes", to: "/filmes" },
-  { label: "Jogos", to: "/jogos" },
-  { label: "Livros", to: "/livros" },
-  { label: "Mangás", to: "/mangas" },
+  { label: "Séries", to: "/series", dot: "var(--media-series)" },
+  { label: "Filmes", to: "/filmes", dot: "var(--media-movies)" },
+  { label: "Jogos", to: "/jogos", dot: "var(--media-games)" },
+  { label: "Livros", to: "/livros", dot: "var(--media-books)" },
+  { label: "Mangás", to: "/mangas", dot: "var(--media-manga)" },
   { label: "Atividades", to: "/atividades" },
   { label: "Social", to: "/social" },
 ];
@@ -50,7 +50,9 @@ export function TopBar() {
           <span className={styles.brandMark}>
             <CatMark className={styles.brandMarkIcon} />
           </span>
-          <span className={styles.brandWord}>cqntrack</span>
+          <span className={styles.brandWord}>
+            cqn<span className={styles.brandWordAccent}>track</span>
+          </span>
         </Link>
         <nav className={styles.mediaNav} aria-label="Seções">
           {NAV_ITEMS.map((item) => (
@@ -62,6 +64,13 @@ export function TopBar() {
                 isActive ? `${styles.mediaLink} ${styles.mediaLinkActive}` : styles.mediaLink
               }
             >
+              {"dot" in item && (
+                <span
+                  className={styles.mediaDot}
+                  style={{ background: item.dot }}
+                  aria-hidden="true"
+                />
+              )}
               {item.label}
             </NavLink>
           ))}

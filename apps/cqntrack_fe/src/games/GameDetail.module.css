@@ -149,8 +149,8 @@
 }
 
 .favoriteBtn[aria-pressed="true"] {
-  border-color: var(--error);
-  color: var(--error);
+  border-color: var(--favorite);
+  color: var(--favorite);
 }
 
 .platformOptions {

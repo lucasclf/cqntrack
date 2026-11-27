@@ -6,11 +6,17 @@
   --violet-500: #8b5cf6;
   --violet-600: #7c3aed;
   --violet-700: #6d28d9;
+  --font-display: "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  /* Marca (gato tuxedo): pelo, peito/focinho e nariz — ver CatMark.tsx */
+  --mark-fur: #140b29;
+  --mark-chest: #f5f2ff;
+  --mark-nose: #f4a3b5;
 }
 
 [data-theme="dark"] {
   --bg: #0e0a18;
-  --panel-bg: #120c1e;
+  --panel-bg: #161027;
   --form-bg: #14101f;
   --card-border: #2a2240;
   --input-bg: #1c1630;
@@ -26,6 +32,30 @@
   --scrim-from: rgba(14, 10, 24, 0.15);
   --scrim-to: rgba(14, 10, 24, 0.96);
   --error: #f87171;
+  /* Rosa do focinho: favoritos (antes usavam --error) */
+  --favorite: #f4a3b5;
+  /* Uma cor por seção de mídia (texto/realce) + fundo tingido */
+  --media-series: #7cb4ff;
+  --media-series-bg: #1b2440;
+  --media-movies: #ffa26b;
+  --media-movies-bg: #3a2318;
+  --media-games: #c4b5fd;
+  --media-games-bg: #2a2244;
+  --media-books: #f2cf66;
+  --media-books-bg: #352d14;
+  --media-manga: #5ed6d0;
+  --media-manga-bg: #133433;
+  /* Status de jogos */
+  --status-planned: #b9aedb;
+  --status-planned-bg: #231c38;
+  --status-playing: #9cc6ff;
+  --status-playing-bg: #1b2440;
+  --status-completed: #8fe8b0;
+  --status-completed-bg: #15342a;
+  --status-platinum: #3b1f86;
+  --status-platinum-bg: #e9e4ff;
+  --status-dropped: #f5a3a3;
+  --status-dropped-bg: #3a1c22;
 }
 
 [data-theme="light"] {
@@ -46,6 +76,27 @@
   --scrim-from: rgba(250, 249, 254, 0.1);
   --scrim-to: rgba(250, 249, 254, 0.97);
   --error: #dc2626;
+  --favorite: #c2416b;
+  --media-series: #1d5fc4;
+  --media-series-bg: #e3edff;
+  --media-movies: #b24a0c;
+  --media-movies-bg: #ffeadc;
+  --media-games: #6d28d9;
+  --media-games-bg: #ede7fe;
+  --media-books: #8a6300;
+  --media-books-bg: #fbf1cf;
+  --media-manga: #0f7a75;
+  --media-manga-bg: #d9f5f3;
+  --status-planned: #625a80;
+  --status-planned-bg: #efebfa;
+  --status-playing: #1d5fc4;
+  --status-playing-bg: #e3edff;
+  --status-completed: #17734a;
+  --status-completed-bg: #ddf5e8;
+  --status-platinum: #ffffff;
+  --status-platinum-bg: #5b21b6;
+  --status-dropped: #b42323;
+  --status-dropped-bg: #fde4e4;
 }
 
 * {
