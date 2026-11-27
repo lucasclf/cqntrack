@@ -1,19 +1,28 @@
 import {
   BOOK_STATUS_LABELS,
   GAME_STATUS_LABELS,
+  MANGA_STATUS_LABELS,
   MOVIE_STATUS_LABELS,
   type ActivityItem,
-  type BookStatus,
-  type GameStatus,
-  type MovieStatus,
+  type MediaType,
 } from "@cqntrack/shared";
+
+// Mapa de rótulos de status por seção — série não tem status (emite
+// "season_watched"), por isso não aparece aqui.
+const STATUS_LABELS_BY_MEDIA: Partial<Record<MediaType, Record<string, string>>> = {
+  games: GAME_STATUS_LABELS,
+  books: BOOK_STATUS_LABELS,
+  movies: MOVIE_STATUS_LABELS,
+  manga: MANGA_STATUS_LABELS,
+};
 
 // `type`/`metadata` são genéricos entre seções (ver activity.schema.ts no
 // backend), mas cada seção tem seu próprio vocabulário de `type` — jogos,
-// livros e filmes emitem "status_changed" (são status-based; só série não
-// tem status), série emite "season_watched". Como três seções emitem
+// livros, filmes e mangás emitem "status_changed" (são status-based; só série
+// não tem status), série emite "season_watched". Como várias seções emitem
 // "status_changed" com mapas de label diferentes, o case abaixo escolhe o
-// mapa certo por `item.mediaType`.
+// mapa certo por `item.mediaType`; status sem rótulo conhecido cai no texto
+// genérico em vez de virar "undefined".
 //
 // Extraído de games/ActivityFeed.tsx pra ser reaproveitado pelo feed de
 // amigos (social/FriendActivityFeed.tsx) — mesmo vocabulário de atividade,
@@ -22,16 +31,9 @@ export function describeActivity(item: ActivityItem): string {
   const metadata = item.metadata ?? {};
   switch (item.type) {
     case "status_changed": {
-      if (item.mediaType === "books") {
-        const status = metadata.status as BookStatus | undefined;
-        return status ? `Marcou como "${BOOK_STATUS_LABELS[status]}"` : "Mudou o status";
-      }
-      if (item.mediaType === "movies") {
-        const status = metadata.status as MovieStatus | undefined;
-        return status ? `Marcou como "${MOVIE_STATUS_LABELS[status]}"` : "Mudou o status";
-      }
-      const status = metadata.status as GameStatus | undefined;
-      return status ? `Marcou como "${GAME_STATUS_LABELS[status]}"` : "Mudou o status";
+      const status = metadata.status as string | undefined;
+      const label = status ? STATUS_LABELS_BY_MEDIA[item.mediaType]?.[status] : undefined;
+      return label ? `Marcou como "${label}"` : "Mudou o status";
     }
     case "favorited":
       return "Favoritou";

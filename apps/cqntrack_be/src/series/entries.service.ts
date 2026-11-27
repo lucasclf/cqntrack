@@ -83,6 +83,9 @@ async function getWatchedSummary(
   return summaries.get(seriesId) ?? EMPTY_WATCHED_SUMMARY;
 }
 
+// Janela em que o último episódio lançado ainda conta como "novo".
+const NEW_EPISODE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+
 // lastEpisodeToAir/nextEpisodeToAir vêm do cache global da série (ver
 // series.schema.ts), refeitos pelo cron diário (refresh-episodes.job.ts)
 // e a cada revalidação de 24h do cache (series.service.ts) — aqui só
@@ -93,8 +96,14 @@ function toSeriesEntry(
   watched: WatchedSummary,
 ): SeriesEntry {
   const lastEpisode = cachedSeries.lastEpisodeToAir;
+  // "Novo episódio" só pra quem acompanha a série (já assistiu algum
+  // episódio) e quando o último episódio saiu há pouco tempo — sem isso,
+  // série encerrada há anos (ou só favoritada, sem nada visto) ficava com o
+  // selo pra sempre.
   const availableEpisode =
     lastEpisode &&
+    watched.count > 0 &&
+    Date.now() - new Date(lastEpisode.airDate).getTime() <= NEW_EPISODE_WINDOW_MS &&
     !watched.watchedKeys.has(episodeKey(lastEpisode.seasonNumber, lastEpisode.episodeNumber))
       ? lastEpisode
       : null;
@@ -146,7 +155,9 @@ async function logSeriesEntryActivities(
 // episodeCount já cacheado em `series.seasons`. Usada pra abrir a tela de
 // detalhe já na temporada certa (ver SeriesDetail/SeriesEpisodeList no FE)
 // em vez de sempre cair na Temporada 1, mesmo com temporadas inteiras já
-// vistas. null quando tudo já foi assistido.
+// vistas. null quando tudo já foi assistido. A temporada 0 (Especiais) fica
+// de fora: como vem antes da 1 na ordenação, qualquer série com especiais não
+// assistidos abriria neles em vez de na Temporada 1.
 export async function getNextSeasonToWatch(
   db: Db,
   userId: string,
@@ -165,6 +176,7 @@ export async function getNextSeasonToWatch(
     .sort((a, b) => a.seasonNumber - b.seasonNumber)
     .find(
       (season) =>
+        season.seasonNumber > 0 &&
         season.episodeCount > 0 &&
         (watchedBySeason.get(season.seasonNumber) ?? 0) < season.episodeCount,
     );

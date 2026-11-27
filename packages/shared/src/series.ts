@@ -67,8 +67,10 @@ export const SeriesEntrySchema = z.object({
   // Último episódio lançado (segundo a TMDB) que esse usuário ainda não
   // marcou como assistido — null quando não há episódio lançado pendente
   // (já assistiu o mais recente, ou a série não tem episódio lançado
-  // ainda). Refeito pelo cron diário + toda revalidação do cache da série
-  // (ver refresh-episodes.job.ts / series.service.ts).
+  // ainda), quando o usuário não assistiu nenhum episódio da série, ou
+  // quando o último episódio saiu há mais de 30 dias. Refeito pelo cron
+  // diário + toda revalidação do cache da série (ver
+  // refresh-episodes.job.ts / series.service.ts).
   availableEpisode: SeriesUpcomingEpisodeSchema.nullable(),
   // Próximo episódio previsto, com data futura — null quando a TMDB não
   // tem previsão (série encerrada, ou hiato sem data anunciada ainda).

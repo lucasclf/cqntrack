@@ -17,6 +17,12 @@ private val BOOK_STATUS_LABELS = mapOf(
     "read" to "Lido",
     "dropped" to "Abandonado",
 )
+private val MANGA_STATUS_LABELS = mapOf(
+    "want_to_read" to "Quero ler",
+    "reading" to "Lendo",
+    "read" to "Lido",
+    "dropped" to "Abandonado",
+)
 private val MOVIE_STATUS_LABELS = mapOf(
     "want_to_watch" to "Quero ver",
     "watched" to "Já vi",
@@ -31,10 +37,10 @@ private val GAME_STATUS_LABELS = mapOf(
 
 /**
  * Porta de apps/cqntrack_fe/src/activity/describeActivity.ts — mesmo vocabulário de `type`/
- * `metadata` entre seções (ver activity.schema.ts no backend), replicado aqui bug-a-bug (inclusive
- * o `else` de "status_changed" caindo em GAME_STATUS_LABELS pra qualquer seção que não seja
- * books/movies, igual ao original) pra manter os dois clientes narrando a mesma atividade do
- * mesmo jeito. Reaproveitado tanto pela aba Atividades quanto pelo feed de amigos da Social.
+ * `metadata` entre seções (ver activity.schema.ts no backend), replicado aqui pra manter os dois
+ * clientes narrando a mesma atividade do mesmo jeito: "status_changed" usa o mapa de rótulos da
+ * própria seção, e status sem rótulo conhecido vira "Mudou o status". Reaproveitado tanto pela aba
+ * Atividades quanto pelo feed de amigos da Social.
  */
 fun describeActivity(item: ActivityItemDto): String =
     describeActivity(type = item.type, metadata = item.metadata, mediaType = item.mediaType)
@@ -54,7 +60,10 @@ private fun describeActivity(type: String, metadata: JsonObject?, mediaType: Med
             val label = when (mediaType) {
                 MediaType.Books -> status?.let { BOOK_STATUS_LABELS[it] }
                 MediaType.Movies -> status?.let { MOVIE_STATUS_LABELS[it] }
-                else -> status?.let { GAME_STATUS_LABELS[it] }
+                MediaType.Manga -> status?.let { MANGA_STATUS_LABELS[it] }
+                MediaType.Games -> status?.let { GAME_STATUS_LABELS[it] }
+                // Série não emite "status_changed" (não tem status).
+                MediaType.Series -> null
             }
             if (label != null) "Marcou como \"$label\"" else "Mudou o status"
         }

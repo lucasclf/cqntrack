@@ -549,6 +549,36 @@ describe("GET /api/series/:tmdbId", () => {
     expect(body.nextSeasonToWatch).toBe(2);
   });
 
+  it("nextSeasonToWatch ignora a temporada 0 (Especiais) e aponta pra Temporada 1", async () => {
+    // Entry criada só por favoritar (sem nenhum episódio visto) — era o caso
+    // em que a página abria nos Especiais, com nextSeasonToWatch = 0.
+    const { cookie } = await createAuthenticatedUser(app, env);
+    stubTmdbFetchOnce(
+      tmdbSeriesDetailWithSeasons(512, "Breaking Bad", [
+        { seasonNumber: 0, episodeCount: 2 },
+        { seasonNumber: 1, episodeCount: 3 },
+      ]),
+      tmdbSeriesCredits(),
+    );
+    const favRes = await app.request(
+      "/api/series/512/entry",
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ favorited: true }),
+      },
+      env,
+    );
+    expect(favRes.status).toBe(200);
+    vi.unstubAllGlobals();
+
+    const res = await app.request("/api/series/512", { headers: { cookie } }, env);
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { nextSeasonToWatch: number | null };
+    expect(body.nextSeasonToWatch).toBe(1);
+  });
+
   it("nextSeasonToWatch vem null quando não há entry (nunca assistiu nada)", async () => {
     const { cookie } = await createAuthenticatedUser(app, env);
     stubSeriesCacheFetch(511, "The Wire");
@@ -810,24 +840,34 @@ describe("GET /api/series/entries", () => {
     expect(body.items[1]?.series.tmdbId).toBe(711);
   });
 
-  it("availableEpisode vem preenchido quando o último episódio lançado ainda não foi assistido", async () => {
+  // Cria a série com `last_episode_to_air` exibido há `daysAgo` dias e, se
+  // `watchFirstEpisode`, marca o 1x1 como assistido (senão só cria a entry,
+  // como um favorito sem nada visto). Devolve o availableEpisode da listagem.
+  async function availableEpisodeFor(
+    tmdbId: number,
+    { daysAgo, watchFirstEpisode }: { daysAgo: number; watchFirstEpisode: boolean },
+  ) {
     const { cookie } = await createAuthenticatedUser(app, env);
-
+    const airDate = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     stubTmdbFetchOnce(
       {
-        ...tmdbSeriesDetail(705, "Slow Horses"),
+        ...tmdbSeriesDetail(tmdbId, "Slow Horses"),
         last_episode_to_air: {
           episode_number: 6,
           season_number: 4,
           name: "Hello Goodbye",
-          air_date: "2025-01-01",
+          air_date: airDate,
         },
       },
       tmdbSeriesCredits(),
     );
     await app.request(
-      "/api/series/705/entry",
-      { method: "PUT", headers: { cookie, "Content-Type": "application/json" }, body: "{}" },
+      watchFirstEpisode ? `/api/series/${tmdbId}/episodes/1/1` : `/api/series/${tmdbId}/entry`,
+      {
+        method: "PUT",
+        headers: { cookie, "Content-Type": "application/json" },
+        body: watchFirstEpisode ? JSON.stringify({ watched: true }) : "{}",
+      },
       env,
     );
     vi.unstubAllGlobals();
@@ -836,14 +876,37 @@ describe("GET /api/series/entries", () => {
     const body = (await res.json()) as {
       items: Array<{ availableEpisode: unknown; upcomingEpisode: unknown }>;
     };
+    return { airDate, item: body.items[0] };
+  }
 
-    expect(body.items[0]?.availableEpisode).toEqual({
+  it("availableEpisode vem preenchido quando o último episódio saiu há pouco e quem acompanha ainda não viu", async () => {
+    const { airDate, item } = await availableEpisodeFor(705, {
+      daysAgo: 3,
+      watchFirstEpisode: true,
+    });
+
+    expect(item?.availableEpisode).toEqual({
       seasonNumber: 4,
       episodeNumber: 6,
       name: "Hello Goodbye",
-      airDate: "2025-01-01",
+      airDate,
     });
-    expect(body.items[0]?.upcomingEpisode).toBeNull();
+    expect(item?.upcomingEpisode).toBeNull();
+  });
+
+  it("availableEpisode vem null quando nenhum episódio da série foi assistido", async () => {
+    // Caso do selo "Novo episódio" em série só favoritada, sem nada visto.
+    const { item } = await availableEpisodeFor(7071, { daysAgo: 3, watchFirstEpisode: false });
+
+    expect(item?.availableEpisode).toBeNull();
+  });
+
+  it("availableEpisode vem null quando o último episódio saiu há mais de 30 dias", async () => {
+    // Caso de série já encerrada (ex.: Breaking Bad) — o último episódio
+    // nunca mais conta como "novo", mesmo pra quem parou no meio.
+    const { item } = await availableEpisodeFor(7081, { daysAgo: 31, watchFirstEpisode: true });
+
+    expect(item?.availableEpisode).toBeNull();
   });
 
   it("availableEpisode vem null quando o último episódio já foi assistido", async () => {

@@ -165,6 +165,45 @@ describe("ActivityFeed", () => {
     expect(await screen.findByText('Marcou como "Lendo"')).toBeInTheDocument();
   });
 
+  it("descreve a atividade 'status_changed' de mangá com o rótulo de status de mangá", async () => {
+    const items: ActivityItem[] = [
+      {
+        id: "1",
+        type: "status_changed",
+        metadata: { status: "reading" },
+        createdAt: "2026-01-01T10:00:00.000Z",
+        mediaType: "manga",
+        itemId: "a1c7c817-4e59-43b7-9365-09675a149a6f",
+        itemTitle: "One Piece",
+        itemHref: "/mangas/a1c7c817-4e59-43b7-9365-09675a149a6f",
+        itemCoverUrl: null,
+      },
+    ];
+    getMock.mockResolvedValue({ items, nextCursor: null });
+    renderFeed();
+
+    // Antes caía nos rótulos de jogo, onde "reading" não existe — virava
+    // 'Marcou como "undefined"'.
+    expect(await screen.findByText('Marcou como "Lendo"')).toBeInTheDocument();
+  });
+
+  it("usa o texto genérico quando o status não tem rótulo conhecido", async () => {
+    const items: ActivityItem[] = [
+      {
+        id: "1",
+        type: "status_changed",
+        metadata: { status: "status_inexistente" },
+        createdAt: "2026-01-01T10:00:00.000Z",
+        ...GAME_SNAPSHOT,
+      },
+    ];
+    getMock.mockResolvedValue({ items, nextCursor: null });
+    renderFeed();
+
+    expect(await screen.findByText("Mudou o status")).toBeInTheDocument();
+    expect(screen.queryByText(/undefined/)).not.toBeInTheDocument();
+  });
+
   it("carrega mais itens ao clicar em 'Carregar mais'", async () => {
     getMock.mockResolvedValueOnce({
       items: [
